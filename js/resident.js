@@ -1,6 +1,7 @@
 let currentUser = null;
 let currentProfile = null;
 let reportModal = null;
+let residentDetailModal = null;
 let allReports = [];
 let mapInstance = null;
 let mapMarker = null;
@@ -95,6 +96,79 @@ async function initResidentDashboard() {
         console.error('❌ Init error:', error);
         showToast('Error loading dashboard', 'danger');
     }
+}
+
+// ============================================
+// HELPERS
+// ============================================
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function getMediaUrls(report) {
+    if (!report) return [];
+    if (report.media_urls) {
+        try {
+            var urls = typeof report.media_urls === 'string' ? JSON.parse(report.media_urls) : report.media_urls;
+            if (Array.isArray(urls) && urls.length > 0) return urls;
+        } catch (e) {}
+    }
+    if (report.images) {
+        try {
+            var urls = typeof report.images === 'string' ? JSON.parse(report.images) : report.images;
+            if (Array.isArray(urls) && urls.length > 0) return urls;
+        } catch (e) {}
+    }
+    return [];
+}
+
+// Extract a short, readable location from possible JSON or long string
+function getShortLocation(location) {
+    if (!location) return 'Unknown location';
+    var text = String(location);
+    // Try to parse JSON (some reports store location as JSON string)
+    if (text.trim().startsWith('{')) {
+        try {
+            var obj = JSON.parse(text);
+            if (obj && obj.address) text = String(obj.address);
+        } catch (e) { /* not JSON, keep as-is */ }
+    }
+    // Strip common suffixes after commas — keep first 2 segments
+    var parts = text.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+    if (parts.length > 2) {
+        return parts.slice(0, 2).join(', ');
+    }
+    return text;
+}
+
+function getTypeIcon(type) {
+    var map = {
+        fire: 'fa-fire',
+        medical: 'fa-heart-pulse',
+        accident: 'fa-car-burst',
+        flood: 'fa-water',
+        crime: 'fa-shield-halved',
+        other: 'fa-circle-exclamation'
+    };
+    return map[type] || 'fa-circle-exclamation';
+}
+
+function getTypeClass(type) {
+    var map = {
+        fire: 'fire',
+        medical: 'medical',
+        accident: 'accident',
+        flood: 'flood',
+        crime: 'crime',
+        other: 'other'
+    };
+    return map[type] || 'other';
 }
 
 // ============================================
@@ -330,66 +404,384 @@ function loadPage(page) {
     }
 }
 
+// ============================================
+// DASHBOARD (enhanced responsive)
+// ============================================
 async function loadDashboard() {
     const container = document.getElementById('pageContent');
     try {
-        const { data: reports } = await supabaseClient.from('incident_reports').select('*').eq('reporter_id', currentUser.id).order('created_at', { ascending: false });
+        const { data: reports } = await supabaseClient
+            .from('incident_reports')
+            .select('*')
+            .eq('reporter_id', currentUser.id)
+            .order('created_at', { ascending: false });
         allReports = reports || [];
 
-        const { data: barangayIncidents } = await supabaseClient.from('incident_reports').select('*').eq('barangay', currentProfile.barangay).in('status', ['reported', 'acknowledged', 'responding']).order('created_at', { ascending: false });
+        const { data: barangayIncidents } = await supabaseClient
+            .from('incident_reports')
+            .select('*')
+            .eq('barangay', currentProfile.barangay)
+            .in('status', ['reported', 'acknowledged', 'responding'])
+            .order('created_at', { ascending: false });
 
-        const total = reports?.length || 0, active = reports?.filter(r => !['resolved', 'closed'].includes(r.status)).length || 0, resolved = reports?.filter(r => r.status === 'resolved').length || 0;
+        const total = reports?.length || 0;
+        const active = reports?.filter(r => !['resolved', 'closed'].includes(r.status)).length || 0;
+        const resolved = reports?.filter(r => r.status === 'resolved').length || 0;
+
+        // Active barangay incidents count (excluding own)
+        const otherActiveIncidents = (barangayIncidents || []).filter(i => i.reporter_id !== currentUser.id);
 
         container.innerHTML = `
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div><h4 class="fw-bold">Welcome, ${currentProfile.full_name || 'Resident'}!</h4><p class="text-muted">Barangay ${currentProfile.barangay || 'Unknown'}</p></div>
-                <div class="d-flex gap-2">
-                   
-                    <button class="btn btn-danger" onclick="openReportModal()"><i class="fas fa-exclamation-triangle me-2"></i>Report Emergency</button>
+            <!-- Welcome hero -->
+            <div class="resident-hero">
+                <div class="row g-3 align-items-center">
+                    <div class="col-lg-8">
+                        <h4><i class="fas fa-hand-sparkles me-2"></i>Welcome, ${escapeHtml(currentProfile.full_name || 'Resident')}!</h4>
+                        <p><i class="fas fa-map-marker-alt me-1"></i>Barangay ${escapeHtml(currentProfile.barangay || 'Unknown')}</p>
+                    </div>
+                    <div class="col-lg-4 text-lg-end">
+                        <button class="btn btn-report" onclick="openReportModal()">
+                            <i class="fas fa-exclamation-triangle me-2"></i>Report Emergency
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <div class="row g-4 mb-4">
-                <div class="col-md-4"><div class="stat-card"><div class="d-flex justify-content-between align-items-center"><div><div class="number">${total}</div><div class="text-muted small">Total Reports</div></div><div class="text-primary"><i class="fas fa-file-alt fa-2x"></i></div></div></div></div>
-                <div class="col-md-4"><div class="stat-card"><div class="d-flex justify-content-between align-items-center"><div><div class="number text-warning">${active}</div><div class="text-muted small">Active Incidents</div></div><div class="text-warning"><i class="fas fa-clock fa-2x"></i></div></div></div></div>
-                <div class="col-md-4"><div class="stat-card"><div class="d-flex justify-content-between align-items-center"><div><div class="number text-success">${resolved}</div><div class="text-muted small">Resolved</div></div><div class="text-success"><i class="fas fa-check-circle fa-2x"></i></div></div></div></div>
+            <!-- Stat cards -->
+            <div class="row g-3 mb-4">
+                <div class="col-6 col-lg-4">
+                    <div class="stat-card-r">
+                        <div class="stat-info">
+                            <div class="stat-num">${total}</div>
+                            <div class="stat-lbl">Total Reports</div>
+                        </div>
+                        <div class="stat-icon blue"><i class="fas fa-file-alt"></i></div>
+                    </div>
+                </div>
+                <div class="col-6 col-lg-4">
+                    <div class="stat-card-r">
+                        <div class="stat-info">
+                            <div class="stat-num" style="color:#d97706;">${active}</div>
+                            <div class="stat-lbl">Active</div>
+                        </div>
+                        <div class="stat-icon yellow"><i class="fas fa-clock"></i></div>
+                    </div>
+                </div>
+                <div class="col-12 col-lg-4">
+                    <div class="stat-card-r">
+                        <div class="stat-info">
+                            <div class="stat-num" style="color:#16a34a;">${resolved}</div>
+                            <div class="stat-lbl">Resolved</div>
+                        </div>
+                        <div class="stat-icon green"><i class="fas fa-check-circle"></i></div>
+                    </div>
+                </div>
             </div>
 
-            ${barangayIncidents && barangayIncidents.length > 0 ? `
-                <div class="card mb-4"><div class="card-header bg-danger text-white"><h6 class="mb-0"><i class="fas fa-bell me-2"></i>Active Incidents in Your Barangay</h6></div>
-                <div class="card-body p-0"><div class="list-group list-group-flush">${barangayIncidents.slice(0, 5).map(incident => `
-                    <div class="list-group-item d-flex align-items-center gap-3"><span class="badge priority-${incident.priority || 'medium'}">${incident.priority || 'Medium'}</span><div class="flex-grow-1"><div class="fw-semibold">${incident.title}</div><div class="small text-muted">${incident.type} • ${incident.location}</div>${incident.media_urls ? `<div class="small text-primary"><i class="fas fa-paperclip me-1"></i>${JSON.parse(incident.media_urls).length} attachment(s)</div>` : ''}</div><span class="status-badge status-${incident.status}">${incident.status}</span></div>
-                `).join('')}</div></div></div>
-            ` : `<div class="alert alert-success"><i class="fas fa-check-circle me-2"></i>No active incidents in your barangay. Stay safe!</div>`}
+            <!-- Active incidents banner (if any in barangay, excluding own) -->
+            ${otherActiveIncidents.length > 0 ? `
+                <div class="alert-banner">
+                    <div class="alert-icon"><i class="fas fa-bell"></i></div>
+                    <div class="alert-body">
+                        <div class="alert-title">${otherActiveIncidents.length} Active Incident${otherActiveIncidents.length > 1 ? 's' : ''} in Your Barangay</div>
+                        <p class="alert-text">Stay alert and avoid affected areas. Tap any incident below for details.</p>
+                    </div>
+                </div>
+            ` : ''}
 
-            <div class="card"><div class="card-header d-flex justify-content-between align-items-center"><h6 class="mb-0"><i class="fas fa-history me-2"></i>Your Recent Reports</h6><button class="btn btn-sm btn-outline-secondary" onclick="loadHistory()">View All</button></div>
-                <div class="card-body p-0">${reports && reports.length > 0 ? `<div class="list-group list-group-flush">${reports.slice(0, 5).map(report => `
-                    <div class="list-group-item d-flex align-items-center gap-3"><div class="flex-grow-1"><div class="fw-semibold">${report.title}</div><div class="small text-muted">${report.type} • ${report.location} • ${new Date(report.created_at).toLocaleDateString()}</div>${report.media_urls ? `<div class="small text-primary"><i class="fas fa-paperclip me-1"></i>${JSON.parse(report.media_urls).length} attachment(s)</div>` : ''}</div><span class="status-badge status-${report.status}">${report.status}</span></div>
-                `).join('')}</div>` : `<div class="text-center py-4 text-muted"><i class="fas fa-check-circle fa-2x mb-2 d-block text-success"></i>No reports yet</div>`}</div></div>
+            <!-- Active incidents in barangay -->
+            <div class="section-card">
+                <div class="section-card-header">
+                    <h6><i class="fas fa-broadcast text-danger"></i>Active Incidents in Your Barangay</h6>
+                    <span class="badge-count">${otherActiveIncidents.length}</span>
+                </div>
+                <div>
+                    ${otherActiveIncidents.length > 0
+                        ? otherActiveIncidents.slice(0, 5).map(inc => renderIncidentRow(inc)).join('')
+                        : `<div class="empty-state">
+                                <i class="fas fa-shield-halved" style="color:#16a34a;"></i>
+                                <h6>All Clear</h6>
+                                <p>No active incidents in your barangay.</p>
+                           </div>`
+                    }
+                </div>
+            </div>
+
+            <!-- Your recent reports -->
+            <div class="section-card">
+                <div class="section-card-header">
+                    <h6><i class="fas fa-history text-primary"></i>Your Recent Reports</h6>
+                    ${reports && reports.length > 5 ? `<button class="btn btn-sm btn-outline-secondary" onclick="loadHistory()">View All</button>` : ''}
+                </div>
+                <div>
+                    ${reports && reports.length > 0
+                        ? reports.slice(0, 5).map(r => renderIncidentRow(r, true)).join('')
+                        : `<div class="empty-state">
+                                <i class="fas fa-file-alt"></i>
+                                <h6>No reports yet</h6>
+                                <p>You haven't submitted any incident reports.</p>
+                                <button class="btn btn-danger btn-sm mt-3" onclick="openReportModal()">
+                                    <i class="fas fa-plus me-1"></i>Report Now
+                                </button>
+                           </div>`
+                    }
+                </div>
+            </div>
         `;
+
     } catch (error) {
-        container.innerHTML = '<div class="alert alert-danger">Error loading dashboard</div>';
+        console.error('Dashboard error:', error);
+        container.innerHTML = '<div class="alert alert-danger"><i class="fas fa-exclamation-triangle me-2"></i>Error loading dashboard</div>';
     }
 }
 
+// ============================================
+// RENDER INCIDENT ROW (compact + clickable)
+// ============================================
+function renderIncidentRow(incident, isOwnReport) {
+    const type = incident.type || 'other';
+    const typeIcon = getTypeIcon(type);
+    const typeClass = getTypeClass(type);
+    const priority = incident.priority || 'medium';
+    const status = incident.status || 'reported';
+    const shortLoc = getShortLocation(incident.location);
+    const fullLoc = escapeHtml(String(incident.location || 'Unknown'));
+    const createdShort = incident.created_at
+        ? new Date(incident.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        : '—';
+    const mediaCount = getMediaUrls(incident).length;
+
+    return `
+        <div class="incident-row priority-${priority}" onclick="viewResidentIncidentDetail('${incident.id}')">
+            <div class="inc-icon ${typeClass}">
+                <i class="fas ${typeIcon}"></i>
+            </div>
+            <div class="inc-body">
+                <div class="inc-title" title="${escapeHtml(incident.title || 'Untitled')}">
+                    ${escapeHtml(incident.title || 'Untitled Incident')}
+                </div>
+                <div class="inc-meta">
+                    <span class="meta-item" title="${fullLoc}">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span class="loc-text">${escapeHtml(shortLoc)}</span>
+                    </span>
+                    <span class="meta-item">
+                        <i class="fas fa-clock"></i>${createdShort}
+                    </span>
+                    ${mediaCount > 0 ? `<span class="meta-item"><i class="fas fa-paperclip"></i>${mediaCount}</span>` : ''}
+                </div>
+            </div>
+            <div class="inc-right">
+                <span class="badge-priority-sm priority-${priority}">${priority}</span>
+                <span class="status-badge status-${status}">${status}</span>
+            </div>
+            <i class="fas fa-chevron-right inc-arrow"></i>
+        </div>
+    `;
+}
+
+// ============================================
+// VIEW RESIDENT INCIDENT DETAIL MODAL
+// ============================================
+async function viewResidentIncidentDetail(incidentId) {
+    // Always fetch fresh from DB
+    let incident = null;
+    try {
+        const { data } = await supabaseClient
+            .from('incident_reports')
+            .select('*')
+            .eq('id', incidentId)
+            .maybeSingle();
+        if (data) incident = data;
+    } catch (e) { /* fall through */ }
+
+    if (!incident) {
+        incident = allReports.find(r => r.id === incidentId);
+    }
+    if (!incident) {
+        showToast('Incident not found', 'warning');
+        return;
+    }
+
+    if (!residentDetailModal) {
+        residentDetailModal = new bootstrap.Modal(document.getElementById('residentIncidentDetailModal'));
+    }
+
+    const type = incident.type || 'other';
+    const typeIcon = getTypeIcon(type);
+    const typeClass = getTypeClass(type);
+    const priority = incident.priority || 'medium';
+    const status = incident.status || 'reported';
+    const mediaUrls = getMediaUrls(incident);
+
+    const createdDate = incident.created_at
+        ? new Date(incident.created_at).toLocaleString('en-US', {
+            weekday: 'long', year: 'numeric', month: 'long',
+            day: 'numeric', hour: '2-digit', minute: '2-digit'
+        })
+        : 'Unknown';
+
+    const rawDescription = (incident.description == null) ? '' : String(incident.description).trim();
+    const escapedDescription = escapeHtml(rawDescription);
+
+    // Location display (full, but wrapped so it doesn't overflow)
+    const fullLocation = escapeHtml(String(incident.location || 'Unknown location'));
+
+    document.getElementById('residentDetailTitle').innerHTML =
+        `<i class="fas ${typeIcon}"></i>${escapeHtml(incident.title || 'Incident Details')}`;
+
+    document.getElementById('residentDetailBody').innerHTML = `
+        <div class="detail-badges">
+            <span class="badge-priority-sm priority-${priority}" style="font-size:0.72rem;padding:6px 16px;">
+                <i class="fas fa-exclamation-triangle me-1"></i>${priority} priority
+            </span>
+            <span class="status-badge status-${status}" style="font-size:0.72rem;padding:6px 16px;">
+                <i class="fas fa-circle me-1" style="font-size:0.5rem;"></i>${status}
+            </span>
+        </div>
+
+        <div class="detail-section-title"><i class="fas fa-align-left me-1"></i>Description</div>
+        ${rawDescription
+            ? `<div class="detail-desc">${escapedDescription}</div>`
+            : `<div class="detail-desc" style="color:#94a3b8;font-style:italic;">No description provided.</div>`
+        }
+
+        <div class="detail-meta-grid">
+            <div class="detail-meta-item">
+                <div class="lbl"><i class="fas fa-tag me-1"></i>Type</div>
+                <div class="val text-capitalize">${escapeHtml(type)}</div>
+            </div>
+            <div class="detail-meta-item">
+                <div class="lbl"><i class="fas fa-map-marker-alt me-1"></i>Location</div>
+                <div class="val">${fullLocation}</div>
+            </div>
+            <div class="detail-meta-item">
+                <div class="lbl"><i class="fas fa-clock me-1"></i>Reported</div>
+                <div class="val" style="font-size:0.82rem;">${createdDate}</div>
+            </div>
+            <div class="detail-meta-item">
+                <div class="lbl"><i class="fas fa-hashtag me-1"></i>Report ID</div>
+                <div class="val" style="font-size:0.78rem;font-family:monospace;">${incident.id.substring(0, 12)}…</div>
+            </div>
+            ${incident.contact_number ? `
+            <div class="detail-meta-item">
+                <div class="lbl"><i class="fas fa-phone me-1"></i>Contact</div>
+                <div class="val">${escapeHtml(incident.contact_number)}</div>
+            </div>` : ''}
+            ${incident.barangay ? `
+            <div class="detail-meta-item">
+                <div class="lbl"><i class="fas fa-building me-1"></i>Barangay</div>
+                <div class="val">${escapeHtml(incident.barangay)}</div>
+            </div>` : ''}
+        </div>
+
+        ${mediaUrls.length > 0 ? `
+            <div class="detail-section-title"><i class="fas fa-paperclip me-1"></i>Attachments (${mediaUrls.length})</div>
+            <div class="detail-media-grid">
+                ${mediaUrls.map(m => {
+                    const isVideo = m.type === 'video';
+                    return `
+                        <div class="detail-media-item" onclick="openResidentMedia('${m.url}', '${isVideo ? 'video' : 'image'}')">
+                            ${isVideo
+                                ? `<video src="${m.url}" muted></video><span class="media-type-tag"><i class="fas fa-video me-1"></i>Video</span>`
+                                : `<img src="${m.url}" alt="Attachment" onerror="this.style.opacity=0.3"><span class="media-type-tag"><i class="fas fa-image me-1"></i>Image</span>`
+                            }
+                        </div>`;
+                }).join('')}
+            </div>
+        ` : ''}
+
+        <div class="detail-section-title" style="margin-top:20px;"><i class="fas fa-stream me-1"></i>Timeline</div>
+        <div class="detail-timeline">
+            <div class="tl-item">
+                <span class="tl-dot active"></span>
+                <div class="tl-label">Reported</div>
+                <div class="tl-time">${incident.created_at ? new Date(incident.created_at).toLocaleString() : 'Pending'}</div>
+            </div>
+            <div class="tl-item">
+                <span class="tl-dot ${incident.acknowledged_at ? 'active' : ''}"></span>
+                <div class="tl-label">Acknowledged</div>
+                <div class="tl-time">${incident.acknowledged_at ? new Date(incident.acknowledged_at).toLocaleString() : 'Pending'}</div>
+            </div>
+            <div class="tl-item">
+                <span class="tl-dot ${incident.responded_at ? 'active' : ''}"></span>
+                <div class="tl-label">Responding</div>
+                <div class="tl-time">${incident.responded_at ? new Date(incident.responded_at).toLocaleString() : 'Pending'}</div>
+            </div>
+            <div class="tl-item">
+                <span class="tl-dot ${incident.resolved_at ? 'active' : ''}"></span>
+                <div class="tl-label">Resolved</div>
+                <div class="tl-time">${incident.resolved_at ? new Date(incident.resolved_at).toLocaleString() : 'Pending'}</div>
+            </div>
+        </div>
+    `;
+
+    residentDetailModal.show();
+}
+
+// Simple media lightbox for resident detail modal
+function openResidentMedia(url, type) {
+    // Reuse the existing media lightbox if available, otherwise create a simple one
+    let lb = document.getElementById('residentMediaLightbox');
+    if (!lb) {
+        lb = document.createElement('div');
+        lb.id = 'residentMediaLightbox';
+        lb.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:99999;display:none;align-items:center;justify-content:center;padding:20px;cursor:pointer;';
+        lb.innerHTML = '<button style="position:fixed;top:20px;right:24px;background:rgba(0,0,0,0.5);border:none;color:#fff;width:46px;height:46px;border-radius:50%;font-size:1.4rem;cursor:pointer;"><i class="fas fa-times"></i></button><div id="residentMediaContent" style="max-width:95%;max-height:90%;"></div>';
+        lb.addEventListener('click', function() { lb.style.display = 'none'; document.getElementById('residentMediaContent').innerHTML = ''; document.body.style.overflow = ''; });
+        document.body.appendChild(lb);
+    }
+    const content = document.getElementById('residentMediaContent');
+    if (type === 'video') {
+        content.innerHTML = `<video src="${url}" controls autoplay style="max-width:100%;max-height:85vh;border-radius:12px;display:block;"></video>`;
+    } else {
+        content.innerHTML = `<img src="${url}" style="max-width:100%;max-height:85vh;border-radius:12px;display:block;">`;
+    }
+    lb.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+// ============================================
+// HISTORY (card-based, responsive)
+// ============================================
 async function loadHistory() {
     const container = document.getElementById('pageContent');
     try {
-        const { data: reports } = await supabaseClient.from('incident_reports').select('*').eq('reporter_id', currentUser.id).order('created_at', { ascending: false });
+        const { data: reports } = await supabaseClient
+            .from('incident_reports')
+            .select('*')
+            .eq('reporter_id', currentUser.id)
+            .order('created_at', { ascending: false });
 
         container.innerHTML = `
-            <div class="d-flex justify-content-between align-items-center mb-4"><h4 class="fw-bold"><i class="fas fa-history me-2"></i>Report History</h4><button class="btn btn-outline-danger btn-sm" onclick="loadDashboard()"><i class="fas fa-arrow-left me-1"></i>Back</button></div>
-            ${reports && reports.length > 0 ? `
-                <div class="table-responsive"><table class="table table-hover"><thead><tr><th>Date</th><th>Title</th><th>Type</th><th>Location</th><th>Priority</th><th>Status</th><th>Media</th></tr></thead><tbody>
-                    ${reports.map(report => `<tr><td>${new Date(report.created_at).toLocaleDateString()}</td><td>${report.title}</td><td>${report.type}</td><td>${report.location}</td><td><span class="badge priority-${report.priority || 'medium'}">${report.priority || 'Medium'}</span></td><td><span class="status-badge status-${report.status}">${report.status}</span></td><td>${report.media_urls ? `<span class="badge bg-primary"><i class="fas fa-paperclip me-1"></i>${JSON.parse(report.media_urls).length}</span>` : '<span class="text-muted">None</span>'}</td></tr>`).join('')}
-                </tbody></table></div>
-            ` : `<div class="text-center py-5 text-muted"><i class="fas fa-file-alt fa-3x mb-3 d-block"></i><h5>No reports submitted</h5><p>You haven't submitted any incident reports yet.</p><button class="btn btn-danger mt-2" onclick="openReportModal()"><i class="fas fa-plus me-2"></i>Report Now</button></div>`}
+            <div class="section-card">
+                <div class="section-card-header">
+                    <h6><i class="fas fa-history text-primary"></i>Report History</h6>
+                    <span class="badge-count">${reports?.length || 0}</span>
+                </div>
+                <div>
+                    ${reports && reports.length > 0
+                        ? reports.map(r => renderIncidentRow(r, true)).join('')
+                        : `<div class="empty-state">
+                                <i class="fas fa-file-alt"></i>
+                                <h6>No reports submitted</h6>
+                                <p>You haven't submitted any incident reports yet.</p>
+                                <button class="btn btn-danger btn-sm mt-3" onclick="openReportModal()">
+                                    <i class="fas fa-plus me-1"></i>Report Now
+                                </button>
+                           </div>`
+                    }
+                </div>
+            </div>
         `;
     } catch (error) {
         container.innerHTML = '<div class="alert alert-danger">Error loading history</div>';
     }
 }
 
+// ============================================
+// PROFILE
+// ============================================
 function loadProfile() {
     const container = document.getElementById('pageContent');
     if (!currentProfile) {
@@ -398,18 +790,55 @@ function loadProfile() {
     }
 
     container.innerHTML = `
-        <h4 class="fw-bold mb-4"><i class="fas fa-user me-2"></i>My Profile</h4>
-        <div class="card"><div class="card-body"><div class="row g-4">
-            <div class="col-md-6"><div class="profile-field"><label class="text-muted small fw-bold">Full Name</label><p class="fw-semibold fs-5">${currentProfile.full_name || 'N/A'}</p></div></div>
-            <div class="col-md-6"><div class="profile-field"><label class="text-muted small fw-bold">Email</label><p class="fw-semibold fs-5">${currentUser?.email || currentProfile.email || 'N/A'}</p></div></div>
-            <div class="col-md-6"><div class="profile-field"><label class="text-muted small fw-bold">Barangay</label><p class="fw-semibold fs-5">${currentProfile.barangay || 'N/A'}</p></div></div>
-            <div class="col-md-6"><div class="profile-field"><label class="text-muted small fw-bold">Contact Number</label><p class="fw-semibold fs-5">${currentProfile.contact_number || 'N/A'}</p></div></div>
-            <div class="col-md-6"><div class="profile-field"><label class="text-muted small fw-bold">Role</label><p class="fw-semibold fs-5"><span class="badge bg-primary">${currentProfile.role || 'Resident'}</span></p></div></div>
-            <div class="col-md-6"><div class="profile-field"><label class="text-muted small fw-bold">Member Since</label><p class="fw-semibold fs-5">${currentProfile.created_at ? new Date(currentProfile.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'}</p></div></div>
-        </div><hr><div class="d-flex gap-2">
-            <button class="btn btn-outline-primary" onclick="refreshProfile()"><i class="fas fa-sync me-2"></i>Refresh Profile</button>
-            <button class="btn btn-outline-secondary" onclick="loadDashboard()"><i class="fas fa-arrow-left me-2"></i>Back to Dashboard</button>
-        </div></div></div>
+        <div class="section-card">
+            <div class="section-card-header">
+                <h6><i class="fas fa-user text-primary"></i>My Profile</h6>
+            </div>
+            <div class="p-3 p-md-4">
+                <div class="row g-3">
+                    <div class="col-12 col-md-6">
+                        <div class="detail-meta-item">
+                            <div class="lbl">Full Name</div>
+                            <div class="val">${escapeHtml(currentProfile.full_name || 'N/A')}</div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <div class="detail-meta-item">
+                            <div class="lbl">Email</div>
+                            <div class="val" style="word-break:break-all;">${escapeHtml(currentUser?.email || currentProfile.email || 'N/A')}</div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <div class="detail-meta-item">
+                            <div class="lbl">Barangay</div>
+                            <div class="val">${escapeHtml(currentProfile.barangay || 'N/A')}</div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <div class="detail-meta-item">
+                            <div class="lbl">Contact Number</div>
+                            <div class="val">${escapeHtml(currentProfile.contact_number || 'N/A')}</div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <div class="detail-meta-item">
+                            <div class="lbl">Role</div>
+                            <div class="val"><span class="badge bg-primary">${escapeHtml(currentProfile.role || 'Resident')}</span></div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <div class="detail-meta-item">
+                            <div class="lbl">Member Since</div>
+                            <div class="val">${currentProfile.created_at ? new Date(currentProfile.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'}</div>
+                        </div>
+                    </div>
+                </div>
+                <hr class="my-4">
+                <div class="d-flex gap-2 flex-wrap">
+                    <button class="btn btn-outline-primary" onclick="refreshProfile()"><i class="fas fa-sync me-2"></i>Refresh Profile</button>
+                </div>
+            </div>
+        </div>
     `;
 }
 
@@ -522,9 +951,6 @@ async function submitReport() {
 
         showToast('✅ Report submitted successfully!', 'success');
         
-        // ============================================
-        // SEND EMAIL NOTIFICATIONS VIA SMTP
-        // ============================================
         try {
             if (typeof window.sendEmergencyEmailNotification === 'function') {
                 const result = await window.sendEmergencyEmailNotification(reportData, false);
@@ -635,5 +1061,7 @@ window.loadHistory = loadHistory;
 window.loadProfile = loadProfile;
 window.loadPage = loadPage;
 window.removeMediaFile = removeMediaFile;
+window.viewResidentIncidentDetail = viewResidentIncidentDetail;
+window.openResidentMedia = openResidentMedia;
 
 document.addEventListener('DOMContentLoaded', initResidentDashboard);
