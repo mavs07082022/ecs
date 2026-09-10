@@ -350,6 +350,7 @@
       max-width: 100%;
       min-width: 0;
     }
+    /* === LOCATION TEXT — now BLACK === */
     .incident-row .inc-meta .meta-item .loc-text {
       max-width: 220px;
       white-space: nowrap;
@@ -357,6 +358,8 @@
       text-overflow: ellipsis;
       display: inline-block;
       vertical-align: bottom;
+      color: #000;
+      font-weight: 500;
     }
     .incident-row .inc-right {
       flex-shrink: 0;
@@ -486,7 +489,7 @@
     }
     .detail-meta-item .val {
       font-weight: 600;
-      color: #0f172a;
+      color: #000;
       font-size: 0.88rem;
       word-break: break-word;
     }
@@ -631,7 +634,12 @@
       .incident-row { padding: 12px 14px; gap: 10px; }
       .incident-row .inc-title { font-size: 0.86rem; }
       .incident-row .inc-meta { font-size: 0.7rem; gap: 8px; }
-      .incident-row .inc-meta .meta-item .loc-text { max-width: 130px; }
+      /* === LOCATION TEXT — BLACK on mobile too === */
+      .incident-row .inc-meta .meta-item .loc-text {
+        max-width: 130px;
+        color: #000;
+        font-weight: 500;
+      }
       .incident-row .inc-icon { width: 36px; height: 36px; font-size: 0.9rem; }
     }
 
@@ -650,7 +658,12 @@
       .resident-hero h4 { font-size: 1.05rem; }
       .resident-hero p { font-size: 0.82rem; }
 
-      .incident-row .inc-meta .meta-item .loc-text { max-width: 100px; }
+      /* === LOCATION TEXT — BLACK on small phones === */
+      .incident-row .inc-meta .meta-item .loc-text {
+        max-width: 100px;
+        color: #000;
+        font-weight: 500;
+      }
       .detail-media-grid { grid-template-columns: repeat(auto-fill, minmax(75px, 1fr)); }
     }
 
