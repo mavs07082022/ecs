@@ -336,9 +336,11 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
+
+    /* === META ROW — now BLACK text + BLACK icons === */
     .incident-row .inc-meta {
       font-size: 0.75rem;
-      color: #64748b;
+      color: #000;
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
@@ -349,8 +351,13 @@
       gap: 4px;
       max-width: 100%;
       min-width: 0;
+      color: #000;             /* ensures the label text is black */
     }
-    /* === LOCATION TEXT — now BLACK === */
+    .incident-row .inc-meta .meta-item i {
+      color: #000;             /* ensures the icon is black */
+      opacity: 0.85;
+    }
+    /* === LOCATION TEXT — BLACK === */
     .incident-row .inc-meta .meta-item .loc-text {
       max-width: 220px;
       white-space: nowrap;
@@ -361,6 +368,7 @@
       color: #000;
       font-weight: 500;
     }
+
     .incident-row .inc-right {
       flex-shrink: 0;
       display: flex;
@@ -555,10 +563,10 @@
     }
     .tl-dot.active { border-color: #16a34a; background: #16a34a; }
     .tl-label {
-      font-weight: 600; font-size: 0.85rem; color: #0f172a;
+      font-weight: 600; font-size: 0.85rem; color: #000;
       margin-bottom: 1px;
     }
-    .tl-time { font-size: 0.72rem; color: #94a3b8; }
+    .tl-time { font-size: 0.72rem; color: #000; opacity: 0.75; }
 
     /* Badges (reuse) */
     .status-badge {
@@ -633,8 +641,10 @@
       .section-card-header { padding: 14px 16px; }
       .incident-row { padding: 12px 14px; gap: 10px; }
       .incident-row .inc-title { font-size: 0.86rem; }
-      .incident-row .inc-meta { font-size: 0.7rem; gap: 8px; }
-      /* === LOCATION TEXT — BLACK on mobile too === */
+      .incident-row .inc-meta { font-size: 0.7rem; gap: 8px; color: #000; }
+      .incident-row .inc-meta .meta-item { color: #000; }
+      .incident-row .inc-meta .meta-item i { color: #000; }
+      /* === LOCATION TEXT — BLACK on mobile === */
       .incident-row .inc-meta .meta-item .loc-text {
         max-width: 130px;
         color: #000;
