@@ -10,6 +10,68 @@
   <link href="../css/style.css" rel="stylesheet">
   <style>
 
+    /* ============================================
+       MOBILE TOP BAR (hamburger + logo)
+       ============================================ */
+    .mobile-topbar {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 60px;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      color: #fff;
+      z-index: 1040;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+    }
+    .mobile-topbar .hamburger-btn {
+      background: transparent;
+      border: none;
+      color: #fff;
+      font-size: 1.4rem;
+      padding: 8px 10px;
+      border-radius: 8px;
+      transition: background 0.2s ease;
+    }
+    .mobile-topbar .hamburger-btn:active {
+      background: rgba(255,255,255,0.15);
+    }
+    .mobile-topbar .topbar-title {
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      margin: 0;
+    }
+    .mobile-topbar .topbar-logo {
+      width: 38px; height: 38px;
+      border-radius: 50%;
+      object-fit: cover;
+      background: #fff;
+      padding: 2px;
+      border: 2px solid #fff;
+    }
+
+    /* Sidebar backdrop (mobile) */
+    .sidebar-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      z-index: 1045;
+      backdrop-filter: blur(2px);
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+    .sidebar-backdrop.show {
+      display: block;
+      opacity: 1;
+    }
+
+    /* ============================================
+       MEDIA UPLOAD
+       ============================================ */
     .media-upload-area {
       border: 2px dashed #dee2e6;
       border-radius: 12px;
@@ -168,42 +230,207 @@
       font-size: 0.85rem;
       color: #6c757d;
     }
-    @media (max-width: 768px) {
-      #incidentMap { height: 200px; }
-      .media-preview-item { width: 80px; height: 80px; }
-    }
+
+    /* ============================================
+       SIDEBAR LOGO
+       ============================================ */
     .sidebar-brand .sidebar-logo {
-  width: 68px;
-  height: 68px;
-  border-radius: 50%;
-  object-fit: cover;
-  display: block;
-  margin: 0 auto 10px;
-  background: #fff;
-  padding: 3px;
-  box-shadow: 0 4px 14px rgba(0,0,0,0.18);
-  border: 2px solid #fff;
-  transition: transform 0.25s ease;
-}
+      width: 68px;
+      height: 68px;
+      border-radius: 50%;
+      object-fit: cover;
+      display: block;
+      margin: 0 auto 10px;
+      background: #fff;
+      padding: 3px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+      border: 2px solid #fff;
+      transition: transform 0.25s ease;
+    }
+    .sidebar-brand .sidebar-logo:hover {
+      transform: scale(1.06);
+    }
 
-.sidebar-brand .sidebar-logo:hover {
-  transform: scale(1.06);
-}
+    /* ============================================
+       MOBILE RESPONSIVE — MAIN BREAKPOINT
+       ============================================ */
+    @media (max-width: 991.98px) {
 
-/* Responsive: smaller on mobile */
-@media (max-width: 768px) {
-  .sidebar-brand .sidebar-logo {
-    width: 56px;
-    height: 56px;
-  }
-}
+      /* Show mobile topbar */
+      .mobile-topbar { display: flex; }
+
+      /* Push content down below topbar */
+      body { padding-top: 60px; }
+
+      /* Sidebar becomes off-canvas drawer */
+      .dashboard-sidebar {
+        position: fixed !important;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 260px;
+        max-width: 82vw;
+        z-index: 1050;
+        transform: translateX(-105%);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        overflow-y: auto;
+        box-shadow: 6px 0 30px rgba(0,0,0,0.3);
+      }
+      .dashboard-sidebar.mobile-open {
+        transform: translateX(0);
+      }
+
+      /* Content takes full width on mobile */
+      .dashboard-content,
+      .col-md-9.col-lg-10 {
+        width: 100% !important;
+        max-width: 100% !important;
+        flex: 0 0 100% !important;
+      }
+
+      /* Content padding */
+      #pageContent {
+        padding: 16px !important;
+      }
+
+      /* Map smaller on mobile */
+      #incidentMap {
+        height: 220px;
+      }
+
+      /* Media previews smaller */
+      .media-preview-item {
+        width: 80px;
+        height: 80px;
+      }
+
+      /* Header stacking */
+      .d-flex.justify-content-between.align-items-center.mb-4 {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 12px;
+      }
+      .d-flex.justify-content-between.align-items-center.mb-4 .d-flex.gap-2 {
+        width: 100%;
+      }
+      .d-flex.justify-content-between.align-items-center.mb-4 .d-flex.gap-2 .btn {
+        width: 100%;
+      }
+
+      /* Stat cards on mobile */
+      .stat-card {
+        padding: 16px 18px;
+      }
+      .stat-card .number {
+        font-size: 1.5rem;
+      }
+
+      /* Table responsiveness */
+      .table-responsive {
+        font-size: 0.82rem;
+      }
+      .table-responsive th,
+      .table-responsive td {
+        padding: 0.5rem 0.6rem;
+        white-space: nowrap;
+      }
+
+      /* Modal full-width feel */
+      .modal-dialog {
+        margin: 0.5rem;
+      }
+      .modal-body {
+        padding: 16px !important;
+      }
+      .modal-footer {
+        padding: 12px 16px;
+        flex-wrap: wrap;
+      }
+      .modal-footer .btn {
+        flex: 1 1 auto;
+      }
+
+      /* AI result card */
+      .ai-result-card {
+        padding: 14px;
+      }
+
+      /* Profile info cards stack neatly */
+      .profile-field {
+        padding: 10px 0;
+        border-bottom: 1px solid #f0f0f0;
+      }
+      .profile-field:last-child {
+        border-bottom: none;
+      }
+    }
+
+    /* Extra small phones */
+    @media (max-width: 480px) {
+      .mobile-topbar {
+        height: 56px;
+        padding: 0 12px;
+      }
+      .mobile-topbar .topbar-title {
+        font-size: 0.9rem;
+      }
+      .mobile-topbar .topbar-logo {
+        width: 34px;
+        height: 34px;
+      }
+
+      .stat-card .number {
+        font-size: 1.3rem;
+      }
+
+      .list-group-item {
+        padding: 0.75rem 1rem;
+        font-size: 0.9rem;
+      }
+
+      .media-preview-item {
+        width: 70px;
+        height: 70px;
+      }
+
+      #incidentMap {
+        height: 180px;
+      }
+
+      .card-header h6 {
+        font-size: 0.9rem;
+      }
+    }
+
+    /* Prevent body scroll when drawer open */
+    body.mobile-drawer-open {
+      overflow: hidden;
+    }
   </style>
 </head>
 <body>
+
+  <!-- ============================================ -->
+  <!-- MOBILE TOP BAR (only visible < 992px)         -->
+  <!-- ============================================ -->
+  <div class="mobile-topbar" id="mobileTopbar">
+    <button class="hamburger-btn" id="mobileMenuBtn" aria-label="Open menu">
+      <i class="fas fa-bars"></i>
+    </button>
+    <h1 class="topbar-title">Barangay Culiat</h1>
+    <img src="/logoooo.png" alt="Logo" class="topbar-logo">
+  </div>
+
+  <!-- Backdrop for mobile drawer -->
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
   <div class="container-fluid p-0">
     <div class="row g-0">
 
-      <div class="col-md-3 col-lg-2 dashboard-sidebar">
+      <!-- ============================================ -->
+      <!-- SIDEBAR                                      -->
+      <!-- ============================================ -->
+      <div class="col-md-3 col-lg-2 dashboard-sidebar" id="residentSidebar">
         <div class="sidebar-brand">
           <img src="/logoooo.png" alt="Barangay Culiat Logo" class="sidebar-logo">
           <h5>Barangay Culiat</h5>
@@ -223,6 +450,9 @@
       </div>
 
     
+      <!-- ============================================ -->
+      <!-- MAIN CONTENT                                 -->
+      <!-- ============================================ -->
       <div class="col-md-9 col-lg-10 dashboard-content" id="mainContent">
         <div id="pageContent"><!-- dynamic --></div>
       </div>
@@ -230,8 +460,11 @@
   </div>
 
  
+  <!-- ============================================ -->
+  <!-- REPORT MODAL                                 -->
+  <!-- ============================================ -->
   <div class="modal fade" id="reportModal" tabindex="-1" data-bs-backdrop="static">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title"><i class="fas fa-exclamation-triangle text-danger me-2"></i>Report Emergency</h5>
@@ -337,5 +570,47 @@
   <script src="../js/supabase.js"></script>
   <script src="../js/resident.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+
+  <!-- ============================================ -->
+  <!-- MOBILE DRAWER LOGIC (only DOM/UI toggle)     -->
+  <!-- ============================================ -->
+  <script>
+    (function() {
+      var menuBtn = document.getElementById('mobileMenuBtn');
+      var sidebar = document.getElementById('residentSidebar');
+      var backdrop = document.getElementById('sidebarBackdrop');
+
+      function openDrawer() {
+        sidebar.classList.add('mobile-open');
+        backdrop.classList.add('show');
+        document.body.classList.add('mobile-drawer-open');
+      }
+      function closeDrawer() {
+        sidebar.classList.remove('mobile-open');
+        backdrop.classList.remove('show');
+        document.body.classList.remove('mobile-drawer-open');
+      }
+
+      if (menuBtn) menuBtn.addEventListener('click', openDrawer);
+      if (backdrop) backdrop.addEventListener('click', closeDrawer);
+
+      // Auto-close drawer when a nav link is clicked (on mobile)
+      document.querySelectorAll('.dashboard-sidebar .nav-link').forEach(function(link) {
+        link.addEventListener('click', function() {
+          if (window.innerWidth <= 991.98) closeDrawer();
+        });
+      });
+
+      // Close on window resize if switching to desktop
+      window.addEventListener('resize', function() {
+        if (window.innerWidth > 991.98) closeDrawer();
+      });
+
+      // Close on Escape key
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeDrawer();
+      });
+    })();
+  </script>
 </body>
 </html>
