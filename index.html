@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes" />
+  <title>Barangay Culiat · Emergency Communication System</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: #f6f9fc;
+      color: #0b1a33;
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+    :root {
+      --navy: #0A2342;
+      --green: #0f973d;
+      --green-light: #4ADE80;
+      --green-dark: #0b7a30;
+      --white: #ffffff;
+      --gray-light: #f0f4fa;
+      --shadow: 0 20px 40px -12px rgba(10, 35, 66, 0.12);
+      --radius: 24px;
+    }
+    .navbar-custom {
+      background: transparent;
+      transition: all 0.25s ease;
+      padding: 14px 0;
+    }
+    .navbar-custom.scrolled {
+      background: rgba(10, 35, 66, 0.92);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 28px rgba(0,0,0,0.08);
+      padding: 8px 0;
+    }
+    .navbar-custom .navbar-brand {
+      font-weight: 700;
+      color: var(--white);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      letter-spacing: -0.02em;
+    }
+    .navbar-custom .navbar-brand .logo-wrapper {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 2px solid rgba(255,255,255,0.25);
+      background: rgba(255,255,255,0.06);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      padding: 3px;
+    }
+    .navbar-custom .navbar-brand .logo-wrapper img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      border-radius: 50%;
+    }
+    .navbar-custom .navbar-brand .brand-text {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.2;
+    }
+    .navbar-custom .navbar-brand .brand-text .main {
+      font-size: 1.2rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+    .navbar-custom .navbar-brand .brand-text .sub {
+      font-size: 0.6rem;
+      font-weight: 400;
+      opacity: 0.7;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    .navbar-custom .nav-link {
+      color: rgba(255,255,255,0.8);
+      font-weight: 500;
+      font-size: 0.95rem;
+      transition: 0.2s;
+    }
+    .navbar-custom .nav-link:hover {
+      color: #fff;
+    }
+    .btn-green {
+      background: var(--green);
+      color: #fff;
+      border: none;
+      font-weight: 600;
+      transition: 0.25s ease;
+      border-radius: 50px;
+      padding: 10px 28px;
+      font-size: 0.95rem;
+    }
+    .btn-green:hover {
+      background: var(--green-dark);
+      color: #fff;
+      transform: translateY(-2px);
+      box-shadow: 0 10px 24px rgba(15, 151, 61, 0.3);
+    }
+    .btn-outline-light {
+      border-radius: 50px;
+      padding: 10px 26px;
+      font-weight: 500;
+    }
+    .hero-section {
+      position: relative;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      background: var(--navy);
+      overflow: hidden;
+      padding: 140px 0 80px;
+    }
+    .hero-section::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: url('bg.png');
+      background-repeat: no-repeat;
+      background-size: auto 100%;
+      background-position: 90% 50%;
+      opacity: 0.08;
+      pointer-events: none;
+    }
+    .hero-title {
+      font-size: 3.8rem;
+      font-weight: 800;
+      color: #fff;
+      line-height: 1.05;
+      letter-spacing: -0.02em;
+    }
+    .hero-title .highlight {
+      background: linear-gradient(135deg, var(--green-light), var(--green));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-family: 'Inter', sans-serif;
+    }
+    .hero-subtitle {
+      color: rgba(255,255,255,0.7);
+      font-size: 1.15rem;
+      max-width: 520px;
+      margin: 20px 0 32px;
+      font-weight: 400;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255,255,255,0.06);
+      backdrop-filter: blur(6px);
+      padding: 8px 22px;
+      border-radius: 40px;
+      color: var(--green-light);
+      font-weight: 600;
+      border: 1px solid rgba(74, 222, 128, 0.12);
+      margin-bottom: 28px;
+      font-size: 0.9rem;
+    }
+    .pulse-dot {
+      width: 10px;
+      height: 10px;
+      background: var(--green);
+      border-radius: 50%;
+      display: inline-block;
+      animation: pulse-dot 1.8s infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(1.3); }
+    }
+    .hero-stats {
+      display: flex;
+      gap: 48px;
+      margin-top: 42px;
+      padding-top: 32px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      flex-wrap: wrap;
+    }
+    .stat-item .number {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #fff;
+      display: block;
+      letter-spacing: -0.01em;
+    }
+    .stat-item .label {
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.5);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 4px;
+    }
+    .hero-visual {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .pulse-ring {
+      width: 260px;
+      height: 260px;
+      border-radius: 50%;
+      border: 2px solid rgba(74, 222, 128, 0.12);
+      position: relative;
+      animation: ring-pulse 4s infinite;
+    }
+    .pulse-ring::after {
+      content: '';
+      position: absolute;
+      inset: -20px;
+      border-radius: 50%;
+      border: 1px solid rgba(74, 222, 128, 0.04);
+      animation: ring-pulse 4s infinite 1s;
+    }
+    @keyframes ring-pulse {
+      0% { transform: scale(0.95); opacity: 0.5; }
+      50% { transform: scale(1.05); opacity: 1; }
+      100% { transform: scale(0.95); opacity: 0.5; }
+    }
+    .emergency-icon {
+      position: absolute;
+      width: 110px;
+      height: 110px;
+      background: rgba(15, 151, 61, 0.10);
+      backdrop-filter: blur(6px);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3.6rem;
+      color: var(--green-light);
+      border: 1px solid rgba(74, 222, 128, 0.15);
+    }
+    .section-header {
+      text-align: center;
+      max-width: 640px;
+      margin: 0 auto 48px;
+    }
+    .section-header .badge {
+      background: rgba(15, 151, 61, 0.10);
+      color: var(--green);
+      font-weight: 600;
+      padding: 6px 20px;
+      border-radius: 40px;
+      font-size: 0.8rem;
+      letter-spacing: 0.3px;
+    }
+    .section-header h2 {
+      font-weight: 700;
+      color: var(--navy);
+      margin-top: 14px;
+      font-size: 2.3rem;
+      letter-spacing: -0.02em;
+    }
+    .section-header p {
+      color: #5a6e8a;
+      font-size: 1.05rem;
+    }
+    .feature-card, .action-card {
+      background: #fff;
+      border-radius: var(--radius);
+      padding: 32px 24px;
+      box-shadow: var(--shadow);
+      transition: 0.3s ease;
+      height: 100%;
+      border: 1px solid rgba(0,0,0,0.02);
+    }
+    .feature-card:hover, .action-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 28px 48px -16px rgba(10, 35, 66, 0.14);
+    }
+    .feature-card .icon {
+      width: 56px;
+      height: 56px;
+      background: rgba(15, 151, 61, 0.07);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.6rem;
+      color: var(--green);
+      margin-bottom: 18px;
+    }
+    .feature-card h5 {
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: var(--navy);
+    }
+    .feature-card p {
+      color: #5a6e8a;
+      font-size: 0.92rem;
+    }
+    .about-section {
+      background: #fff;
+      padding: 80px 0;
+    }
+    .about-stat .number {
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: var(--navy);
+      display: block;
+    }
+    .about-stat .label {
+      color: #5a6e8a;
+      font-weight: 500;
+    }
+    .quick-actions {
+      padding: 60px 0;
+      background: var(--gray-light);
+    }
+    .footer {
+      background: var(--navy);
+      color: rgba(255,255,255,0.7);
+      padding: 48px 0 24px;
+    }
+    .footer h5, .footer h6 { color: #fff; font-weight: 600; }
+    .footer a {
+      color: rgba(255,255,255,0.6);
+      text-decoration: none;
+      transition: 0.2s;
+    }
+    .footer a:hover { color: var(--green-light); }
+    .emergency-float {
+      position: fixed;
+      bottom: 28px;
+      right: 28px;
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: var(--green);
+      border: none;
+      color: #fff;
+      font-size: 1.6rem;
+      box-shadow: 0 8px 28px rgba(15, 151, 61, 0.35);
+      z-index: 999;
+      transition: 0.25s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .emergency-float:hover {
+      transform: scale(1.06);
+      background: var(--green-dark);
+    }
+    .reveal {
+      opacity: 0;
+      transform: translateY(28px);
+      transition: opacity 0.7s ease, transform 0.7s ease;
+    }
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .toast-container {
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      z-index: 9999;
+      max-width: 380px;
+    }
+
+    /* Password toggle styles - ADDED ONLY THIS */
+    .password-wrapper {
+      position: relative;
+    }
+    .password-wrapper .form-control {
+      padding-right: 48px;
+    }
+    .toggle-password {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: #6c757d;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 50%;
+      transition: all 0.2s ease;
+      z-index: 10;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .toggle-password:hover {
+      color: var(--green);
+      background: rgba(15, 151, 61, 0.08);
+    }
+    .toggle-password:focus {
+      outline: none;
+      color: var(--green);
+    }
+
+    @media (max-width: 992px) {
+      .hero-title { font-size: 2.8rem; }
+      .hero-stats { gap: 28px; }
+      .hero-section::before { background-size: 50%; background-position: 90% 40%; }
+    }
+    @media (max-width: 768px) {
+      .hero-title { font-size: 2.2rem; }
+      .hero-subtitle { font-size: 0.95rem; }
+      .hero-stats .stat-item .number { font-size: 1.5rem; }
+      .section-header h2 { font-size: 1.8rem; }
+      .pulse-ring { width: 180px; height: 180px; }
+      .emergency-icon { width: 80px; height: 80px; font-size: 2.6rem; }
+      .navbar-custom .navbar-brand .logo-wrapper { width: 38px; height: 38px; }
+      .navbar-custom .navbar-brand .brand-text .main { font-size: 1rem; }
+      .navbar-custom .navbar-brand .brand-text .sub { font-size: 0.5rem; }
+    }
+    @media (max-width: 576px) {
+      .hero-title { font-size: 1.9rem; }
+      .hero-stats { gap: 16px; }
+      .stat-item .number { font-size: 1.3rem; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg fixed-top navbar-custom" id="mainNav">
+  <div class="container">
+    <a class="navbar-brand" href="#">
+      <div class="logo-wrapper"><img src="sd.png" alt="Barangay Culiat Logo"></div>
+      <div class="brand-text">
+        <span class="main">Barangay Culiat</span>
+        <span class="sub">Emergency Communication System</span>
+      </div>
+    </a>
+    <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav ms-auto align-items-lg-center gap-1">
+        <li class="nav-item"><a class="nav-link active" href="#home">Home</a></li>
+        <li class="nav-item"><a class="nav-link" href="#features">Features</a></li>
+        <li class="nav-item"><a class="nav-link" href="#about">About</a></li>
+        <li class="nav-item">
+          <button class="btn btn-outline-light btn-sm me-lg-2 w-100 w-lg-auto" onclick="openLoginModal()">
+            <i class="fas fa-sign-in-alt me-1"></i>Login
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="btn btn-green btn-sm w-100 w-lg-auto" onclick="openRegisterModal()">
+            <i class="fas fa-user-plus me-1"></i>Register
+          </button>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<section id="home" class="hero-section">
+  <div class="container">
+    <div class="row align-items-center g-5">
+      <div class="col-lg-7">
+        <div class="hero-badge">
+          <span class="pulse-dot"></span> 24/7 Emergency Response · Barangay Culiat
+        </div>
+        <h1 class="hero-title">
+          Emergency<br><span class="highlight">Communication System</span>
+        </h1>
+        <p class="hero-subtitle">
+          Real-time incident reporting, AI-powered analysis, and coordinated response
+          for safer communities across Barangay Culiat.
+        </p>
+        <div class="d-flex gap-3 flex-wrap">
+          <button class="btn btn-green btn-lg" onclick="openRegisterModal()">
+            <i class="fas fa-rocket me-2"></i>Get Started
+          </button>
+          <button class="btn btn-outline-light btn-lg" onclick="document.getElementById('features').scrollIntoView({behavior:'smooth'})">
+            <i class="fas fa-info-circle me-2"></i>Learn More
+          </button>
+        </div>
+        <div class="hero-stats">
+          <div class="stat-item">
+            <span class="number count-number" data-target="67804">0</span>
+            <span class="label">Total Population</span>
+          </div>
+          <div class="stat-item">
+            <span class="number count-number" data-target="328646">0</span>
+            <span class="label">Barangay Area (km²)</span>
+          </div>
+          <div class="stat-item">
+            <span class="number count-number" data-target="12">0</span>
+            <span class="label">Active Responders</span>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-5 d-none d-lg-block">
+        <div class="hero-visual">
+          <div class="pulse-ring"></div>
+          <div class="emergency-icon"><i class="fas fa-shield-halved"></i></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="features" class="py-5">
+  <div class="container">
+    <div class="section-header reveal">
+      <span class="badge">Features</span>
+      <h2>Why Choose Our Emergency System?</h2>
+      <p class="text-muted">Built with cutting-edge technology to ensure rapid emergency response</p>
+    </div>
+    <div class="row g-4">
+      <div class="col-md-3 reveal">
+        <div class="feature-card">
+          <div class="icon"><i class="fas fa-robot"></i></div>
+          <h5>AI-Powered Analysis</h5>
+          <p class="text-muted">Instant incident verification and severity assessment using artificial intelligence</p>
+        </div>
+      </div>
+      <div class="col-md-3 reveal">
+        <div class="feature-card">
+          <div class="icon"><i class="fas fa-bolt"></i></div>
+          <h5>Real-Time Updates</h5>
+          <p class="text-muted">Live notifications and updates for all stakeholders in your community</p>
+        </div>
+      </div>
+      <div class="col-md-3 reveal">
+        <div class="feature-card">
+          <div class="icon"><i class="fas fa-map-marked-alt"></i></div>
+          <h5>Interactive Maps</h5>
+          <p class="text-muted">Visual incident tracking with location-based alerts and navigation</p>
+        </div>
+      </div>
+      <div class="col-md-3 reveal">
+        <div class="feature-card">
+          <div class="icon"><i class="fas fa-shield-alt"></i></div>
+          <h5>Secure & Reliable</h5>
+          <p class="text-muted">Enterprise-grade security with role-based access control and data protection</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="about" class="about-section">
+  <div class="container">
+    <div class="row align-items-center g-5">
+      <div class="col-lg-6 reveal">
+        <span class="badge bg-danger mb-3">About Us</span>
+        <h2 class="fw-bold mb-4">Empowering Communities Through Technology</h2>
+        <p class="text-muted mb-4">
+          The Barangay Culiat Emergency Communication System is a comprehensive platform designed to
+          connect residents with emergency responders in real-time. Our mission is to
+          reduce response times and save lives through intelligent incident management.
+        </p>
+        <div class="row g-3">
+          <div class="col-6">
+            <div class="about-stat">
+              <span class="number">99.9%</span>
+              <span class="label">System Uptime</span>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="about-stat">
+              <span class="number">&lt;30s</span>
+              <span class="label">Average Response</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-6 reveal">
+        <div class="bg-white p-4 rounded-4 shadow-sm text-center">
+          <img src="logoooo.png" alt="Barangay Culiat Logo" class="img-fluid" style="max-height:120px; opacity:0.9;">
+          <p class="text-muted mt-2 small">Barangay Culiat · Emergency Communication System</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="quick-actions">
+  <div class="container">
+    <div class="section-header reveal">
+      <span class="badge">Quick Actions</span>
+      <h2>Get Started in Minutes</h2>
+    </div>
+    <div class="row g-4">
+      <div class="col-md-4 reveal">
+        <div class="action-card text-center" onclick="openRegisterModal()">
+          <div class="icon mx-auto"><i class="fas fa-user-plus"></i></div>
+          <h5>Create Account</h5>
+          <p class="text-muted">Sign up as a resident to report emergencies and stay informed</p>
+        </div>
+      </div>
+      <div class="col-md-4 reveal">
+        <div class="action-card text-center" onclick="openLoginModal()">
+          <div class="icon mx-auto"><i class="fas fa-sign-in-alt"></i></div>
+          <h5>Login</h5>
+          <p class="text-muted">Access your dashboard to manage reports and view updates</p>
+        </div>
+      </div>
+      <div class="col-md-4 reveal">
+        <div class="action-card text-center" onclick="quickReport()">
+          <div class="icon mx-auto"><i class="fas fa-exclamation-triangle"></i></div>
+          <h5>Report Emergency</h5>
+          <p class="text-muted">Quickly report an emergency incident to responders</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container">
+    <div class="row">
+      <div class="col-md-4">
+        <h5><i class="fas fa-shield-halved me-2 text-success"></i>Barangay Culiat</h5>
+        <p class="text-footer">Emergency Communication System · Making communities safer.</p>
+      </div>
+      <div class="col-md-4">
+        <h6>Quick Links</h6>
+        <ul class="list-unstyled">
+          <li><a href="#features">Features</a></li>
+          <li><a href="#" onclick="openLoginModal()">Login</a></li>
+          <li><a href="#" onclick="openRegisterModal()">Register</a></li>
+        </ul>
+      </div>
+      <div class="col-md-4">
+        <h6>Emergency Hotline</h6>
+        <p class="text-success fw-bold fs-4"><i class="fas fa-phone me-2"></i>911</p>
+        <h6>Contact Us</h6>
+        <p class="text-success fw-bold fs-4"><i class="fas fa-phone me-2"></i>0962-582-1531 / 856-722-60</p>
+        <p class="text-success fw-bold fs-4"><i class="fa-solid fa-envelope"></i> brgy.culiat@yahoo.com</p>
+      </div>
+    </div>
+    <hr class="border-secondary">
+    <div class="text-center text-footer">&copy; 2026 Barangay Culiat Emergency Communication System.</div>
+  </div>
+</footer>
+
+<button class="emergency-float" onclick="quickReport()">
+  <i class="fas fa-exclamation-triangle"></i>
+</button>
+
+<!-- Login Modal - ADDED password-wrapper and toggle button -->
+<div class="modal fade" id="loginModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-sign-in-alt text-danger me-2"></i>Login</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="loginForm" onsubmit="handleLogin(event)">
+          <div class="form-floating mb-3">
+            <input type="email" class="form-control" id="loginEmail" placeholder="Email" required>
+            <label for="loginEmail">Email Address</label>
+          </div>
+          <div class="form-floating mb-3 password-wrapper">
+            <input type="password" class="form-control" id="loginPassword" placeholder="Password" required>
+            <label for="loginPassword">Password</label>
+            <button type="button" class="toggle-password" onclick="togglePassword('loginPassword', this)" aria-label="Toggle password visibility">
+              <i class="fas fa-eye"></i>
+            </button>
+          </div>
+          <button type="submit" class="btn btn-green btn-lg w-100">Login</button>
+          <div class="text-center mt-3">
+            <small class="text-muted">Don't have an account? <a href="#" onclick="event.preventDefault(); switchToRegister();">Register</a></small>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Register Modal - ADDED password-wrapper and toggle button -->
+<div class="modal fade" id="registerModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-user-plus text-danger me-2"></i>Create Account</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="rate-limit-warning" id="rateLimitWarning" style="display:none;">
+          <i class="fas fa-exclamation-triangle"></i>
+          <span>Too many registration attempts. Please wait a few minutes.</span>
+        </div>
+        <div class="admin-create-section" id="adminCreateSection" style="display:none;">
+          <div class="alert alert-warning mb-3">
+            <i class="fas fa-shield-alt me-2"></i>
+            <strong>Admin Mode:</strong> Creates account with auto-confirmation.
+            <button class="btn btn-sm btn-outline-secondary ms-2" onclick="toggleAdminMode()">Switch to Normal</button>
+          </div>
+        </div>
+        <form id="registerForm" onsubmit="handleRegister(event)">
+          <div class="form-floating mb-3">
+            <input type="text" class="form-control" id="regFullName" placeholder="Full Name" required>
+            <label for="regFullName">Full Name</label>
+          </div>
+          <div class="form-floating mb-3">
+            <input type="email" class="form-control" id="regEmail" placeholder="Email" required>
+            <label for="regEmail">Email Address</label>
+          </div>
+          <div class="form-floating mb-3 password-wrapper">
+            <input type="password" class="form-control" id="regPassword" placeholder="Password" minlength="6" required>
+            <label for="regPassword">Password (min 6 characters)</label>
+            <button type="button" class="toggle-password" onclick="togglePassword('regPassword', this)" aria-label="Toggle password visibility">
+              <i class="fas fa-eye"></i>
+            </button>
+          </div>
+          <div class="form-floating mb-3">
+            <input type="text" class="form-control" id="regBarangay" placeholder="Barangay" required>
+            <label for="regBarangay">Barangay</label>
+          </div>
+          <div class="form-floating mb-3">
+            <input type="text" class="form-control" id="regContact" placeholder="Contact Number" required>
+            <label for="regContact">Contact Number</label>
+          </div>
+          <button type="submit" class="btn btn-green btn-lg w-100" id="registerBtn">Create Account</button>
+          <div class="text-center mt-3">
+            <small class="text-muted">Already have an account? <a href="#" onclick="event.preventDefault(); switchToLogin();">Login</a></small>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
+<script src="js/supabase.js"></script>
+<script>
+  // ADDED: Password toggle function
+  function togglePassword(inputId, buttonElement) {
+    const input = document.getElementById(inputId);
+    const icon = buttonElement.querySelector('i');
+    
+    if (input.type === 'password') {
+      input.type = 'text';
+      icon.classList.remove('fa-eye');
+      icon.classList.add('fa-eye-slash');
+    } else {
+      input.type = 'password';
+      icon.classList.remove('fa-eye-slash');
+      icon.classList.add('fa-eye');
+    }
+  }
+
+  let isAdminMode = false;
+  let loginModal = null, registerModal = null;
+
+  function showToast(message, type = 'info', duration = 5000) {
+    const container = document.getElementById('toastContainer');
+    const colors = { success: 'bg-success text-white', danger: 'bg-danger text-white', warning: 'bg-warning text-dark', info: 'bg-info text-white' };
+    const icons = { success: 'check-circle', danger: 'times-circle', warning: 'exclamation-triangle', info: 'info-circle' };
+    const toast = document.createElement('div');
+    toast.className = `toast align-items-center ${colors[type] || colors.info} border-0`;
+    toast.role = 'alert';
+    toast.innerHTML = `
+      <div class="d-flex">
+        <div class="toast-body"><i class="fas fa-${icons[type] || icons.info} me-2"></i>${message}</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+      </div>
+    `;
+    container.appendChild(toast);
+    const bsToast = new bootstrap.Toast(toast, { autohide: true, delay: duration });
+    bsToast.show();
+    setTimeout(() => toast.remove(), duration + 500);
+  }
+
+  function openLoginModal() {
+    if (!loginModal) loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
+    loginModal.show();
+  }
+  function openRegisterModal() {
+    if (!registerModal) registerModal = new bootstrap.Modal(document.getElementById('registerModal'));
+    registerModal.show();
+    document.getElementById('rateLimitWarning').style.display = 'none';
+  }
+  function switchToRegister() { if (loginModal) loginModal.hide(); setTimeout(openRegisterModal, 300); }
+  function switchToLogin() { if (registerModal) registerModal.hide(); setTimeout(openLoginModal, 300); }
+  window.openLoginModal = openLoginModal; window.openRegisterModal = openRegisterModal;
+  window.switchToRegister = switchToRegister; window.switchToLogin = switchToLogin;
+
+  function toggleAdminMode() {
+    isAdminMode = !isAdminMode;
+    const section = document.getElementById('adminCreateSection');
+    if (isAdminMode) {
+      section.style.display = 'block';
+      document.querySelector('#registerModal .modal-title').innerHTML = '<i class="fas fa-shield-alt text-warning me-2"></i>Admin: Create Account (Auto-Confirm)';
+      showToast('🔐 Admin Mode: Email will be auto-confirmed', 'warning', 3000);
+    } else {
+      section.style.display = 'none';
+      document.querySelector('#registerModal .modal-title').innerHTML = '<i class="fas fa-user-plus text-danger me-2"></i>Create Account';
+      showToast('👤 Normal Mode: Email confirmation required', 'info', 3000);
+    }
+  }
+  window.toggleAdminMode = toggleAdminMode;
+
+  async function handleRegister(event) {
+    event.preventDefault();
+    const fullName = document.getElementById('regFullName').value.trim();
+    const email = document.getElementById('regEmail').value.trim();
+    const password = document.getElementById('regPassword').value;
+    const barangay = document.getElementById('regBarangay').value.trim();
+    const contact = document.getElementById('regContact').value.trim();
+    document.getElementById('rateLimitWarning').style.display = 'none';
+    if (!fullName || !email || !password || !barangay || !contact) { showToast('Please fill in all fields', 'warning'); return; }
+    if (password.length < 6) { showToast('Password must be at least 6 characters', 'warning'); return; }
+    const submitBtn = document.getElementById('registerBtn');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creating...';
+    submitBtn.disabled = true;
+    try {
+      if (isAdminMode) {
+        const { data, error } = await supabaseAdmin.auth.admin.createUser({
+          email, password,
+          user_metadata: { full_name: fullName, barangay, contact_number: contact, role: 'resident' },
+          email_confirm: true
+        });
+        if (error) {
+          if (error.message.includes('duplicate') || error.message.includes('already registered')) {
+            showToast('This email is already registered. Please login.', 'warning');
+            if (registerModal) registerModal.hide();
+            setTimeout(openLoginModal, 500);
+            submitBtn.innerHTML = originalText; submitBtn.disabled = false; return;
+          }
+          throw error;
+        }
+        if (data.user) {
+          await supabaseAdmin.from('profiles').insert([{ id: data.user.id, full_name: fullName, email, barangay, contact_number: contact, role: 'resident' }]);
+          showToast('✅ Account created! (Auto-confirmed)', 'success', 5000);
+          if (registerModal) registerModal.hide();
+          document.getElementById('registerForm').reset();
+          setTimeout(openLoginModal, 1500);
+          submitBtn.innerHTML = originalText; submitBtn.disabled = false; return;
+        }
+      }
+      const { data, error } = await supabaseClient.auth.signUp({
+        email, password,
+        options: { data: { full_name: fullName, barangay, contact_number: contact, role: 'resident' } }
+      });
+      if (error) {
+        if (error.message.includes('rate limit') || error.message.includes('too many')) {
+          document.getElementById('rateLimitWarning').style.display = 'block';
+          showToast('Too many attempts. Please wait or use Admin Mode.', 'warning', 8000);
+          submitBtn.innerHTML = originalText; submitBtn.disabled = false; return;
+        }
+        if (error.message.includes('User already registered')) {
+          showToast('This email is already registered. Please login.', 'warning');
+          if (registerModal) registerModal.hide();
+          setTimeout(openLoginModal, 500);
+          submitBtn.innerHTML = originalText; submitBtn.disabled = false; return;
+        }
+        throw error;
+      }
+      if (data.user) {
+        showToast('Account created! Please check your email to confirm.', 'success', 6000);
+        if (registerModal) registerModal.hide();
+        document.getElementById('registerForm').reset();
+      }
+    } catch (error) {
+      console.error('Registration error:', error);
+      if (error.message && (error.message.includes('rate limit') || error.message.includes('too many'))) {
+        document.getElementById('rateLimitWarning').style.display = 'block';
+        showToast('Too many attempts. Please wait a few minutes.', 'warning', 8000);
+      } else {
+        showToast('Registration failed: ' + error.message, 'danger');
+      }
+    } finally {
+      submitBtn.innerHTML = originalText; submitBtn.disabled = false;
+    }
+  }
+
+  async function handleLogin(event) {
+    event.preventDefault();
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    if (!email || !password) { showToast('Please fill in all fields', 'warning'); return; }
+    try {
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      if (error) {
+        if (error.message.includes('Email not confirmed')) { showToast('Please confirm your email first.', 'warning', 6000); return; }
+        throw error;
+      }
+      if (!data.user) { showToast('User not found', 'danger'); return; }
+      const { data: profile } = await supabaseClient.from('profiles').select('role').eq('id', data.user.id).maybeSingle();
+      const role = profile?.role || 'resident';
+      showToast('Login successful!', 'success');
+      if (loginModal) loginModal.hide();
+      setTimeout(() => {
+        window.location.href = role === 'resident' ? 'resident/dashboard.html' : 'responder/dashboard.html';
+      }, 1000);
+    } catch (error) {
+      showToast('Login failed: ' + error.message, 'danger');
+      console.error('Login error:', error);
+    }
+  }
+
+  function quickReport() {
+    supabaseClient.auth.getSession().then(({ data: { session } }) => {
+      if (session) window.location.href = 'resident/dashboard.html#report';
+      else { showToast('Please login to report an emergency', 'warning'); openLoginModal(); }
+    }).catch(() => { showToast('Please login to report an emergency', 'warning'); openLoginModal(); });
+  }
+
+  window.handleLogin = handleLogin; window.handleRegister = handleRegister; window.quickReport = quickReport;
+
+  document.addEventListener('DOMContentLoaded', function() {
+    const nav = document.getElementById('mainNav');
+    window.addEventListener('scroll', function() {
+      if (window.scrollY > 60) nav.classList.add('scrolled');
+      else nav.classList.remove('scrolled');
+    });
+
+    const reveals = document.querySelectorAll('.reveal');
+    const revealObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('visible'); });
+    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+    reveals.forEach(el => revealObserver.observe(el));
+
+    const counters = document.querySelectorAll('.count-number');
+    const counterObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const el = entry.target;
+          const target = parseInt(el.getAttribute('data-target'), 10);
+          if (!el.dataset.animated) {
+            el.dataset.animated = 'true';
+            let current = 0;
+            const step = Math.max(1, Math.floor(target / 50));
+            const interval = setInterval(() => {
+              current += step;
+              if (current >= target) { current = target; clearInterval(interval); }
+              el.textContent = current.toLocaleString();
+            }, 25);
+          }
+        }
+      });
+    }, { threshold: 0.4 });
+    counters.forEach(el => counterObserver.observe(el));
+
+    // handle email confirmation
+    const hash = window.location.hash;
+    if (hash && hash.includes('access_token')) {
+      supabaseClient.auth.getSession().then(({ data: { session }, error }) => {
+        if (error) return;
+        if (session) {
+          showToast('✅ Email confirmed successfully!', 'success', 3000);
+          supabaseClient.from('profiles').select('role').eq('id', session.user.id).single().then(({ data: profile }) => {
+            const role = profile?.role || 'resident';
+            setTimeout(() => {
+              window.location.href = role === 'resident' ? 'resident/dashboard.html' : 'responder/dashboard.html';
+            }, 1500);
+          });
+        }
+        window.history.replaceState({}, document.title, window.location.pathname);
+      });
+    }
+  });
+</script>
+</body>
+</html>

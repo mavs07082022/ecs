@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
+  <title>Resident Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link href="../css/style.css" rel="stylesheet">
+  <style>
+
+    .media-upload-area {
+      border: 2px dashed #dee2e6;
+      border-radius: 12px;
+      padding: 30px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      background: #f8f9fa;
+      min-height: 120px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .media-upload-area:hover {
+      border-color: var(--primary-green);
+      background: #e8f0fe;
+    }
+    .media-upload-area.dragover {
+      border-color: var(--primary-green);
+      background: #e8f0fe;
+      transform: scale(1.02);
+    }
+    .media-upload-area i {
+      font-size: 2.5rem;
+      color: #6c757d;
+      margin-bottom: 8px;
+    }
+    .media-preview-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .media-preview-item {
+      position: relative;
+      width: 100px;
+      height: 100px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 2px solid #dee2e6;
+      background: #f8f9fa;
+      flex-shrink: 0;
+    }
+    .media-preview-item img,
+    .media-preview-item video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .remove-media-btn {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(220, 53, 69, 0.9);
+      color: white;
+      font-size: 0.6rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+    .remove-media-btn:hover {
+      background: #dc3545;
+      transform: scale(1.1);
+    }
+    .media-type-badge {
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      font-size: 0.6rem;
+      padding: 2px 8px;
+      border-radius: 4px;
+      color: white;
+      background: rgba(0,0,0,0.6);
+    }
+    .media-type-badge.image { background: rgba(13, 110, 253, 0.8); }
+    .media-type-badge.video { background: rgba(220, 53, 69, 0.8); }
+    .media-file-name {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      font-size: 0.55rem;
+      padding: 2px 4px;
+      background: rgba(0,0,0,0.6);
+      color: white;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .ai-result-card {
+      background: #f8f9fa;
+      border-radius: 12px;
+      padding: 16px;
+      border-left: 5px solid var(--accent-blue);
+    }
+    .ai-badge {
+      font-size: 0.75rem;
+      padding: 4px 14px;
+      border-radius: 30px;
+    }
+    .location-input-wrapper {
+      position: relative;
+    }
+    .geocode-suggestions {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 0 0 8px 8px;
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: 1000;
+      display: none;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .geocode-suggestions.show {
+      display: block;
+    }
+    .geocode-suggestion-item {
+      padding: 8px 16px;
+      cursor: pointer;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 0.9rem;
+    }
+    .geocode-suggestion-item:hover {
+      background: #f0f4f8;
+    }
+    #incidentMap {
+      height: 280px;
+      width: 100%;
+      border-radius: 12px;
+      border: 2px solid #dee2e6;
+      margin-bottom: 12px;
+      z-index: 1;
+    }
+    .search-spinner {
+      position: absolute;
+      right: 45px;
+      top: 50%;
+      transform: translateY(-50%);
+      display: none;
+    }
+    .search-spinner.show {
+      display: inline-block;
+    }
+    .media-count {
+      font-size: 0.85rem;
+      color: #6c757d;
+    }
+    @media (max-width: 768px) {
+      #incidentMap { height: 200px; }
+      .media-preview-item { width: 80px; height: 80px; }
+    }
+    .sidebar-brand .sidebar-logo {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+  margin: 0 auto 10px;
+  background: #fff;
+  padding: 3px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+  border: 2px solid #fff;
+  transition: transform 0.25s ease;
+}
+
+.sidebar-brand .sidebar-logo:hover {
+  transform: scale(1.06);
+}
+
+/* Responsive: smaller on mobile */
+@media (max-width: 768px) {
+  .sidebar-brand .sidebar-logo {
+    width: 56px;
+    height: 56px;
+  }
+}
+  </style>
+</head>
+<body>
+  <div class="container-fluid p-0">
+    <div class="row g-0">
+
+      <div class="col-md-3 col-lg-2 dashboard-sidebar">
+        <div class="sidebar-brand">
+          <img src="/logoooo.png" alt="Barangay Culiat Logo" class="sidebar-logo">
+          <h5>Barangay Culiat</h5>
+          <small id="userNameDisplay">Resident</small>
+        </div>
+        <nav class="nav flex-column">
+          <a class="nav-link active" href="#" data-page="dashboard"><i class="fas fa-chart-pie"></i>Dashboard</a>
+          <a class="nav-link" href="#" data-page="report"><i class="fas fa-exclamation-triangle"></i>Report</a>
+          <a class="nav-link" href="#" data-page="history"><i class="fas fa-history"></i>History</a>
+          <a class="nav-link" href="#" data-page="profile"><i class="fas fa-user"></i>Profile</a>
+        </nav>
+        <div class="sidebar-footer">
+          <button class="btn btn-outline-danger btn-sm w-100" onclick="logout()">
+            <i class="fas fa-sign-out-alt me-2"></i>Logout
+          </button>
+        </div>
+      </div>
+
+    
+      <div class="col-md-9 col-lg-10 dashboard-content" id="mainContent">
+        <div id="pageContent"><!-- dynamic --></div>
+      </div>
+    </div>
+  </div>
+
+ 
+  <div class="modal fade" id="reportModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="fas fa-exclamation-triangle text-danger me-2"></i>Report Emergency</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="reportForm">
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label fw-semibold">Incident Type <span class="text-danger">*</span></label>
+                <select class="form-select" id="incidentType" required>
+                  <option value="fire">Fire</option>
+                  <option value="medical">Medical Emergency</option>
+                  <option value="accident">Accident</option>
+                  <option value="flood">Flood</option>
+                  <option value="crime">Crime/Security</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold">Title <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="incidentTitle" placeholder="Brief description" required>
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold">Description <span class="text-danger">*</span></label>
+                <textarea class="form-control" id="incidentDescription" rows="3" placeholder="Detailed information..." required></textarea>
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold">Location <span class="text-danger">*</span></label>
+                <div class="location-input-wrapper">
+                  <div class="input-group mb-2">
+                    <input type="text" class="form-control" id="incidentLocation" placeholder="Search for a place..." required autocomplete="off">
+                    <button class="btn btn-outline-secondary" type="button" id="geolocateBtn"><i class="fas fa-crosshairs"></i></button>
+                    <span class="search-spinner" id="searchSpinner">
+                      <span class="spinner-border spinner-border-sm text-secondary" role="status"></span>
+                    </span>
+                  </div>
+                  <div class="geocode-suggestions" id="geocodeSuggestions"></div>
+                </div>
+                <div id="incidentMap"></div>
+                <div class="d-flex justify-content-between align-items-center mt-2">
+                  <small class="text-muted"><i class="fas fa-map-pin text-danger me-1"></i>Tap map or search above to set location</small>
+                  <span class="badge bg-light text-dark" id="coordDisplay">Lat: --, Lng: --</span>
+                </div>
+                <input type="hidden" id="incidentLat" value="">
+                <input type="hidden" id="incidentLng" value="">
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold">Contact Number <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="incidentContact" placeholder="09123456789" required>
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold">
+                  <i class="fas fa-paperclip me-1"></i>Attach Photos or Videos
+                  <span class="text-muted small fw-normal">(max 5 files, 10MB each)</span>
+                </label>
+                <div class="media-upload-area" id="mediaDropZone">
+                  <i class="fas fa-cloud-upload-alt"></i>
+                  <div class="upload-text">Click or drag files here</div>
+                  <div class="upload-subtext">Supported: JPG, PNG, GIF, MP4, MOV, AVI</div>
+                  <input type="file" id="mediaUpload" accept="image/*,video/*" multiple style="display:none;">
+                </div>
+                <div class="d-flex justify-content-between align-items-center mt-2">
+                  <span class="media-count" id="mediaCount">0 / 5</span>
+                  <span class="text-muted small"><i class="fas fa-info-circle me-1"></i>First 5 files will be uploaded</span>
+                </div>
+                <div class="media-preview-container" id="mediaPreviewContainer"></div>
+              </div>
+              <div class="col-12">
+                <div id="aiAnalysisResult" class="ai-result-card d-none">
+                  <div class="d-flex align-items-start gap-2">
+                    <i class="fas fa-robot fa-2x text-primary"></i>
+                    <div id="aiResultText" style="flex:1;">
+                      <span class="fw-semibold">AI Analysis</span><br>
+                      <span id="aiPriorityBadge" class="ai-badge bg-secondary text-white">Priority: --</span>
+                      <span id="aiConfidenceBadge" class="ai-badge bg-light text-dark ms-1">Confidence: --</span>
+                      <div id="aiActionsList" class="mt-1 small text-muted"></div>
+                      <div id="aiVerification" class="mt-1 small"><i class="fas fa-shield-alt me-1"></i>Verification: <span id="aiVerifyText">Pending</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-12">
+                <button type="button" class="btn btn-outline-primary btn-sm" onclick="analyzeWithAI()"><i class="fas fa-robot me-2"></i>Analyze with AI</button>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button class="btn btn-primary" onclick="submitReport()" id="submitReportBtn"><i class="fas fa-paper-plane me-2"></i>Submit Report</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="../js/supabase.js"></script>
+  <script src="../js/resident.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+</body>
+</html>

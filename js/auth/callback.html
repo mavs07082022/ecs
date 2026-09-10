@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gmail Authentication</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: #0A2342;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Inter', sans-serif;
+        }
+        .auth-card {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .auth-card .icon {
+            font-size: 4rem;
+            color: #16A34A;
+            margin-bottom: 20px;
+        }
+        .auth-card h3 {
+            color: #0A2342;
+            font-weight: 700;
+        }
+        .auth-card p {
+            color: #64748B;
+        }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #e9ecef;
+            border-top-color: #16A34A;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .status-success { color: #16A34A; }
+        .status-error { color: #dc3545; }
+        .status-info { color: #0d6efd; }
+    </style>
+</head>
+<body>
+    <div class="auth-card">
+        <div class="icon">
+            <i class="fas fa-envelope"></i>
+        </div>
+        <h3>Gmail Authentication</h3>
+        <p id="statusText">Authenticating with Gmail...</p>
+        <div class="spinner" id="loadingSpinner"></div>
+        <div id="statusIcon" style="font-size: 3rem; display: none;"></div>
+        <div id="resultMessage" style="margin-top: 16px;"></div>
+        <button class="btn btn-primary mt-3" id="continueBtn" style="display: none;" onclick="continueToApp()">
+            <i class="fas fa-arrow-right me-2"></i>Continue to App
+        </button>
+        <button class="btn btn-danger mt-3" id="retryBtn" style="display: none;" onclick="retryAuth()">
+            <i class="fas fa-redo me-2"></i>Retry Authentication
+        </button>
+    </div>
+
+    <script src="https://apis.google.com/js/api.js"></script>
+    <script>
+        const GMAIL_CONFIG = {
+            CLIENT_ID: '482709766796-5mrso8miqv51lmdh6gccstp2g9li00p4.apps.googleusercontent.com',
+            SCOPES: 'https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.compose',
+            REDIRECT_URI: window.location.origin + '/auth/callback.html'
+        };
+
+        let authResult = null;
+
+        async function handleAuthCallback() {
+            try {
+                const statusText = document.getElementById('statusText');
+                const spinner = document.getElementById('loadingSpinner');
+                const statusIcon = document.getElementById('statusIcon');
+                const resultMessage = document.getElementById('resultMessage');
+                const continueBtn = document.getElementById('continueBtn');
+                const retryBtn = document.getElementById('retryBtn');
+
+                // Check if we have the OAuth code in the URL
+                const urlParams = new URLSearchParams(window.location.search);
+                const code = urlParams.get('code');
+                const error = urlParams.get('error');
+                const accessToken = urlParams.get('access_token');
+
+                if (error) {
+                    statusText.textContent = '❌ Authentication failed: ' + error;
+                    spinner.style.display = 'none';
+                    statusIcon.style.display = 'block';
+                    statusIcon.innerHTML = '<i class="fas fa-times-circle status-error"></i>';
+                    resultMessage.innerHTML = '<p class="text-danger">Authentication was denied. Please try again.</p>';
+                    retryBtn.style.display = 'block';
+                    return;
+                }
+
+                // If we have an access token from the URL fragment
+                if (window.location.hash) {
+                    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+                    const token = hashParams.get('access_token');
+                    const tokenType = hashParams.get('token_type');
+                    const expiresIn = hashParams.get('expires_in');
+
+                    if (token) {
+                        // Store the token in localStorage for use by the main app
+                        const tokenData = {
+                            access_token: token,
+                            token_type: tokenType || 'Bearer',
+                            expires_at: Date.now() + (parseInt(expiresIn) || 3600) * 1000
+                        };
+                        localStorage.setItem('gmail_tokens', JSON.stringify(tokenData));
+                        
+                        statusText.textContent = '✅ Authentication successful!';
+                        spinner.style.display = 'none';
+                        statusIcon.style.display = 'block';
+                        statusIcon.innerHTML = '<i class="fas fa-check-circle status-success"></i>';
+                        resultMessage.innerHTML = '<p class="text-success">You have successfully authenticated with Gmail. You can now send email notifications.</p>';
+                        continueBtn.style.display = 'block';
+                        return;
+                    }
+                }
+
+                // If we have a code, exchange it for tokens (this would need a backend)
+                if (code) {
+                    // For client-side only, we can't exchange the code securely
+                    // So we'll redirect to the Gmail authorization URL
+                    statusText.textContent = '🔄 Redirecting to Gmail authorization...';
+                    setTimeout(() => {
+                        window.location.href = 
+                            'https://accounts.google.com/o/oauth2/v2/auth' +
+                            '?client_id=' + GMAIL_CONFIG.CLIENT_ID +
+                            '&redirect_uri=' + encodeURIComponent(GMAIL_CONFIG.REDIRECT_URI) +
+                            '&response_type=token' +
+                            '&scope=' + encodeURIComponent(GMAIL_CONFIG.SCOPES) +
+                            '&include_granted_scopes=true' +
+                            '&prompt=consent';
+                    }, 1500);
+                    return;
+                }
+
+                // No auth data found, start the OAuth flow
+                statusText.textContent = '🔄 Redirecting to Gmail authorization...';
+                setTimeout(() => {
+                    window.location.href = 
+                        'https://accounts.google.com/o/oauth2/v2/auth' +
+                        '?client_id=' + GMAIL_CONFIG.CLIENT_ID +
+                        '&redirect_uri=' + encodeURIComponent(GMAIL_CONFIG.REDIRECT_URI) +
+                        '&response_type=token' +
+                        '&scope=' + encodeURIComponent(GMAIL_CONFIG.SCOPES) +
+                        '&include_granted_scopes=true' +
+                        '&prompt=consent';
+                }, 1500);
+
+            } catch (error) {
+                console.error('Auth error:', error);
+                document.getElementById('statusText').textContent = '❌ Authentication error: ' + error.message;
+                document.getElementById('loadingSpinner').style.display = 'none';
+                document.getElementById('statusIcon').style.display = 'block';
+                document.getElementById('statusIcon').innerHTML = '<i class="fas fa-times-circle status-error"></i>';
+                document.getElementById('retryBtn').style.display = 'block';
+            }
+        }
+
+        function continueToApp() {
+            // Redirect back to the dashboard
+            const returnUrl = localStorage.getItem('return_url') || '/responder/dashboard.html';
+            localStorage.removeItem('return_url');
+            window.location.href = returnUrl;
+        }
+
+        function retryAuth() {
+            localStorage.removeItem('gmail_tokens');
+            window.location.href = window.location.pathname + '?retry=true';
+        }
+
+        // Check for stored token
+        function checkStoredToken() {
+            try {
+                const stored = localStorage.getItem('gmail_tokens');
+                if (stored) {
+                    const tokenData = JSON.parse(stored);
+                    if (tokenData.access_token && tokenData.expires_at > Date.now()) {
+                        document.getElementById('statusText').textContent = '✅ Already authenticated';
+                        document.getElementById('loadingSpinner').style.display = 'none';
+                        document.getElementById('statusIcon').style.display = 'block';
+                        document.getElementById('statusIcon').innerHTML = '<i class="fas fa-check-circle status-success"></i>';
+                        document.getElementById('resultMessage').innerHTML = '<p class="text-success">You are already authenticated with Gmail.</p>';
+                        document.getElementById('continueBtn').style.display = 'block';
+                        return true;
+                    }
+                }
+                return false;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if we need to retry
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('retry')) {
+                localStorage.removeItem('gmail_tokens');
+            }
+            
+            // Check stored token first
+            if (!checkStoredToken()) {
+                handleAuthCallback();
+            }
+        });
+    </script>
+</body>
+</html>
