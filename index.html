@@ -22,6 +22,7 @@
     }
     :root {
       --navy: #0A2342;
+      --navy-deep: #061428;
       --green: #0f973d;
       --green-light: #4ADE80;
       --green-dark: #0b7a30;
@@ -94,6 +95,10 @@
     .navbar-custom .nav-link:hover {
       color: #fff;
     }
+    .navbar-custom .navbar-collapse {
+      transition: all 0.25s ease;
+    }
+
     .btn-green {
       background: var(--green);
       color: #fff;
@@ -115,32 +120,59 @@
       padding: 10px 26px;
       font-weight: 500;
     }
+
+    /* ============================================
+       HERO SECTION — FULL-BLEED BG IMAGE
+       ============================================ */
     .hero-section {
       position: relative;
       min-height: 100vh;
       display: flex;
       align-items: center;
-      background: var(--navy);
+      background: var(--navy-deep);
       overflow: hidden;
       padding: 140px 0 80px;
     }
+
+    /* Layer 1: Full-bleed background image */
     .hero-section::before {
       content: '';
       position: absolute;
       inset: 0;
       background-image: url('bg.png');
       background-repeat: no-repeat;
-      background-size: auto 100%;
-      background-position: 90% 50%;
-      opacity: 0.08;
+      background-size: cover;              /* fill entire hero on all screens */
+      background-position: center center;  /* always centered */
+      opacity: 0.35;                       /* visible enough to see the artwork */
       pointer-events: none;
+      z-index: 0;
     }
+
+    /* Layer 2: Dark overlay for readability (professional look) */
+    .hero-section::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(135deg, rgba(6, 20, 40, 0.85) 0%, rgba(10, 35, 66, 0.70) 45%, rgba(6, 20, 40, 0.85) 100%),
+        radial-gradient(circle at 80% 50%, rgba(15, 151, 61, 0.15) 0%, transparent 55%);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* Content sits above both layers */
+    .hero-section .container {
+      position: relative;
+      z-index: 2;
+    }
+
     .hero-title {
       font-size: 3.8rem;
       font-weight: 800;
       color: #fff;
       line-height: 1.05;
       letter-spacing: -0.02em;
+      text-shadow: 0 2px 20px rgba(0,0,0,0.25);
     }
     .hero-title .highlight {
       background: linear-gradient(135deg, var(--green-light), var(--green));
@@ -150,25 +182,27 @@
       font-family: 'Inter', sans-serif;
     }
     .hero-subtitle {
-      color: rgba(255,255,255,0.7);
+      color: rgba(255,255,255,0.82);
       font-size: 1.15rem;
       max-width: 520px;
       margin: 20px 0 32px;
       font-weight: 400;
+      text-shadow: 0 1px 10px rgba(0,0,0,0.25);
     }
     .hero-badge {
       display: inline-flex;
       align-items: center;
       gap: 10px;
-      background: rgba(255,255,255,0.06);
-      backdrop-filter: blur(6px);
+      background: rgba(255,255,255,0.10);
+      backdrop-filter: blur(8px);
       padding: 8px 22px;
       border-radius: 40px;
       color: var(--green-light);
       font-weight: 600;
-      border: 1px solid rgba(74, 222, 128, 0.12);
+      border: 1px solid rgba(74, 222, 128, 0.25);
       margin-bottom: 28px;
       font-size: 0.9rem;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
     }
     .pulse-dot {
       width: 10px;
@@ -177,6 +211,7 @@
       border-radius: 50%;
       display: inline-block;
       animation: pulse-dot 1.8s infinite;
+      box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.6);
     }
     @keyframes pulse-dot {
       0%, 100% { opacity: 1; transform: scale(1); }
@@ -187,7 +222,7 @@
       gap: 48px;
       margin-top: 42px;
       padding-top: 32px;
-      border-top: 1px solid rgba(255,255,255,0.06);
+      border-top: 1px solid rgba(255,255,255,0.12);
       flex-wrap: wrap;
     }
     .stat-item .number {
@@ -196,10 +231,11 @@
       color: #fff;
       display: block;
       letter-spacing: -0.01em;
+      text-shadow: 0 2px 12px rgba(0,0,0,0.3);
     }
     .stat-item .label {
       font-size: 0.75rem;
-      color: rgba(255,255,255,0.5);
+      color: rgba(255,255,255,0.7);
       font-weight: 500;
       text-transform: uppercase;
       letter-spacing: 0.5px;
@@ -215,7 +251,7 @@
       width: 260px;
       height: 260px;
       border-radius: 50%;
-      border: 2px solid rgba(74, 222, 128, 0.12);
+      border: 2px solid rgba(74, 222, 128, 0.25);
       position: relative;
       animation: ring-pulse 4s infinite;
     }
@@ -224,7 +260,7 @@
       position: absolute;
       inset: -20px;
       border-radius: 50%;
-      border: 1px solid rgba(74, 222, 128, 0.04);
+      border: 1px solid rgba(74, 222, 128, 0.10);
       animation: ring-pulse 4s infinite 1s;
     }
     @keyframes ring-pulse {
@@ -236,15 +272,16 @@
       position: absolute;
       width: 110px;
       height: 110px;
-      background: rgba(15, 151, 61, 0.10);
-      backdrop-filter: blur(6px);
+      background: rgba(15, 151, 61, 0.15);
+      backdrop-filter: blur(8px);
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 3.6rem;
       color: var(--green-light);
-      border: 1px solid rgba(74, 222, 128, 0.15);
+      border: 1px solid rgba(74, 222, 128, 0.3);
+      box-shadow: 0 8px 32px rgba(15, 151, 61, 0.3);
     }
     .section-header {
       text-align: center;
@@ -374,7 +411,6 @@
       max-width: 380px;
     }
 
-    /* Password toggle styles - ADDED ONLY THIS */
     .password-wrapper {
       position: relative;
     }
@@ -408,12 +444,21 @@
       color: var(--green);
     }
 
+    /* ============================================
+       RESPONSIVE — .hero-section::before IS NOT OVERRIDDEN
+       (image stays cover + center on ALL screens)
+       ============================================ */
+
     @media (max-width: 992px) {
       .hero-title { font-size: 2.8rem; }
       .hero-stats { gap: 28px; }
-      .hero-section::before { background-size: 50%; background-position: 90% 40%; }
     }
+
     @media (max-width: 768px) {
+      .hero-section {
+        padding: 120px 0 60px;
+        min-height: auto;
+      }
       .hero-title { font-size: 2.2rem; }
       .hero-subtitle { font-size: 0.95rem; }
       .hero-stats .stat-item .number { font-size: 1.5rem; }
@@ -423,11 +468,103 @@
       .navbar-custom .navbar-brand .logo-wrapper { width: 38px; height: 38px; }
       .navbar-custom .navbar-brand .brand-text .main { font-size: 1rem; }
       .navbar-custom .navbar-brand .brand-text .sub { font-size: 0.5rem; }
+
+      .navbar-custom .navbar-collapse {
+        background: rgba(10, 35, 66, 0.97);
+        backdrop-filter: blur(12px);
+        border-radius: 16px;
+        padding: 16px;
+        margin-top: 12px;
+        box-shadow: 0 12px 32px rgba(0,0,0,0.25);
+      }
+      .navbar-custom .navbar-nav {
+        gap: 6px !important;
+      }
+      .navbar-custom .nav-link {
+        padding: 10px 14px !important;
+        border-radius: 8px;
+        color: rgba(255,255,255,0.9);
+      }
+      .navbar-custom .nav-link:hover,
+      .navbar-custom .nav-link.active {
+        background: rgba(255,255,255,0.08);
+        color: #fff;
+      }
+      .navbar-custom .nav-item {
+        width: 100%;
+      }
+      .navbar-custom .btn {
+        margin-bottom: 4px;
+      }
+
+      .hero-section .btn-lg {
+        width: 100%;
+        padding: 12px 20px;
+        font-size: 1rem;
+      }
+
+      .about-section { padding: 56px 0; }
+      .feature-card, .action-card { padding: 24px 20px; }
+
+      .emergency-float {
+        width: 56px;
+        height: 56px;
+        font-size: 1.4rem;
+        bottom: 20px;
+        right: 20px;
+      }
+
+      .toast-container {
+        right: 12px;
+        left: 12px;
+        max-width: none;
+      }
+
+      .footer { text-align: center; }
+      .footer .row > div { margin-bottom: 24px; }
+      .footer .text-success.fs-4 { font-size: 1.1rem !important; }
     }
+
     @media (max-width: 576px) {
+      .hero-section {
+        padding: 110px 0 48px;
+      }
       .hero-title { font-size: 1.9rem; }
-      .hero-stats { gap: 16px; }
+      .hero-subtitle { font-size: 0.9rem; margin: 16px 0 24px; }
+      .hero-badge {
+        font-size: 0.75rem;
+        padding: 6px 16px;
+        margin-bottom: 20px;
+      }
+      .hero-stats {
+        gap: 16px;
+        margin-top: 32px;
+        padding-top: 24px;
+      }
       .stat-item .number { font-size: 1.3rem; }
+      .stat-item .label { font-size: 0.65rem; }
+
+      .section-header h2 { font-size: 1.5rem; }
+      .section-header p { font-size: 0.9rem; }
+      .section-header { margin-bottom: 32px; }
+
+      .navbar-custom .container { padding-left: 14px; padding-right: 14px; }
+      .navbar-custom .navbar-brand .brand-text .main { font-size: 0.9rem; }
+      .navbar-custom .navbar-brand .brand-text .sub { font-size: 0.45rem; }
+
+      .feature-card .icon {
+        width: 48px; height: 48px; font-size: 1.3rem;
+      }
+      .feature-card h5 { font-size: 1rem; }
+      .feature-card p { font-size: 0.85rem; }
+
+      .footer .text-success.fs-4 { font-size: 1rem !important; }
+    }
+
+    @media (max-width: 380px) {
+      .hero-title { font-size: 1.65rem; }
+      .hero-stats { gap: 12px; }
+      .stat-item .number { font-size: 1.15rem; }
     }
   </style>
 </head>
@@ -520,28 +657,28 @@
       <p class="text-muted">Built with cutting-edge technology to ensure rapid emergency response</p>
     </div>
     <div class="row g-4">
-      <div class="col-md-3 reveal">
+      <div class="col-md-3 col-6 reveal">
         <div class="feature-card">
           <div class="icon"><i class="fas fa-robot"></i></div>
           <h5>AI-Powered Analysis</h5>
           <p class="text-muted">Instant incident verification and severity assessment using artificial intelligence</p>
         </div>
       </div>
-      <div class="col-md-3 reveal">
+      <div class="col-md-3 col-6 reveal">
         <div class="feature-card">
           <div class="icon"><i class="fas fa-bolt"></i></div>
           <h5>Real-Time Updates</h5>
           <p class="text-muted">Live notifications and updates for all stakeholders in your community</p>
         </div>
       </div>
-      <div class="col-md-3 reveal">
+      <div class="col-md-3 col-6 reveal">
         <div class="feature-card">
           <div class="icon"><i class="fas fa-map-marked-alt"></i></div>
           <h5>Interactive Maps</h5>
           <p class="text-muted">Visual incident tracking with location-based alerts and navigation</p>
         </div>
       </div>
-      <div class="col-md-3 reveal">
+      <div class="col-md-3 col-6 reveal">
         <div class="feature-card">
           <div class="icon"><i class="fas fa-shield-alt"></i></div>
           <h5>Secure & Reliable</h5>
@@ -652,7 +789,7 @@
   <i class="fas fa-exclamation-triangle"></i>
 </button>
 
-<!-- Login Modal - ADDED password-wrapper and toggle button -->
+<!-- Login Modal -->
 <div class="modal fade" id="loginModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -683,7 +820,7 @@
   </div>
 </div>
 
-<!-- Register Modal - ADDED password-wrapper and toggle button -->
+<!-- Register Modal -->
 <div class="modal fade" id="registerModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -743,7 +880,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
 <script src="js/supabase.js"></script>
 <script>
-  // ADDED: Password toggle function
   function togglePassword(inputId, buttonElement) {
     const input = document.getElementById(inputId);
     const icon = buttonElement.querySelector('i');
@@ -926,6 +1062,16 @@
       else nav.classList.remove('scrolled');
     });
 
+    document.querySelectorAll('#navbarNav .nav-link').forEach(link => {
+      link.addEventListener('click', () => {
+        const collapse = document.getElementById('navbarNav');
+        if (collapse.classList.contains('show')) {
+          const bsCollapse = bootstrap.Collapse.getInstance(collapse) || new bootstrap.Collapse(collapse, { toggle: false });
+          bsCollapse.hide();
+        }
+      });
+    });
+
     const reveals = document.querySelectorAll('.reveal');
     const revealObserver = new IntersectionObserver((entries) => {
       entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('visible'); });
@@ -953,7 +1099,6 @@
     }, { threshold: 0.4 });
     counters.forEach(el => counterObserver.observe(el));
 
-    // handle email confirmation
     const hash = window.location.hash;
     if (hash && hash.includes('access_token')) {
       supabaseClient.auth.getSession().then(({ data: { session }, error }) => {
