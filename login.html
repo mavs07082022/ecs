@@ -3,45 +3,73 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login</title>
+    <title>Responder / Admin Login · Barangay Culiat</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
-    <link href="css/style.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --primary-navy: #0A2342;
+            --navy-deep: #061428;
+            --primary-green: #0f973d;
+            --green-light: #4ADE80;
+            --dark-green: #0b7a30;
+            --text-muted: #6c757d;
+            --danger: #dc3545;
+            --warning: #ffc107;
+        }
+        * { box-sizing: border-box; }
         body {
-            background: var(--primary-navy);
+            background: linear-gradient(135deg, var(--navy-deep) 0%, var(--primary-navy) 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
-            font-family: 'Inter', sans-serif;
+            justify-content: center;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
             margin: 0;
             padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+        body::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: 
+                radial-gradient(circle at 15% 25%, rgba(15, 151, 61, 0.12) 0%, transparent 45%),
+                radial-gradient(circle at 85% 75%, rgba(74, 222, 128, 0.08) 0%, transparent 45%);
+            pointer-events: none;
+        }
+        .login-container {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 440px;
         }
         .login-card {
-            max-width: 420px;
             width: 100%;
-            margin: 0 auto;
-            padding: 40px 30px;
+            padding: 40px 34px;
             background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            border-radius: 24px;
+            box-shadow: 0 32px 80px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.05);
         }
         .login-card .logo {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 28px;
         }
         .login-card .logo .logo-wrapper {
-            width: 80px;
-            height: 80px;
+            width: 84px;
+            height: 84px;
             border-radius: 50%;
             overflow: hidden;
             border: 3px solid var(--primary-green);
-            margin: 0 auto 12px;
+            margin: 0 auto 14px;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: rgba(255,255,255,0.05);
+            background: rgba(15, 151, 61, 0.05);
             padding: 8px;
+            box-shadow: 0 8px 24px rgba(15, 151, 61, 0.15);
         }
         .login-card .logo .logo-wrapper img {
             width: 100%;
@@ -50,13 +78,25 @@
             border-radius: 50%;
         }
         .login-card .logo h4 {
-            font-weight: 700;
+            font-weight: 800;
             margin-top: 4px;
             color: var(--primary-navy);
+            letter-spacing: -0.02em;
         }
-        .login-card .logo p {
-            color: var(--text-muted);
-            font-size: 0.9rem;
+        .login-card .logo .role-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+            color: #856404;
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 4px 12px;
+            border-radius: 20px;
+            margin-top: 6px;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+            border: 1px solid #ffeaa7;
         }
         .form-floating {
             margin-bottom: 15px;
@@ -68,15 +108,23 @@
             transition: all 0.3s ease;
             padding: 1rem 0.75rem;
             height: 58px;
+            background: #f8fafc;
+            font-size: 0.95rem;
         }
         .form-floating .form-control:focus {
             border-color: var(--primary-green);
-            box-shadow: 0 0 0 0.2rem rgba(22, 163, 74, 0.1);
+            box-shadow: 0 0 0 4px rgba(15, 151, 61, 0.1);
+            background: #fff;
+        }
+        .form-floating .form-control:focus ~ label,
+        .form-floating .form-control:not(:placeholder-shown) ~ label {
+            color: var(--primary-green);
+            font-weight: 500;
         }
         .form-floating label {
             padding: 1rem 0.75rem;
+            color: #6c757d;
         }
-        /* ADDED: Password toggle styles */
         .password-wrapper {
             position: relative;
         }
@@ -103,26 +151,26 @@
         }
         .toggle-password:hover {
             color: var(--primary-green);
-            background: rgba(22, 163, 74, 0.08);
+            background: rgba(15, 151, 61, 0.08);
         }
-        .toggle-password:focus {
-            outline: none;
-            color: var(--primary-green);
-        }
+        .toggle-password:focus { outline: none; color: var(--primary-green); }
         .btn-login {
             width: 100%;
             padding: 14px;
             border-radius: 12px;
-            font-weight: 600;
+            font-weight: 700;
             background: var(--primary-green);
             color: white;
             border: none;
             transition: all 0.3s ease;
+            font-size: 1rem;
+            letter-spacing: 0.3px;
         }
-        .btn-login:hover {
+        .btn-login:hover:not(:disabled) {
             background: var(--dark-green);
             transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(22, 163, 74, 0.3);
+            box-shadow: 0 12px 32px rgba(15, 151, 61, 0.35);
+            color: white;
         }
         .btn-login:disabled {
             opacity: 0.6;
@@ -133,13 +181,15 @@
             color: var(--text-muted);
             text-decoration: none;
             transition: color 0.3s ease;
+            font-weight: 500;
+            font-size: 0.9rem;
         }
-        .back-link:hover {
-            color: var(--primary-green);
-        }
+        .back-link:hover { color: var(--primary-green); }
         .alert-custom {
             border-radius: 12px;
             padding: 12px 16px;
+            border: none;
+            font-size: 0.9rem;
         }
         .toast-container {
             position: fixed;
@@ -155,34 +205,50 @@
             margin-bottom: 10px;
             border: none !important;
         }
-        .text-green {
-            color: var(--primary-green);
+        .security-notice {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #166534;
+            font-size: 0.78rem;
+            padding: 10px 12px;
+            border-radius: 10px;
+            margin-top: 16px;
+            line-height: 1.4;
         }
+        .security-notice i {
+            color: var(--primary-green);
+            font-size: 0.9rem;
+            margin-top: 1px;
+            flex-shrink: 0;
+        }
+        .security-notice a {
+            color: var(--primary-green);
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .security-notice a:hover { text-decoration: underline; }
         @media (max-width: 576px) {
-            .login-card {
-                padding: 30px 20px;
-                margin: 0;
-            }
-            body {
-                padding: 10px;
-            }
-            .login-card .logo .logo-wrapper {
-                width: 64px;
-                height: 64px;
-                padding: 6px;
-            }
+            .login-card { padding: 30px 22px; margin: 0; border-radius: 20px; }
+            body { padding: 12px; }
+            .login-card .logo .logo-wrapper { width: 68px; height: 68px; padding: 6px; }
+            .login-card .logo h4 { font-size: 1.1rem; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="login-container">
         <div class="login-card">
             <div class="logo">
                 <div class="logo-wrapper">
-                    <img src="logoooo.png" alt="Barangay Culiat Logo">
+                    <img src="logoooo.png" alt="Barangay Culiat Logo" onerror="this.src='sd.png'">
                 </div>
                 <h4>Barangay Culiat</h4>
-                <p>Responder / Admin Login</p>
+                <div class="role-badge">
+                    <i class="fas fa-user-shield"></i> Responder / Admin Access
+                </div>
             </div>
 
             <div id="loginError" class="alert alert-danger alert-custom" style="display:none;">
@@ -190,25 +256,32 @@
                 <span id="errorMessage">Invalid credentials</span>
             </div>
 
-            <form id="loginForm" onsubmit="handleLogin(event)">
+            <form id="loginForm" onsubmit="handleLogin(event)" autocomplete="on">
                 <div class="form-floating">
-                    <input type="email" class="form-control" id="loginEmail" placeholder="Email" required>
+                    <input type="email" class="form-control" id="loginEmail" placeholder="Email" required autocomplete="email">
                     <label for="loginEmail"><i class="fas fa-envelope me-2"></i>Email Address</label>
                 </div>
-                <!-- ADDED: password-wrapper with toggle button -->
                 <div class="form-floating password-wrapper">
-                    <input type="password" class="form-control" id="loginPassword" placeholder="Password" required>
+                    <input type="password" class="form-control" id="loginPassword" placeholder="Password" required autocomplete="current-password">
                     <label for="loginPassword"><i class="fas fa-lock me-2"></i>Password</label>
                     <button type="button" class="toggle-password" onclick="togglePassword('loginPassword', this)" aria-label="Toggle password visibility">
                         <i class="fas fa-eye"></i>
                     </button>
                 </div>
                 <button type="submit" class="btn-login" id="loginBtn">
-                    <i class="fas fa-sign-in-alt me-2"></i>Login
+                    <i class="fas fa-sign-in-alt me-2"></i>Login as Responder / Admin
                 </button>
             </form>
 
-            <hr>
+            <div class="security-notice">
+                <i class="fas fa-shield-alt"></i>
+                <div>
+                    <strong>    Authorized personnel only.</strong> 
+                  
+                </div>
+            </div>
+
+            <hr style="margin: 20px 0; border-color: #e9ecef;">
             <div class="text-center">
                 <a href="index.html" class="back-link">
                     <i class="fas fa-arrow-left me-1"></i>Back to Home
@@ -223,7 +296,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
     <script src="js/supabase.js"></script>
     <script>
-        // ADDED: Password toggle function
         function togglePassword(inputId, buttonElement) {
             const input = document.getElementById(inputId);
             const icon = buttonElement.querySelector('i');
@@ -274,7 +346,7 @@
         async function handleLogin(event) {
             event.preventDefault();
             
-            const email = document.getElementById('loginEmail').value.trim();
+            const email = document.getElementById('loginEmail').value.trim().toLowerCase();
             const password = document.getElementById('loginPassword').value;
             const btn = document.getElementById('loginBtn');
 
@@ -289,31 +361,28 @@
             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Logging in...';
 
             try {
-                console.log('🔐 Attempting login for:', email);
+                console.log('🔐 Responder/Admin login attempt for:', email);
                 
-                const { data, error } = await supabaseClient.auth.signInWithPassword({ 
-                    email, 
-                    password 
-                });
+                const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
                 if (error) {
                     console.error('❌ Login error:', error);
                     showError(error.message || 'Invalid credentials');
                     btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Login';
+                    btn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Login as Responder / Admin';
                     return;
                 }
 
                 if (!data.user) {
                     showError('User not found');
                     btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Login';
+                    btn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Login as Responder / Admin';
                     return;
                 }
 
                 console.log('✅ User authenticated:', data.user.id);
 
-                await new Promise(resolve => setTimeout(resolve, 500));
+                await new Promise(resolve => setTimeout(resolve, 400));
 
                 const { data: profile, error: profileError } = await supabaseClient
                     .from('profiles')
@@ -321,12 +390,11 @@
                     .eq('id', data.user.id)
                     .maybeSingle();
 
-                if (profileError) {
-                    console.error('❌ Profile error:', profileError);
-                }
+                if (profileError) console.error('❌ Profile error:', profileError);
 
+                // If no profile, create one as resident (fallback — but this page is for responders)
                 if (!profile) {
-                    console.log('⚠️ No profile found, creating one...');
+                    console.log('⚠️ No profile found, creating default...');
                     const { error: insertError } = await supabaseClient
                         .from('profiles')
                         .insert([{
@@ -338,15 +406,7 @@
                             role: data.user.user_metadata?.role || 'resident'
                         }]);
                     
-                    if (insertError) {
-                        console.error('❌ Profile creation error:', insertError);
-                        showError('Profile error. Please contact admin.');
-                        btn.disabled = false;
-                        btn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Login';
-                        return;
-                    }
-                    
-                    console.log('✅ Profile created');
+                    if (insertError) console.error('❌ Profile creation error:', insertError);
                 }
 
                 const { data: freshProfile } = await supabaseClient
@@ -358,12 +418,13 @@
                 const role = freshProfile?.role || 'resident';
                 console.log('📝 User role:', role);
 
+                // 🚫 Block residents from responder login page
                 if (role !== 'responder' && role !== 'admin') {
                     console.log('❌ Access denied - role is:', role);
-                    showError('Access denied. This page is for responders and admins only.');
+                    showError('Access denied. This page is for responders and admins only. Residents must use the main login page.');
                     await supabaseClient.auth.signOut();
                     btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Login';
+                    btn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Login as Responder / Admin';
                     return;
                 }
 
@@ -371,13 +432,13 @@
                 
                 setTimeout(() => {
                     window.location.href = 'responder/dashboard.html';
-                }, 1500);
+                }, 1200);
 
             } catch (error) {
                 console.error('❌ Login error:', error);
                 showError(error.message || 'Login failed. Please try again.');
                 btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Login';
+                btn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Login as Responder / Admin';
             }
         }
 
@@ -385,9 +446,7 @@
             const errorDiv = document.getElementById('loginError');
             document.getElementById('errorMessage').textContent = message;
             errorDiv.style.display = 'block';
-            setTimeout(() => {
-                errorDiv.style.display = 'none';
-            }, 5000);
+            setTimeout(() => { errorDiv.style.display = 'none'; }, 6000);
         }
 
         async function checkSession() {
@@ -408,15 +467,13 @@
                         
                         if (role === 'responder' || role === 'admin') {
                             console.log('✅ User is responder/admin, redirecting to dashboard...');
-                            setTimeout(() => {
-                                window.location.href = 'responder/dashboard.html';
-                            }, 500);
+                            setTimeout(() => { window.location.href = 'responder/dashboard.html'; }, 500);
                         } else {
-                            console.log('❌ Resident trying to access login page');
+                            // Resident session on responder page → sign out, send to index
+                            console.log('❌ Resident trying to access responder login');
+                            await supabaseClient.auth.signOut();
                             window.location.href = 'index.html';
                         }
-                    } else {
-                        console.log('ℹ️ No session found, showing login form');
                     }
                 }
             } catch (error) {
@@ -424,56 +481,9 @@
             }
         }
 
-        async function handleEmailConfirmation() {
-            const hash = window.location.hash;
-            
-            if (hash && hash.includes('access_token')) {
-                console.log('📧 Processing email confirmation...');
-                showToast('Confirming your email...', 'info', 3000);
-                
-                try {
-                    const { data: { session }, error } = await supabaseClient.auth.getSession();
-                    
-                    if (error) {
-                        console.error('❌ Session error:', error);
-                        showToast('Error confirming email. Please try logging in.', 'danger');
-                        return;
-                    }
-                    
-                    if (session) {
-                        console.log('✅ Email confirmed successfully!');
-                        showToast('✅ Email confirmed successfully!', 'success', 3000);
-                        
-                        const { data: profile } = await supabaseClient
-                            .from('profiles')
-                            .select('role')
-                            .eq('id', session.user.id)
-                            .single();
-                        
-                        const role = profile?.role || 'resident';
-                        
-                        setTimeout(() => {
-                            if (role === 'resident') {
-                                window.location.href = 'resident/dashboard.html';
-                            } else {
-                                window.location.href = 'responder/dashboard.html';
-                            }
-                        }, 1500);
-                    }
-                    
-                    window.history.replaceState({}, document.title, window.location.pathname);
-                    
-                } catch (error) {
-                    console.error('❌ Confirmation error:', error);
-                    showToast('Error confirming email. Please try logging in.', 'danger');
-                }
-            }
-        }
-
         document.addEventListener('DOMContentLoaded', function() {
-            handleEmailConfirmation();
             checkSession();
-            console.log('📄 Login page loaded');
+            console.log('📄 Responder/Admin login page loaded');
         });
 
         window.handleLogin = handleLogin;
