@@ -1149,7 +1149,7 @@
       // Block admins/responders from resident login
       if (role === 'admin' || role === 'responder') {
         await supabaseClient.auth.signOut();
-        showToast('🚫 Access denied. Admins/Responders must use the dedicated login page.', 'danger', 7000);
+        showToast('🚫 Access denied.', 'danger', 7000);
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Login';
         return;
