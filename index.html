@@ -8,258 +8,128 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet" />
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: 'Inter', system-ui, -apple-system, sans-serif;
-      background: #f6f9fc;
-      color: #0b1a33;
-      overflow-x: hidden;
-      line-height: 1.6;
+      background: #f6f9fc; color: #0b1a33; overflow-x: hidden; line-height: 1.6;
     }
     :root {
-      --navy: #0A2342;
-      --navy-deep: #061428;
-      --green: #0f973d;
-      --green-light: #4ADE80;
-      --green-dark: #0b7a30;
-      --white: #ffffff;
-      --gray-light: #f0f4fa;
-      --shadow: 0 20px 40px -12px rgba(10, 35, 66, 0.12);
-      --radius: 24px;
+      --navy: #0A2342; --navy-deep: #061428; --green: #0f973d; --green-light: #4ADE80;
+      --green-dark: #0b7a30; --white: #ffffff; --gray-light: #f0f4fa;
+      --shadow: 0 20px 40px -12px rgba(10, 35, 66, 0.12); --radius: 24px;
+      --danger: #dc3545; --warning: #ffc107;
     }
-    .navbar-custom {
-      background: transparent;
-      transition: all 0.25s ease;
-      padding: 14px 0;
-    }
+
+    /* ========== NAVBAR ========== */
+    .navbar-custom { background: transparent; transition: all 0.25s ease; padding: 14px 0; }
     .navbar-custom.scrolled {
-      background: rgba(10, 35, 66, 0.92);
-      backdrop-filter: blur(10px);
-      box-shadow: 0 8px 28px rgba(0,0,0,0.08);
-      padding: 8px 0;
+      background: rgba(10, 35, 66, 0.92); backdrop-filter: blur(10px);
+      box-shadow: 0 8px 28px rgba(0,0,0,0.08); padding: 8px 0;
     }
     .navbar-custom .navbar-brand {
-      font-weight: 700;
-      color: var(--white);
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      letter-spacing: -0.02em;
+      font-weight: 700; color: var(--white);
+      display: flex; align-items: center; gap: 12px; letter-spacing: -0.02em;
     }
     .navbar-custom .navbar-brand .logo-wrapper {
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      overflow: hidden;
-      border: 2px solid rgba(255,255,255,0.25);
-      background: rgba(255,255,255,0.06);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      padding: 3px;
+      width: 48px; height: 48px; border-radius: 50%; overflow: hidden;
+      border: 2px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.06);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; padding: 3px;
     }
     .navbar-custom .navbar-brand .logo-wrapper img {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      border-radius: 50%;
+      width: 100%; height: 100%; object-fit: contain; border-radius: 50%;
     }
-    .navbar-custom .navbar-brand .brand-text {
-      display: flex;
-      flex-direction: column;
-      line-height: 1.2;
-    }
-    .navbar-custom .navbar-brand .brand-text .main {
-      font-size: 1.2rem;
-      font-weight: 700;
-      letter-spacing: -0.01em;
-    }
+    .navbar-custom .navbar-brand .brand-text { display: flex; flex-direction: column; line-height: 1.2; }
+    .navbar-custom .navbar-brand .brand-text .main { font-size: 1.2rem; font-weight: 700; letter-spacing: -0.01em; }
     .navbar-custom .navbar-brand .brand-text .sub {
-      font-size: 0.6rem;
-      font-weight: 400;
-      opacity: 0.7;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
+      font-size: 0.6rem; font-weight: 400; opacity: 0.7;
+      letter-spacing: 0.5px; text-transform: uppercase;
     }
     .navbar-custom .nav-link {
-      color: rgba(255,255,255,0.8);
-      font-weight: 500;
-      font-size: 0.95rem;
-      transition: 0.2s;
+      color: rgba(255,255,255,0.8); font-weight: 500; font-size: 0.95rem; transition: 0.2s;
     }
-    .navbar-custom .nav-link:hover {
-      color: #fff;
-    }
-    .navbar-custom .navbar-collapse {
-      transition: all 0.25s ease;
-    }
+    .navbar-custom .nav-link:hover { color: #fff; }
+    .navbar-custom .navbar-collapse { transition: all 0.25s ease; }
 
     .btn-green {
-      background: var(--green);
-      color: #fff;
-      border: none;
-      font-weight: 600;
-      transition: 0.25s ease;
-      border-radius: 50px;
-      padding: 10px 28px;
-      font-size: 0.95rem;
+      background: var(--green); color: #fff; border: none; font-weight: 600;
+      transition: 0.25s ease; border-radius: 50px; padding: 10px 28px; font-size: 0.95rem;
     }
     .btn-green:hover {
-      background: var(--green-dark);
-      color: #fff;
-      transform: translateY(-2px);
-      box-shadow: 0 10px 24px rgba(15, 151, 61, 0.3);
+      background: var(--green-dark); color: #fff;
+      transform: translateY(-2px); box-shadow: 0 10px 24px rgba(15, 151, 61, 0.3);
     }
-    .btn-outline-light {
-      border-radius: 50px;
-      padding: 10px 26px;
-      font-weight: 500;
-    }
+    .btn-outline-light { border-radius: 50px; padding: 10px 26px; font-weight: 500; }
 
-    /* ============================================
-       HERO SECTION — FULL-BLEED BG IMAGE
-       ============================================ */
+    /* ========== HERO ========== */
     .hero-section {
-      position: relative;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      background: var(--navy-deep);
-      overflow: hidden;
-      padding: 140px 0 80px;
+      position: relative; min-height: 100vh; display: flex; align-items: center;
+      background: var(--navy-deep); overflow: hidden; padding: 140px 0 80px;
     }
-
-    /* Layer 1: Full-bleed background image */
     .hero-section::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background-image: url('bg.png');
-      background-repeat: no-repeat;
-      background-size: cover;              /* fill entire hero on all screens */
-      background-position: center center;  /* always centered */
-      opacity: 0.35;                       /* visible enough to see the artwork */
-      pointer-events: none;
-      z-index: 0;
+      content: ''; position: absolute; inset: 0;
+      background-image: url('bg.png'); background-repeat: no-repeat;
+      background-size: cover; background-position: center center;
+      opacity: 0.35; pointer-events: none; z-index: 0;
     }
-
-    /* Layer 2: Dark overlay for readability (professional look) */
     .hero-section::after {
-      content: '';
-      position: absolute;
-      inset: 0;
+      content: ''; position: absolute; inset: 0;
       background:
         linear-gradient(135deg, rgba(6, 20, 40, 0.85) 0%, rgba(10, 35, 66, 0.70) 45%, rgba(6, 20, 40, 0.85) 100%),
         radial-gradient(circle at 80% 50%, rgba(15, 151, 61, 0.15) 0%, transparent 55%);
-      pointer-events: none;
-      z-index: 1;
+      pointer-events: none; z-index: 1;
     }
-
-    /* Content sits above both layers */
-    .hero-section .container {
-      position: relative;
-      z-index: 2;
-    }
-
+    .hero-section .container { position: relative; z-index: 2; }
     .hero-title {
-      font-size: 3.8rem;
-      font-weight: 800;
-      color: #fff;
-      line-height: 1.05;
-      letter-spacing: -0.02em;
+      font-size: 3.8rem; font-weight: 800; color: #fff;
+      line-height: 1.05; letter-spacing: -0.02em;
       text-shadow: 0 2px 20px rgba(0,0,0,0.25);
     }
     .hero-title .highlight {
       background: linear-gradient(135deg, var(--green-light), var(--green));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
       background-clip: text;
-      font-family: 'Inter', sans-serif;
     }
     .hero-subtitle {
-      color: rgba(255,255,255,0.82);
-      font-size: 1.15rem;
-      max-width: 520px;
-      margin: 20px 0 32px;
-      font-weight: 400;
-      text-shadow: 0 1px 10px rgba(0,0,0,0.25);
+      color: rgba(255,255,255,0.82); font-size: 1.15rem;
+      max-width: 520px; margin: 20px 0 32px;
     }
     .hero-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      background: rgba(255,255,255,0.10);
-      backdrop-filter: blur(8px);
-      padding: 8px 22px;
-      border-radius: 40px;
-      color: var(--green-light);
-      font-weight: 600;
-      border: 1px solid rgba(74, 222, 128, 0.25);
-      margin-bottom: 28px;
-      font-size: 0.9rem;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+      display: inline-flex; align-items: center; gap: 10px;
+      background: rgba(255,255,255,0.10); backdrop-filter: blur(8px);
+      padding: 8px 22px; border-radius: 40px; color: var(--green-light);
+      font-weight: 600; border: 1px solid rgba(74, 222, 128, 0.25);
+      margin-bottom: 28px; font-size: 0.9rem;
     }
     .pulse-dot {
-      width: 10px;
-      height: 10px;
-      background: var(--green);
-      border-radius: 50%;
-      display: inline-block;
+      width: 10px; height: 10px; background: var(--green);
+      border-radius: 50%; display: inline-block;
       animation: pulse-dot 1.8s infinite;
-      box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.6);
     }
     @keyframes pulse-dot {
       0%, 100% { opacity: 1; transform: scale(1); }
       50% { opacity: 0.5; transform: scale(1.3); }
     }
     .hero-stats {
-      display: flex;
-      gap: 48px;
-      margin-top: 42px;
-      padding-top: 32px;
-      border-top: 1px solid rgba(255,255,255,0.12);
-      flex-wrap: wrap;
+      display: flex; gap: 48px; margin-top: 42px; padding-top: 32px;
+      border-top: 1px solid rgba(255,255,255,0.12); flex-wrap: wrap;
     }
     .stat-item .number {
-      font-size: 2rem;
-      font-weight: 700;
-      color: #fff;
-      display: block;
-      letter-spacing: -0.01em;
-      text-shadow: 0 2px 12px rgba(0,0,0,0.3);
+      font-size: 2rem; font-weight: 700; color: #fff;
+      display: block; letter-spacing: -0.01em;
     }
     .stat-item .label {
-      font-size: 0.75rem;
-      color: rgba(255,255,255,0.7);
-      font-weight: 500;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-top: 4px;
+      font-size: 0.75rem; color: rgba(255,255,255,0.7); font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px;
     }
-    .hero-visual {
-      position: relative;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
+    .hero-visual { position: relative; display: flex; justify-content: center; align-items: center; }
     .pulse-ring {
-      width: 260px;
-      height: 260px;
-      border-radius: 50%;
+      width: 260px; height: 260px; border-radius: 50%;
       border: 2px solid rgba(74, 222, 128, 0.25);
-      position: relative;
-      animation: ring-pulse 4s infinite;
+      position: relative; animation: ring-pulse 4s infinite;
     }
     .pulse-ring::after {
-      content: '';
-      position: absolute;
-      inset: -20px;
-      border-radius: 50%;
+      content: ''; position: absolute; inset: -20px; border-radius: 50%;
       border: 1px solid rgba(74, 222, 128, 0.10);
       animation: ring-pulse 4s infinite 1s;
     }
@@ -269,52 +139,28 @@
       100% { transform: scale(0.95); opacity: 0.5; }
     }
     .emergency-icon {
-      position: absolute;
-      width: 110px;
-      height: 110px;
-      background: rgba(15, 151, 61, 0.15);
-      backdrop-filter: blur(8px);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 3.6rem;
-      color: var(--green-light);
+      position: absolute; width: 110px; height: 110px;
+      background: rgba(15, 151, 61, 0.15); backdrop-filter: blur(8px);
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 3.6rem; color: var(--green-light);
       border: 1px solid rgba(74, 222, 128, 0.3);
       box-shadow: 0 8px 32px rgba(15, 151, 61, 0.3);
     }
-    .section-header {
-      text-align: center;
-      max-width: 640px;
-      margin: 0 auto 48px;
-    }
+
+    /* ========== SECTIONS ========== */
+    .section-header { text-align: center; max-width: 640px; margin: 0 auto 48px; }
     .section-header .badge {
-      background: rgba(15, 151, 61, 0.10);
-      color: var(--green);
-      font-weight: 600;
-      padding: 6px 20px;
-      border-radius: 40px;
-      font-size: 0.8rem;
-      letter-spacing: 0.3px;
+      background: rgba(15, 151, 61, 0.10); color: var(--green);
+      font-weight: 600; padding: 6px 20px; border-radius: 40px; font-size: 0.8rem;
     }
     .section-header h2 {
-      font-weight: 700;
-      color: var(--navy);
-      margin-top: 14px;
-      font-size: 2.3rem;
-      letter-spacing: -0.02em;
+      font-weight: 700; color: var(--navy); margin-top: 14px;
+      font-size: 2.3rem; letter-spacing: -0.02em;
     }
-    .section-header p {
-      color: #5a6e8a;
-      font-size: 1.05rem;
-    }
+    .section-header p { color: #5a6e8a; font-size: 1.05rem; }
     .feature-card, .action-card {
-      background: #fff;
-      border-radius: var(--radius);
-      padding: 32px 24px;
-      box-shadow: var(--shadow);
-      transition: 0.3s ease;
-      height: 100%;
+      background: #fff; border-radius: var(--radius); padding: 32px 24px;
+      box-shadow: var(--shadow); transition: 0.3s ease; height: 100%;
       border: 1px solid rgba(0,0,0,0.02);
     }
     .feature-card:hover, .action-card:hover {
@@ -322,143 +168,189 @@
       box-shadow: 0 28px 48px -16px rgba(10, 35, 66, 0.14);
     }
     .feature-card .icon {
-      width: 56px;
-      height: 56px;
-      background: rgba(15, 151, 61, 0.07);
-      border-radius: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.6rem;
-      color: var(--green);
-      margin-bottom: 18px;
+      width: 56px; height: 56px; background: rgba(15, 151, 61, 0.07);
+      border-radius: 16px; display: flex; align-items: center; justify-content: center;
+      font-size: 1.6rem; color: var(--green); margin-bottom: 18px;
     }
-    .feature-card h5 {
-      font-weight: 700;
-      font-size: 1.1rem;
-      color: var(--navy);
-    }
-    .feature-card p {
-      color: #5a6e8a;
-      font-size: 0.92rem;
-    }
-    .about-section {
-      background: #fff;
-      padding: 80px 0;
-    }
-    .about-stat .number {
-      font-size: 2.2rem;
-      font-weight: 800;
-      color: var(--navy);
-      display: block;
-    }
-    .about-stat .label {
-      color: #5a6e8a;
-      font-weight: 500;
-    }
-    .quick-actions {
-      padding: 60px 0;
-      background: var(--gray-light);
-    }
-    .footer {
-      background: var(--navy);
-      color: rgba(255,255,255,0.7);
-      padding: 48px 0 24px;
-    }
+    .feature-card h5 { font-weight: 700; font-size: 1.1rem; color: var(--navy); }
+    .feature-card p { color: #5a6e8a; font-size: 0.92rem; }
+    .about-section { background: #fff; padding: 80px 0; }
+    .about-stat .number { font-size: 2.2rem; font-weight: 800; color: var(--navy); display: block; }
+    .about-stat .label { color: #5a6e8a; font-weight: 500; }
+    .quick-actions { padding: 60px 0; background: var(--gray-light); }
+    .footer { background: var(--navy); color: rgba(255,255,255,0.7); padding: 48px 0 24px; }
     .footer h5, .footer h6 { color: #fff; font-weight: 600; }
-    .footer a {
-      color: rgba(255,255,255,0.6);
-      text-decoration: none;
-      transition: 0.2s;
-    }
+    .footer a { color: rgba(255,255,255,0.6); text-decoration: none; transition: 0.2s; }
     .footer a:hover { color: var(--green-light); }
     .emergency-float {
-      position: fixed;
-      bottom: 28px;
-      right: 28px;
-      width: 64px;
-      height: 64px;
-      border-radius: 50%;
-      background: var(--green);
-      border: none;
-      color: #fff;
-      font-size: 1.6rem;
-      box-shadow: 0 8px 28px rgba(15, 151, 61, 0.35);
-      z-index: 999;
-      transition: 0.25s ease;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      position: fixed; bottom: 28px; right: 28px; width: 64px; height: 64px;
+      border-radius: 50%; background: var(--green); border: none; color: #fff;
+      font-size: 1.6rem; box-shadow: 0 8px 28px rgba(15, 151, 61, 0.35);
+      z-index: 999; transition: 0.25s ease;
+      display: flex; align-items: center; justify-content: center;
     }
-    .emergency-float:hover {
-      transform: scale(1.06);
-      background: var(--green-dark);
-    }
+    .emergency-float:hover { transform: scale(1.06); background: var(--green-dark); }
     .reveal {
-      opacity: 0;
-      transform: translateY(28px);
+      opacity: 0; transform: translateY(28px);
       transition: opacity 0.7s ease, transform 0.7s ease;
     }
-    .reveal.visible {
-      opacity: 1;
-      transform: translateY(0);
-    }
-    .toast-container {
-      position: fixed;
-      top: 80px;
-      right: 20px;
-      z-index: 9999;
-      max-width: 380px;
-    }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+    .toast-container { position: fixed; top: 80px; right: 20px; z-index: 9999; max-width: 380px; }
 
-    .password-wrapper {
-      position: relative;
+    /* ========== AUTH MODALS ========== */
+    .auth-modal .modal-content {
+      border: none; border-radius: 24px; overflow: hidden;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.25);
     }
-    .password-wrapper .form-control {
-      padding-right: 48px;
+    .auth-modal .modal-header {
+      background: linear-gradient(135deg, var(--navy) 0%, var(--navy-deep) 100%);
+      color: #fff; border: none; padding: 24px 28px;
+      position: relative; overflow: hidden;
     }
-    .toggle-password {
-      position: absolute;
-      right: 14px;
-      top: 50%;
-      transform: translateY(-50%);
-      background: none;
-      border: none;
-      color: #6c757d;
-      cursor: pointer;
-      padding: 8px;
-      border-radius: 50%;
+    .auth-modal .modal-header::before {
+      content: ''; position: absolute; top: -50%; right: -20%;
+      width: 200px; height: 200px;
+      background: radial-gradient(circle, rgba(15,151,61,0.25) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .auth-modal .modal-header .modal-title {
+      font-weight: 700; font-size: 1.15rem;
+      display: flex; align-items: center; gap: 10px;
+      position: relative; z-index: 1;
+    }
+    .auth-modal .modal-header .btn-close {
+      filter: brightness(0) invert(1); opacity: 0.8;
+      position: relative; z-index: 1;
+    }
+    .auth-modal .modal-header .btn-close:hover { opacity: 1; }
+    .auth-modal .modal-body { padding: 28px; background: #fff; }
+    .auth-modal .form-floating { position: relative; }
+    .auth-modal .form-floating > .form-control {
+      border-radius: 14px; border: 2px solid #e9ecef; height: 58px;
+      font-size: 0.95rem; transition: all 0.25s ease; background: #f8fafc;
+    }
+    .auth-modal .form-floating > .form-control:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 0 4px rgba(15, 151, 61, 0.1);
+      background: #fff;
+    }
+    .auth-modal .form-floating > label {
+      color: #6c757d; font-size: 0.9rem; padding: 1rem 0.85rem;
+    }
+    .auth-modal .form-floating > .form-control:focus ~ label,
+    .auth-modal .form-floating > .form-control:not(:placeholder-shown) ~ label {
+      color: var(--green); font-weight: 500;
+    }
+    .auth-modal .form-control.is-invalid { border-color: var(--danger); background-image: none; }
+    .auth-modal .invalid-feedback { font-size: 0.8rem; font-weight: 500; }
+    .auth-modal .btn-green {
+      padding: 14px 28px; font-size: 1rem; border-radius: 14px;
+      font-weight: 600; letter-spacing: 0.3px;
+    }
+    .auth-modal .btn-green:disabled {
+      opacity: 0.6; cursor: not-allowed; transform: none !important;
+    }
+    .auth-modal .auth-divider {
+      display: flex; align-items: center; gap: 12px;
+      color: #adb5bd; font-size: 0.8rem; font-weight: 500; margin: 18px 0;
+    }
+    .auth-modal .auth-divider::before,
+    .auth-modal .auth-divider::after {
+      content: ''; flex: 1; height: 1px; background: #e9ecef;
+    }
+    .auth-modal .link-green {
+      color: var(--green); font-weight: 600;
+      text-decoration: none; transition: all 0.2s;
+    }
+    .auth-modal .link-green:hover { color: var(--green-dark); text-decoration: underline; }
+    .auth-modal .security-badge {
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      font-size: 0.75rem; color: #6c757d; margin-top: 16px;
+      padding: 8px 12px; background: #f8fafc;
+      border-radius: 10px; border: 1px solid #e9ecef;
+    }
+    .auth-modal .security-badge i { color: var(--green); }
+
+    /* Forgot password row */
+    .forgot-row {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 18px; gap: 8px; flex-wrap: wrap;
+    }
+    .forgot-link {
+      color: var(--green); font-weight: 600; text-decoration: none;
+      font-size: 0.85rem; display: inline-flex; align-items: center;
+      gap: 6px; padding: 6px 12px; border-radius: 8px;
       transition: all 0.2s ease;
-      z-index: 10;
-      font-size: 1.1rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
     }
-    .toggle-password:hover {
-      color: var(--green);
-      background: rgba(15, 151, 61, 0.08);
+    .forgot-link:hover {
+      color: var(--green-dark); background: rgba(15, 151, 61, 0.08);
+      text-decoration: none;
     }
-    .toggle-password:focus {
-      outline: none;
-      color: var(--green);
+    .forgot-link i { font-size: 0.8rem; }
+
+    /* Attempt warning */
+    .attempt-warning {
+      display: none; align-items: center; gap: 8px;
+      padding: 10px 14px; border-radius: 10px;
+      background: #fff3cd; color: #856404;
+      font-size: 0.82rem; font-weight: 500;
+      margin-bottom: 16px; border: 1px solid #ffeaa7;
+    }
+    .attempt-warning.danger { background: #f8d7da; color: #842029; border-color: #f5c2c7; }
+    .attempt-warning.show { display: flex; }
+    .attempt-warning i { font-size: 1rem; flex-shrink: 0; }
+
+    /* Lockout overlay */
+    .lockout-overlay { display: none; text-align: center; padding: 20px 0; }
+    .lockout-overlay.show { display: block; }
+    .lockout-icon {
+      width: 80px; height: 80px; margin: 0 auto 16px;
+      border-radius: 50%; background: linear-gradient(135deg, #fee2e2, #fecaca);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2.2rem; color: var(--danger);
+      animation: lockout-shake 0.6s ease;
+    }
+    @keyframes lockout-shake {
+      0%, 100% { transform: rotate(0); }
+      25% { transform: rotate(-8deg); }
+      75% { transform: rotate(8deg); }
+    }
+    .lockout-title { font-weight: 700; color: var(--navy); font-size: 1.15rem; margin-bottom: 8px; }
+    .lockout-text { color: #6c757d; font-size: 0.9rem; margin-bottom: 4px; }
+    .lockout-timer {
+      font-weight: 700; color: var(--danger);
+      font-size: 1.3rem; font-variant-numeric: tabular-nums;
+    }
+    .lockout-actions {
+      display: flex; gap: 8px; justify-content: center;
+      margin-top: 18px; flex-wrap: wrap;
+    }
+    .lockout-actions .btn {
+      border-radius: 12px; font-weight: 600;
+      font-size: 0.85rem; padding: 10px 20px;
     }
 
-    /* ============================================
-       RESPONSIVE — .hero-section::before IS NOT OVERRIDDEN
-       (image stays cover + center on ALL screens)
-       ============================================ */
+    /* Password wrapper */
+    .password-wrapper { position: relative; }
+    .password-wrapper .form-control { padding-right: 48px; }
+    .toggle-password {
+      position: absolute; right: 14px; top: 50%;
+      transform: translateY(-50%); background: none; border: none;
+      color: #6c757d; cursor: pointer; padding: 8px;
+      border-radius: 50%; transition: all 0.2s ease;
+      z-index: 10; font-size: 1.1rem;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .toggle-password:hover { color: var(--green); background: rgba(15, 151, 61, 0.08); }
+    .toggle-password:focus { outline: none; color: var(--green); }
 
+    /* ========== RESPONSIVE ========== */
     @media (max-width: 992px) {
       .hero-title { font-size: 2.8rem; }
       .hero-stats { gap: 28px; }
     }
-
     @media (max-width: 768px) {
-      .hero-section {
-        padding: 120px 0 60px;
-        min-height: auto;
-      }
+      .hero-section { padding: 120px 0 60px; min-height: auto; }
       .hero-title { font-size: 2.2rem; }
       .hero-subtitle { font-size: 0.95rem; }
       .hero-stats .stat-item .number { font-size: 1.5rem; }
@@ -468,99 +360,45 @@
       .navbar-custom .navbar-brand .logo-wrapper { width: 38px; height: 38px; }
       .navbar-custom .navbar-brand .brand-text .main { font-size: 1rem; }
       .navbar-custom .navbar-brand .brand-text .sub { font-size: 0.5rem; }
-
       .navbar-custom .navbar-collapse {
-        background: rgba(10, 35, 66, 0.97);
-        backdrop-filter: blur(12px);
-        border-radius: 16px;
-        padding: 16px;
-        margin-top: 12px;
+        background: rgba(10, 35, 66, 0.97); backdrop-filter: blur(12px);
+        border-radius: 16px; padding: 16px; margin-top: 12px;
         box-shadow: 0 12px 32px rgba(0,0,0,0.25);
       }
-      .navbar-custom .navbar-nav {
-        gap: 6px !important;
-      }
-      .navbar-custom .nav-link {
-        padding: 10px 14px !important;
-        border-radius: 8px;
-        color: rgba(255,255,255,0.9);
-      }
-      .navbar-custom .nav-link:hover,
-      .navbar-custom .nav-link.active {
-        background: rgba(255,255,255,0.08);
-        color: #fff;
-      }
-      .navbar-custom .nav-item {
-        width: 100%;
-      }
-      .navbar-custom .btn {
-        margin-bottom: 4px;
-      }
-
-      .hero-section .btn-lg {
-        width: 100%;
-        padding: 12px 20px;
-        font-size: 1rem;
-      }
-
+      .navbar-custom .navbar-nav { gap: 6px !important; }
+      .navbar-custom .nav-link { padding: 10px 14px !important; border-radius: 8px; color: rgba(255,255,255,0.9); }
+      .navbar-custom .nav-link:hover, .navbar-custom .nav-link.active { background: rgba(255,255,255,0.08); color: #fff; }
+      .navbar-custom .nav-item { width: 100%; }
+      .navbar-custom .btn { margin-bottom: 4px; }
+      .hero-section .btn-lg { width: 100%; padding: 12px 20px; font-size: 1rem; }
       .about-section { padding: 56px 0; }
       .feature-card, .action-card { padding: 24px 20px; }
-
-      .emergency-float {
-        width: 56px;
-        height: 56px;
-        font-size: 1.4rem;
-        bottom: 20px;
-        right: 20px;
-      }
-
-      .toast-container {
-        right: 12px;
-        left: 12px;
-        max-width: none;
-      }
-
+      .emergency-float { width: 56px; height: 56px; font-size: 1.4rem; bottom: 20px; right: 20px; }
+      .toast-container { right: 12px; left: 12px; max-width: none; }
       .footer { text-align: center; }
       .footer .row > div { margin-bottom: 24px; }
       .footer .text-success.fs-4 { font-size: 1.1rem !important; }
+      .auth-modal .modal-body { padding: 22px 20px; }
     }
-
     @media (max-width: 576px) {
-      .hero-section {
-        padding: 110px 0 48px;
-      }
+      .hero-section { padding: 110px 0 48px; }
       .hero-title { font-size: 1.9rem; }
       .hero-subtitle { font-size: 0.9rem; margin: 16px 0 24px; }
-      .hero-badge {
-        font-size: 0.75rem;
-        padding: 6px 16px;
-        margin-bottom: 20px;
-      }
-      .hero-stats {
-        gap: 16px;
-        margin-top: 32px;
-        padding-top: 24px;
-      }
+      .hero-badge { font-size: 0.75rem; padding: 6px 16px; margin-bottom: 20px; }
+      .hero-stats { gap: 16px; margin-top: 32px; padding-top: 24px; }
       .stat-item .number { font-size: 1.3rem; }
       .stat-item .label { font-size: 0.65rem; }
-
       .section-header h2 { font-size: 1.5rem; }
       .section-header p { font-size: 0.9rem; }
       .section-header { margin-bottom: 32px; }
-
       .navbar-custom .container { padding-left: 14px; padding-right: 14px; }
       .navbar-custom .navbar-brand .brand-text .main { font-size: 0.9rem; }
       .navbar-custom .navbar-brand .brand-text .sub { font-size: 0.45rem; }
-
-      .feature-card .icon {
-        width: 48px; height: 48px; font-size: 1.3rem;
-      }
+      .feature-card .icon { width: 48px; height: 48px; font-size: 1.3rem; }
       .feature-card h5 { font-size: 1rem; }
       .feature-card p { font-size: 0.85rem; }
-
       .footer .text-success.fs-4 { font-size: 1rem !important; }
     }
-
     @media (max-width: 380px) {
       .hero-title { font-size: 1.65rem; }
       .hero-stats { gap: 12px; }
@@ -789,30 +627,77 @@
   <i class="fas fa-exclamation-triangle"></i>
 </button>
 
-<!-- Login Modal -->
-<div class="modal fade" id="loginModal" tabindex="-1">
+<!-- ============================================================
+     LOGIN MODAL (with Forgot Password + 5-min lockout)
+     ============================================================ -->
+<div class="modal fade auth-modal" id="loginModal" tabindex="-1" data-bs-backdrop="static">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title"><i class="fas fa-sign-in-alt text-danger me-2"></i>Login</h5>
+        <h5 class="modal-title"><i class="fas fa-shield-halved"></i> Resident Login</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
-        <form id="loginForm" onsubmit="handleLogin(event)">
-          <div class="form-floating mb-3">
-            <input type="email" class="form-control" id="loginEmail" placeholder="Email" required>
-            <label for="loginEmail">Email Address</label>
+        <div class="attempt-warning" id="loginAttemptWarning">
+          <i class="fas fa-exclamation-triangle"></i>
+          <span id="loginAttemptWarningText">Incorrect password. <strong>2</strong> attempts remaining.</span>
+        </div>
+
+        <div class="lockout-overlay" id="lockoutOverlay">
+          <div class="lockout-icon"><i class="fas fa-lock"></i></div>
+          <div class="lockout-title">Account Temporarily Locked</div>
+          <div class="lockout-text">Too many failed attempts. Try again in</div>
+          <div class="lockout-timer" id="lockoutTimer">05:00</div>
+          <div class="lockout-text mt-2" style="font-size:0.8rem;">
+            <i class="fas fa-info-circle me-1"></i>
+            You can still recover your password below.
           </div>
-          <div class="form-floating mb-3 password-wrapper">
-            <input type="password" class="form-control" id="loginPassword" placeholder="Password" required>
-            <label for="loginPassword">Password</label>
+          <div class="lockout-actions">
+            <button type="button" class="btn btn-green" onclick="openForgotPasswordModal()">
+              <i class="fas fa-key me-1"></i>Forgot Password
+            </button>
+            <button type="button" class="btn btn-outline-secondary" onclick="closeLockoutAndShowForm()">
+              <i class="fas fa-redo me-1"></i>Retry
+            </button>
+          </div>
+        </div>
+
+        <form id="loginForm" onsubmit="handleLogin(event)" autocomplete="on">
+          <div class="form-floating mb-3">
+            <input type="email" class="form-control" id="loginEmail" placeholder="Email" required autocomplete="email">
+            <label for="loginEmail"><i class="fas fa-envelope me-2"></i>Email Address</label>
+          </div>
+          <div class="form-floating mb-2 password-wrapper">
+            <input type="password" class="form-control" id="loginPassword" placeholder="Password" required autocomplete="current-password">
+            <label for="loginPassword"><i class="fas fa-lock me-2"></i>Password</label>
             <button type="button" class="toggle-password" onclick="togglePassword('loginPassword', this)" aria-label="Toggle password visibility">
               <i class="fas fa-eye"></i>
             </button>
           </div>
-          <button type="submit" class="btn btn-green btn-lg w-100">Login</button>
-          <div class="text-center mt-3">
-            <small class="text-muted">Don't have an account? <a href="#" onclick="event.preventDefault(); switchToRegister();">Register</a></small>
+          <div class="forgot-row">
+            <small class="text-muted">
+              <i class="fas fa-shield-alt me-1" style="color:var(--green);"></i>
+              Max 5 attempts · 5 min lockout
+            </small>
+            <a href="#" class="forgot-link" onclick="event.preventDefault(); openForgotPasswordModal();">
+              <i class="fas fa-key"></i> Forgot Password?
+            </a>
+          </div>
+          <button type="submit" class="btn btn-green btn-lg w-100" id="loginBtn">
+            <i class="fas fa-sign-in-alt me-2"></i>Login
+          </button>
+
+          <div class="auth-divider">or</div>
+
+          <div class="text-center">
+            <small class="text-muted">Don't have an account?
+              <a href="#" class="link-green" onclick="event.preventDefault(); switchToRegister();">Register here</a>
+            </small>
+          </div>
+
+          <div class="security-badge">
+            <i class="fas fa-lock"></i>
+            <span>Secured with 256-bit encryption</span>
           </div>
         </form>
       </div>
@@ -820,7 +705,40 @@
   </div>
 </div>
 
-<!-- Register Modal -->
+<!-- ============================================================
+     FORGOT PASSWORD MODAL — Supabase Built-in Reset
+     ============================================================ -->
+<div class="modal fade auth-modal" id="forgotPasswordModal" tabindex="-1" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-key"></i> Reset Password</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted mb-3" style="font-size:0.9rem;">
+          Enter your registered email address. We'll send you a password reset link.
+        </p>
+        <div class="form-floating mb-3">
+          <input type="email" class="form-control" id="forgotEmail" placeholder="Email" required>
+          <label for="forgotEmail"><i class="fas fa-envelope me-2"></i>Registered Email</label>
+        </div>
+        <button type="button" class="btn btn-green btn-lg w-100" id="sendResetBtn" onclick="sendPasswordReset()">
+          <i class="fas fa-paper-plane me-2"></i>Send Reset Link
+        </button>
+        <div class="text-center mt-3">
+          <a href="#" class="link-green" style="font-size:0.85rem;" onclick="event.preventDefault(); backToLoginFromForgot();">
+            <i class="fas fa-arrow-left me-1"></i>Back to Login
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     REGISTER MODAL
+     ============================================================ -->
 <div class="modal fade" id="registerModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -880,10 +798,21 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
 <script src="js/supabase.js"></script>
 <script>
+  // ============================================================
+  // CONFIG
+  // ============================================================
+  const MAX_LOGIN_ATTEMPTS = 5;
+  const LOCKOUT_DURATION_MS = 5 * 60 * 1000; // 5 minutes
+  const ATTEMPT_KEY = 'culiat_login_attempts';
+  const LOCKOUT_KEY = 'culiat_login_lockout';
+  const RESET_REDIRECT_URL = 'https://ecs.culiatpublicsafety.com/reset-password.html';
+
+  // ============================================================
+  // PASSWORD TOGGLE
+  // ============================================================
   function togglePassword(inputId, buttonElement) {
     const input = document.getElementById(inputId);
     const icon = buttonElement.querySelector('i');
-    
     if (input.type === 'password') {
       input.type = 'text';
       icon.classList.remove('fa-eye');
@@ -895,9 +824,9 @@
     }
   }
 
-  let isAdminMode = false;
-  let loginModal = null, registerModal = null;
-
+  // ============================================================
+  // TOAST
+  // ============================================================
   function showToast(message, type = 'info', duration = 5000) {
     const container = document.getElementById('toastContainer');
     const colors = { success: 'bg-success text-white', danger: 'bg-danger text-white', warning: 'bg-warning text-dark', info: 'bg-info text-white' };
@@ -917,20 +846,151 @@
     setTimeout(() => toast.remove(), duration + 500);
   }
 
+  // ============================================================
+  // LOGIN ATTEMPT TRACKING
+  // ============================================================
+  function getLoginAttempts() {
+    try {
+      const raw = localStorage.getItem(ATTEMPT_KEY);
+      return raw ? JSON.parse(raw) : { count: 0, firstAttempt: null, email: null };
+    } catch { return { count: 0, firstAttempt: null, email: null }; }
+  }
+  function saveLoginAttempts(data) { localStorage.setItem(ATTEMPT_KEY, JSON.stringify(data)); }
+  function resetLoginAttempts() { localStorage.removeItem(ATTEMPT_KEY); }
+
+  function getLockoutUntil() {
+    try {
+      const raw = localStorage.getItem(LOCKOUT_KEY);
+      if (!raw) return null;
+      const ts = parseInt(raw, 10);
+      if (Date.now() >= ts) { localStorage.removeItem(LOCKOUT_KEY); return null; }
+      return ts;
+    } catch { return null; }
+  }
+  function setLockoutUntil(ts) { localStorage.setItem(LOCKOUT_KEY, String(ts)); }
+
+  function checkLockout() {
+    const until = getLockoutUntil();
+    if (until) { showLockoutUI(until); return true; }
+    return false;
+  }
+
+  function showLockoutUI(until) {
+    const overlay = document.getElementById('lockoutOverlay');
+    const form = document.getElementById('loginForm');
+    const warning = document.getElementById('loginAttemptWarning');
+    if (!overlay) return;
+    overlay.classList.add('show');
+    if (form) form.style.display = 'none';
+    if (warning) warning.classList.remove('show');
+
+    const updateTimer = () => {
+      const remaining = until - Date.now();
+      if (remaining <= 0) {
+        overlay.classList.remove('show');
+        if (form) form.style.display = '';
+        resetLoginAttempts();
+        localStorage.removeItem(LOCKOUT_KEY);
+        showToast('Lockout expired. You may try again.', 'success');
+        return;
+      }
+      const mins = Math.floor(remaining / 60000);
+      const secs = Math.floor((remaining % 60000) / 1000);
+      const timerEl = document.getElementById('lockoutTimer');
+      if (timerEl) timerEl.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+      requestAnimationFrame(() => setTimeout(updateTimer, 1000));
+    };
+    updateTimer();
+  }
+
+  function closeLockoutAndShowForm() {
+    const until = getLockoutUntil();
+    if (until && until > Date.now()) {
+      showToast('Please wait for the lockout to expire before retrying.', 'warning', 4000);
+      return;
+    }
+    const overlay = document.getElementById('lockoutOverlay');
+    const form = document.getElementById('loginForm');
+    if (overlay) overlay.classList.remove('show');
+    if (form) form.style.display = '';
+    resetLoginAttempts();
+    localStorage.removeItem(LOCKOUT_KEY);
+    showToast('You can try again now.', 'info', 3000);
+  }
+  window.closeLockoutAndShowForm = closeLockoutAndShowForm;
+
+  function updateAttemptWarning(remaining) {
+    const warning = document.getElementById('loginAttemptWarning');
+    const text = document.getElementById('loginAttemptWarningText');
+    if (!warning || !text) return;
+    if (remaining <= 0) { warning.classList.remove('show'); return; }
+    warning.classList.add('show');
+    if (remaining <= 2) {
+      warning.classList.add('danger');
+      text.innerHTML = `Incorrect password. <strong>${remaining}</strong> attempt${remaining !== 1 ? 's' : ''} remaining before lockout.`;
+    } else {
+      warning.classList.remove('danger');
+      text.innerHTML = `Incorrect password. <strong>${remaining}</strong> attempt${remaining !== 1 ? 's' : ''} remaining.`;
+    }
+  }
+
+  // ============================================================
+  // MODAL MANAGEMENT
+  // ============================================================
+  let loginModal = null, registerModal = null, forgotModal = null;
+
   function openLoginModal() {
     if (!loginModal) loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
+    const form = document.getElementById('loginForm');
+    const overlay = document.getElementById('lockoutOverlay');
+    const warning = document.getElementById('loginAttemptWarning');
+    if (form) form.style.display = '';
+    if (overlay) overlay.classList.remove('show');
+    if (warning) warning.classList.remove('show');
     loginModal.show();
+    setTimeout(checkLockout, 300);
   }
+
   function openRegisterModal() {
     if (!registerModal) registerModal = new bootstrap.Modal(document.getElementById('registerModal'));
     registerModal.show();
     document.getElementById('rateLimitWarning').style.display = 'none';
   }
-  function switchToRegister() { if (loginModal) loginModal.hide(); setTimeout(openRegisterModal, 300); }
-  function switchToLogin() { if (registerModal) registerModal.hide(); setTimeout(openLoginModal, 300); }
-  window.openLoginModal = openLoginModal; window.openRegisterModal = openRegisterModal;
-  window.switchToRegister = switchToRegister; window.switchToLogin = switchToLogin;
 
+  function openForgotPasswordModal() {
+    if (loginModal) loginModal.hide();
+    setTimeout(() => {
+      if (!forgotModal) forgotModal = new bootstrap.Modal(document.getElementById('forgotPasswordModal'));
+      document.getElementById('forgotEmail').value = '';
+      forgotModal.show();
+    }, 300);
+  }
+
+  function backToLoginFromForgot() {
+    if (forgotModal) forgotModal.hide();
+    setTimeout(openLoginModal, 300);
+  }
+  window.backToLoginFromForgot = backToLoginFromForgot;
+
+  function switchToRegister() {
+    if (loginModal) loginModal.hide();
+    setTimeout(openRegisterModal, 300);
+  }
+  function switchToLogin() {
+    if (registerModal) registerModal.hide();
+    setTimeout(openLoginModal, 300);
+  }
+
+  window.openLoginModal = openLoginModal;
+  window.openRegisterModal = openRegisterModal;
+  window.switchToRegister = switchToRegister;
+  window.switchToLogin = switchToLogin;
+  window.openForgotPasswordModal = openForgotPasswordModal;
+
+  // ============================================================
+  // ADMIN MODE
+  // ============================================================
+  let isAdminMode = false;
   function toggleAdminMode() {
     isAdminMode = !isAdminMode;
     const section = document.getElementById('adminCreateSection');
@@ -946,6 +1006,9 @@
   }
   window.toggleAdminMode = toggleAdminMode;
 
+  // ============================================================
+  // REGISTER
+  // ============================================================
   async function handleRegister(event) {
     event.preventDefault();
     const fullName = document.getElementById('regFullName').value.trim();
@@ -1021,40 +1084,188 @@
     }
   }
 
+  // ============================================================
+  // LOGIN WITH RATE LIMITING + ROLE CHECK
+  // ============================================================
   async function handleLogin(event) {
     event.preventDefault();
-    const email = document.getElementById('loginEmail').value.trim();
+    if (checkLockout()) return;
+
+    const email = document.getElementById('loginEmail').value.trim().toLowerCase();
     const password = document.getElementById('loginPassword').value;
+    const btn = document.getElementById('loginBtn');
+
     if (!email || !password) { showToast('Please fill in all fields', 'warning'); return; }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Signing in...';
+
     try {
       const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
       if (error) {
-        if (error.message.includes('Email not confirmed')) { showToast('Please confirm your email first.', 'warning', 6000); return; }
-        throw error;
+        let attempts = getLoginAttempts();
+        if (attempts.email !== email) attempts = { count: 0, firstAttempt: Date.now(), email };
+        attempts.count += 1;
+        attempts.email = email;
+        saveLoginAttempts(attempts);
+
+        const remaining = MAX_LOGIN_ATTEMPTS - attempts.count;
+
+        if (attempts.count >= MAX_LOGIN_ATTEMPTS) {
+          const until = Date.now() + LOCKOUT_DURATION_MS;
+          setLockoutUntil(until);
+          resetLoginAttempts();
+          showLockoutUI(until);
+          showToast('🚫 Too many failed attempts. Account locked for 5 minutes.', 'danger', 8000);
+        } else {
+          updateAttemptWarning(remaining);
+          showToast(
+            error.message.includes('Invalid login')
+              ? `Incorrect email or password. ${remaining} attempt${remaining !== 1 ? 's' : ''} remaining.`
+              : error.message,
+            'danger'
+          );
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Login';
+        return;
       }
-      if (!data.user) { showToast('User not found', 'danger'); return; }
-      const { data: profile } = await supabaseClient.from('profiles').select('role').eq('id', data.user.id).maybeSingle();
+
+      if (!data.user) {
+        showToast('User not found', 'danger');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Login';
+        return;
+      }
+
+      const { data: profile, error: profileError } = await supabaseClient
+        .from('profiles').select('role, full_name').eq('id', data.user.id).maybeSingle();
+
+      if (profileError) console.error('Profile error:', profileError);
       const role = profile?.role || 'resident';
-      showToast('Login successful!', 'success');
+
+      // Block admins/responders from resident login
+      if (role === 'admin' || role === 'responder') {
+        await supabaseClient.auth.signOut();
+        showToast('🚫 Access denied. Admins/Responders must use the dedicated login page.', 'danger', 7000);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Login';
+        return;
+      }
+
+      resetLoginAttempts();
+      localStorage.removeItem(LOCKOUT_KEY);
+      showToast(`✅ Welcome back, ${profile?.full_name || 'Resident'}!`, 'success');
+
       if (loginModal) loginModal.hide();
-      setTimeout(() => {
-        window.location.href = role === 'resident' ? 'resident/dashboard.html' : 'responder/dashboard.html';
-      }, 1000);
+      setTimeout(() => { window.location.href = 'resident/dashboard.html'; }, 1000);
+
     } catch (error) {
-      showToast('Login failed: ' + error.message, 'danger');
       console.error('Login error:', error);
+      showToast('Login failed: ' + (error.message || 'Unknown error'), 'danger');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Login';
     }
   }
 
+  // ============================================================
+  // SEND PASSWORD RESET EMAIL — Supabase Built-in
+  // ============================================================
+  async function sendPasswordReset() {
+    const email = document.getElementById('forgotEmail').value.trim().toLowerCase();
+
+    if (!email) {
+      showToast('Please enter your email address', 'warning');
+      return;
+    }
+
+    const btn = document.getElementById('sendResetBtn');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Sending...';
+
+    try {
+      // Check if email exists & is a resident (don't reveal to user)
+      const { data: profile } = await supabaseClient
+        .from('profiles')
+        .select('id, role')
+        .eq('email', email)
+        .maybeSingle();
+
+      // Block admin/responder accounts (they use login.html)
+      if (profile && (profile.role === 'admin' || profile.role === 'responder')) {
+        showToast('Admin/Responder accounts must use the dedicated login page.', 'warning', 6000);
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        return;
+      }
+
+      const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+        redirectTo: RESET_REDIRECT_URL
+      });
+
+      if (error) {
+        console.error('Reset email error:', error);
+        if (error.message && (error.message.includes('rate limit') || error.message.includes('too many'))) {
+          showToast('Too many reset attempts. Please wait a few minutes.', 'warning', 8000);
+        } else {
+          throw error;
+        }
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        return;
+      }
+
+      showToast('📧 If this email is registered, a reset link has been sent. Check your inbox and spam folder.', 'success', 8000);
+
+      setTimeout(() => {
+        if (forgotModal) forgotModal.hide();
+      }, 2500);
+
+    } catch (error) {
+      console.error('Send reset error:', error);
+      showToast('Could not send reset email. Please try again.', 'danger');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+    }
+  }
+
+  // ============================================================
+  // QUICK REPORT
+  // ============================================================
   function quickReport() {
     supabaseClient.auth.getSession().then(({ data: { session } }) => {
-      if (session) window.location.href = 'resident/dashboard.html#report';
-      else { showToast('Please login to report an emergency', 'warning'); openLoginModal(); }
+      if (session) {
+        supabaseClient.from('profiles').select('role').eq('id', session.user.id).maybeSingle().then(({ data: profile }) => {
+          const role = profile?.role || 'resident';
+          if (role === 'admin' || role === 'responder') {
+            window.location.href = 'responder/dashboard.html';
+          } else {
+            window.location.href = 'resident/dashboard.html#report';
+          }
+        });
+      } else {
+        showToast('Please login to report an emergency', 'warning');
+        openLoginModal();
+      }
     }).catch(() => { showToast('Please login to report an emergency', 'warning'); openLoginModal(); });
   }
 
-  window.handleLogin = handleLogin; window.handleRegister = handleRegister; window.quickReport = quickReport;
+  // ============================================================
+  // EXPOSE
+  // ============================================================
+  window.handleLogin = handleLogin;
+  window.handleRegister = handleRegister;
+  window.quickReport = quickReport;
+  window.togglePassword = togglePassword;
+  window.sendPasswordReset = sendPasswordReset;
 
+  // ============================================================
+  // INIT
+  // ============================================================
   document.addEventListener('DOMContentLoaded', function() {
     const nav = document.getElementById('mainNav');
     window.addEventListener('scroll', function() {
@@ -1099,17 +1310,21 @@
     }, { threshold: 0.4 });
     counters.forEach(el => counterObserver.observe(el));
 
+    // Handle email confirmation redirect (access_token in URL)
     const hash = window.location.hash;
     if (hash && hash.includes('access_token')) {
       supabaseClient.auth.getSession().then(({ data: { session }, error }) => {
         if (error) return;
         if (session) {
-          showToast('✅ Email confirmed successfully!', 'success', 3000);
-          supabaseClient.from('profiles').select('role').eq('id', session.user.id).single().then(({ data: profile }) => {
+          supabaseClient.from('profiles').select('role').eq('id', session.user.id).maybeSingle().then(({ data: profile }) => {
             const role = profile?.role || 'resident';
-            setTimeout(() => {
-              window.location.href = role === 'resident' ? 'resident/dashboard.html' : 'responder/dashboard.html';
-            }, 1500);
+            if (role === 'admin' || role === 'responder') {
+              showToast('Admin/Responder detected. Redirecting...', 'info', 3000);
+              setTimeout(() => { window.location.href = 'responder/dashboard.html'; }, 1200);
+            } else {
+              showToast('✅ Email confirmed successfully!', 'success', 3000);
+              setTimeout(() => { window.location.href = 'resident/dashboard.html'; }, 1500);
+            }
           });
         }
         window.history.replaceState({}, document.title, window.location.pathname);
