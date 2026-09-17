@@ -11,13 +11,58 @@ let isGeocoding = false;
 let selectedMediaFiles = [];
 let mediaPreviewUrls = [];
 
+// Barangay map state (NEW)
+let barangayMap = null;
+let barangayMarkers = [];
+let barangayIncidents = [];
+let barangayRealtimeChannel = null;
+let barangayBoundaryLayer = null;
+
+// Gemini state
+let geminiClient = null;
+let geminiModel = null;
+let geminiReady = false;
+const aiCache = new Map();
+
+// ============================================
+// BARANGAY SCOPE — Tandang Sora, Quezon Ave, Congressional
+// ============================================
+const BARANGAY_SCOPE = {
+  name: 'Barangay Culiat',
+  // Bounding box covering the three specified areas
+  bounds: {
+    north: 14.7000,
+    south: 14.6400,
+    east: 121.0400,
+    west: 120.9700
+  },
+  // Approximate polygon covering Tandang Sora Ave, Quezon Ave, Congressional Ave Ext
+  polygon: [
+    [14.6990, 121.0150],
+    [14.7020, 121.0280],
+    [14.6980, 121.0380],
+    [14.6880, 121.0420],
+    [14.6750, 121.0400],
+    [14.6650, 121.0330],
+    [14.6580, 121.0250],
+    [14.6550, 121.0150],
+    [14.6580, 121.0050],
+    [14.6680, 120.9980],
+    [14.6780, 120.9930],
+    [14.6880, 120.9900],
+    [14.6960, 120.9950],
+    [14.6990, 121.0050],
+    [14.6990, 121.0150]
+  ]
+};
+
 // ============================================
 // INITIALIZE
 // ============================================
 async function initResidentDashboard() {
     try {
         console.log('📄 Initializing Resident Dashboard...');
-        
+
         const { data: { session } } = await supabaseClient.auth.getSession();
         if (!session) { window.location.href = '../index.html'; return; }
 
@@ -90,6 +135,8 @@ async function initResidentDashboard() {
         });
 
         setupMediaUpload();
+        initGemini();
+
         console.log('✅ Resident Dashboard fully initialized');
 
     } catch (error) {
@@ -128,18 +175,15 @@ function getMediaUrls(report) {
     return [];
 }
 
-// Extract a short, readable location from possible JSON or long string
 function getShortLocation(location) {
     if (!location) return 'Unknown location';
     var text = String(location);
-    // Try to parse JSON (some reports store location as JSON string)
     if (text.trim().startsWith('{')) {
         try {
             var obj = JSON.parse(text);
             if (obj && obj.address) text = String(obj.address);
-        } catch (e) { /* not JSON, keep as-is */ }
+        } catch (e) {}
     }
-    // Strip common suffixes after commas — keep first 2 segments
     var parts = text.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
     if (parts.length > 2) {
         return parts.slice(0, 2).join(', ');
@@ -161,12 +205,8 @@ function getTypeIcon(type) {
 
 function getTypeClass(type) {
     var map = {
-        fire: 'fire',
-        medical: 'medical',
-        accident: 'accident',
-        flood: 'flood',
-        crime: 'crime',
-        other: 'other'
+        fire: 'fire', medical: 'medical', accident: 'accident',
+        flood: 'flood', crime: 'crime', other: 'other'
     };
     return map[type] || 'other';
 }
@@ -269,16 +309,27 @@ async function uploadMediaFiles(incidentId) {
 }
 
 // ============================================
-// MAP FUNCTIONS
+// MAP FUNCTIONS (REPORT MODAL)
 // ============================================
 function initMap() {
     if (mapInitialized) return;
     const mapContainer = document.getElementById('incidentMap');
     if (!mapContainer) return;
 
-    const defaultLat = 14.5995, defaultLng = 120.9842;
-    mapInstance = L.map('incidentMap').setView([defaultLat, defaultLng], 15);
+    const defaultLat = 14.6760, defaultLng = 121.0150; // Tandang Sora area
+    mapInstance = L.map('incidentMap').setView([defaultLat, defaultLng], 14);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(mapInstance);
+
+    // Add barangay boundary overlay
+    L.polygon(BARANGAY_SCOPE.polygon, {
+        color: '#2e7d32',
+        weight: 2,
+        opacity: 0.8,
+        fillColor: '#2e7d32',
+        fillOpacity: 0.08,
+        dashArray: '8 4'
+    }).addTo(mapInstance);
+
     mapMarker = L.marker([defaultLat, defaultLng], { draggable: true }).addTo(mapInstance);
     updateCoordDisplay(defaultLat, defaultLng);
 
@@ -300,7 +351,9 @@ async function searchLocation(query) {
     spinner.classList.add('show');
 
     try {
-        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&countrycodes=ph`;
+        // Bias search to barangay scope
+        const viewbox = `${BARANGAY_SCOPE.bounds.west},${BARANGAY_SCOPE.bounds.north},${BARANGAY_SCOPE.bounds.east},${BARANGAY_SCOPE.bounds.south}`;
+        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&countrycodes=ph&viewbox=${viewbox}&bounded=1`;
         const response = await fetch(url, { headers: { 'Accept': 'application/json', 'User-Agent': 'BarangayEMS/1.0' } });
         const data = await response.json();
         spinner.classList.remove('show');
@@ -331,70 +384,690 @@ async function reverseGeocode(lat, lng) {
 }
 
 // ============================================
-// AI ANALYSIS
+// BARANGAY LIVE MAP (NEW — shows what's happening in barangay)
 // ============================================
-function enhancedAIAnalysis(type, description, location) {
-    const text = (type + ' ' + description + ' ' + location).toLowerCase();
-    const critical = ['fire', 'explosion', 'shooting', 'stabbing', 'unconscious', 'not breathing', 'severe bleeding', 'heart attack', 'stroke', 'gas leak'];
-    const high = ['accident', 'flood', 'crime', 'robbery', 'assault', 'chest pain', 'difficulty breathing', 'heavy bleeding'];
-    const medium = ['medical', 'suspicious', 'theft', 'vandalism', 'injury', 'bleeding', 'pain'];
+function initBarangayMap() {
+    const mapEl = document.getElementById('barangayMap');
+    if (!mapEl || barangayMap) return;
 
-    let score = { critical: 0, high: 0, medium: 0 };
-    critical.forEach(w => { if (text.includes(w)) score.critical += 3; });
-    high.forEach(w => { if (text.includes(w)) score.high += 2; });
-    medium.forEach(w => { if (text.includes(w)) score.medium += 1.5; });
+    barangayMap = L.map('barangayMap', {
+        zoomControl: true,
+        attributionControl: false
+    }).setView([14.6760, 121.0150], 14);
 
-    if (type === 'fire') score.critical += 2;
-    if (type === 'medical' && (text.includes('heart') || text.includes('stroke') || text.includes('unconscious'))) score.critical += 2;
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap',
+        maxZoom: 19
+    }).addTo(barangayMap);
 
-    let priority = 'medium', confidence = 0.75;
-    if (score.critical >= 3) { priority = 'critical'; confidence = 0.92 + Math.random() * 0.07; }
-    else if (score.high >= 3) { priority = 'high'; confidence = 0.85 + Math.random() * 0.1; }
-    else if (score.medium >= 2) { priority = 'medium'; confidence = 0.78 + Math.random() * 0.1; }
-    else { priority = 'low'; confidence = 0.70 + Math.random() * 0.1; }
+    // Draw barangay boundary
+    barangayBoundaryLayer = L.polygon(BARANGAY_SCOPE.polygon, {
+        color: '#2e7d32',
+        weight: 2.5,
+        opacity: 0.85,
+        fillColor: '#2e7d32',
+        fillOpacity: 0.06,
+        dashArray: '10 5',
+        className: 'barangay-boundary'
+    }).addTo(barangayMap);
 
-    const actionMap = {
-        fire: ['Evacuate immediately', 'Call fire department', 'Use extinguisher if safe'],
-        medical: ['Call ambulance', 'Perform CPR if trained', 'Keep victim calm'],
-        accident: ['Call emergency', 'Secure area', 'Provide first aid if safe'],
-        flood: ['Move to higher ground', 'Turn off electricity', 'Secure documents'],
-        crime: ['Ensure safety', 'Call authorities', 'Do not confront'],
-        other: ['Assess situation', 'Call emergency if needed', 'Provide assistance']
-    };
-    const actions = actionMap[type] || actionMap.other;
-    let verification = priority === 'critical' || priority === 'high' ? '⚠️ Urgent: dispatch responders immediately' : '🟡 Schedule verification within 10 min';
+    barangayBoundaryLayer.bindTooltip('Barangay Culiat Scope', {
+        permanent: false,
+        direction: 'center',
+        className: 'barangay-tooltip'
+    });
 
-    return { priority, confidence: Math.min(confidence, 0.99), actions, verification };
+    // Fit to boundary
+    barangayMap.fitBounds(barangayBoundaryLayer.getBounds(), { padding: [20, 20] });
+
+    // Load and render incidents
+    loadBarangayIncidentsOnMap();
+
+    // Realtime updates
+    setupBarangayRealtime();
+
+    setTimeout(function() {
+        if (barangayMap) barangayMap.invalidateSize();
+    }, 300);
 }
 
-function analyzeWithAI() {
-    const type = document.getElementById('incidentType').value;
-    const desc = document.getElementById('incidentDescription').value.trim();
-    const loc = document.getElementById('incidentLocation').value.trim();
-    if (!desc) { showToast('Please enter a description first', 'warning'); return; }
+async function loadBarangayIncidentsOnMap() {
+    if (!barangayMap) return;
 
-    const result = enhancedAIAnalysis(type, desc, loc);
+    try {
+        // Fetch recent incidents (last 30 days) in barangay
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        const { data: incidents, error } = await supabaseClient
+            .from('incident_reports')
+            .select('*')
+            .gte('created_at', thirtyDaysAgo.toISOString())
+            .order('created_at', { ascending: false })
+            .limit(100);
+
+        if (error) throw error;
+
+        barangayIncidents = incidents || [];
+        renderBarangayMarkers(barangayIncidents);
+        updateMapStatusBar(barangayIncidents);
+    } catch (err) {
+        console.warn('Failed to load barangay incidents:', err);
+    }
+}
+
+function renderBarangayMarkers(incidents) {
+    if (!barangayMap) return;
+
+    // Clear existing markers
+    barangayMarkers.forEach(function(m) { try { barangayMap.removeLayer(m); } catch(e) {} });
+    barangayMarkers = [];
+
+    incidents.forEach(function(incident) {
+        var coords = extractCoordinates(incident.location);
+        if (!coords) return;
+
+        var type = incident.type || 'other';
+        var typeIcon = getTypeIcon(type);
+        var typeClass = getTypeClass(type);
+        var priority = incident.priority || 'medium';
+        var status = incident.status || 'reported';
+        var isResolved = status === 'resolved' || status === 'closed';
+
+        var iconHtml = `
+            <div class="marker-pin ${typeClass} ${priority} ${isResolved ? 'resolved' : ''}">
+                <div class="marker-pulse-ring"></div>
+                <i class="fas ${typeIcon}"></i>
+            </div>
+        `;
+
+        var customIcon = L.divIcon({
+            html: iconHtml,
+            className: 'custom-incident-marker',
+            iconSize: [30, 30],
+            iconAnchor: [15, 30],
+            popupAnchor: [0, -30]
+        });
+
+        var marker = L.marker([coords.lat, coords.lng], { icon: customIcon }).addTo(barangayMap);
+
+        var createdDate = incident.created_at
+            ? new Date(incident.created_at).toLocaleString('en-US', {
+                month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+            })
+            : 'Unknown';
+
+        var shortDesc = incident.description
+            ? String(incident.description).substring(0, 100) + (String(incident.description).length > 100 ? '…' : '')
+            : 'No description';
+
+        var popupHtml = `
+            <div class="map-popup-content">
+                <div class="map-popup-title">
+                    <i class="fas ${typeIcon}" style="color:${getTypeColor(type)};"></i>
+                    ${escapeHtml(incident.title || 'Untitled')}
+                </div>
+                <div class="map-popup-badges">
+                    <span class="badge priority-${priority}" style="font-size:0.62rem;padding:3px 10px;border-radius:50px;text-transform:uppercase;">${priority}</span>
+                    <span class="status-badge status-${status}" style="font-size:0.62rem;padding:3px 10px;">${status}</span>
+                </div>
+                <div class="map-popup-meta">
+                    <span><i class="fas fa-map-marker-alt"></i> ${escapeHtml(getShortLocation(incident.location))}</span>
+                    <span><i class="fas fa-clock"></i> ${createdDate}</span>
+                    <span><i class="fas fa-align-left"></i> ${escapeHtml(shortDesc)}</span>
+                </div>
+                <button class="map-popup-btn" onclick="viewResidentIncidentDetail('${incident.id}')">
+                    <i class="fas fa-eye"></i> View Details
+                </button>
+            </div>
+        `;
+
+        marker.bindPopup(popupHtml, {
+            maxWidth: 280,
+            minWidth: 220,
+            closeButton: true,
+            autoPan: true,
+            className: 'incident-popup'
+        });
+
+        barangayMarkers.push(marker);
+    });
+}
+
+function updateMapStatusBar(incidents) {
+    var bar = document.getElementById('mapStatusBar');
+    if (!bar) return;
+
+    var activeCount = incidents.filter(function(i) {
+        return !['resolved', 'closed'].includes(i.status);
+    }).length;
+
+    var criticalCount = incidents.filter(function(i) {
+        return i.priority === 'critical' && !['resolved', 'closed'].includes(i.status);
+    }).length;
+
+    var text = activeCount === 0
+        ? 'All clear in your barangay'
+        : activeCount + ' active incident' + (activeCount > 1 ? 's' : '');
+
+    if (criticalCount > 0) {
+        text = '🚨 ' + criticalCount + ' CRITICAL incident' + (criticalCount > 1 ? 's' : '') + ' in your barangay';
+    }
+
+    bar.innerHTML = '<span class="map-live-dot"></span>' + escapeHtml(text);
+}
+
+function extractCoordinates(location) {
+    if (!location) return null;
+
+    // Try JSON format: {"address":"...","latitude":14.6,"longitude":121.0}
+    if (typeof location === 'string' && location.trim().startsWith('{')) {
+        try {
+            var obj = JSON.parse(location);
+            if (obj.latitude != null && obj.longitude != null) {
+                return { lat: parseFloat(obj.latitude), lng: parseFloat(obj.longitude) };
+            }
+        } catch (e) {}
+    }
+
+    // Try JSON object passed directly
+    if (typeof location === 'object' && location.latitude != null && location.longitude != null) {
+        return { lat: parseFloat(location.latitude), lng: parseFloat(location.longitude) };
+    }
+
+    // Try regex for lat/lng in text
+    if (typeof location === 'string') {
+        var match = location.match(/(-?\d+\.\d+)[,\s]+(-?\d+\.\d+)/);
+        if (match) {
+            return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
+        }
+    }
+
+    return null;
+}
+
+function getTypeColor(type) {
+    var map = {
+        fire: '#dc3545',
+        medical: '#0d6efd',
+        accident: '#fd7e14',
+        flood: '#0dcaf0',
+        crime: '#8b5cf6',
+        other: '#6c757d'
+    };
+    return map[type] || map.other;
+}
+
+function setupBarangayRealtime() {
+    if (barangayRealtimeChannel) {
+        try { supabaseClient.removeChannel(barangayRealtimeChannel); } catch (e) {}
+    }
+
+    barangayRealtimeChannel = supabaseClient
+        .channel('barangay-map-live')
+        .on('postgres_changes', {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'incident_reports'
+        }, function(payload) {
+            if (!payload.new) return;
+            var newIncident = payload.new;
+
+            // Only add if inside barangay scope
+            var coords = extractCoordinates(newIncident.location);
+            if (!coords) return;
+            if (!isInsideBarangay(coords.lat, coords.lng)) return;
+
+            // Add to list
+            var exists = barangayIncidents.find(function(i) { return i.id === newIncident.id; });
+            if (!exists) {
+                barangayIncidents.unshift(newIncident);
+                addSingleMarker(newIncident);
+
+                if (newIncident.priority === 'critical') {
+                    showToast('🚨 CRITICAL incident reported in your barangay: ' + (newIncident.title || ''), 'emergency', 8000);
+                } else {
+                    showToast('🚨 New incident in your barangay: ' + (newIncident.title || ''), 'warning', 6000);
+                }
+
+                updateMapStatusBar(barangayIncidents);
+            }
+        })
+        .on('postgres_changes', {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'incident_reports'
+        }, function(payload) {
+            if (!payload.new) return;
+
+            var idx = barangayIncidents.findIndex(function(i) { return i.id === payload.new.id; });
+            if (idx >= 0) {
+                barangayIncidents[idx] = Object.assign({}, barangayIncidents[idx], payload.new);
+                // Re-render all markers to update styling
+                renderBarangayMarkers(barangayIncidents);
+                updateMapStatusBar(barangayIncidents);
+            }
+        })
+        .subscribe();
+}
+
+function addSingleMarker(incident) {
+    // Just re-render all markers (simpler and consistent)
+    renderBarangayMarkers(barangayIncidents);
+}
+
+function isInsideBarangay(lat, lng) {
+    var b = BARANGAY_SCOPE.bounds;
+    return lat >= b.south && lat <= b.north && lng >= b.west && lng <= b.east;
+}
+
+// ============================================
+// AI ANALYSIS — GEMINI + RULE-BASED FALLBACK
+// ============================================
+function initGemini() {
+    try {
+        console.log('🔍 Checking Gemini setup...');
+
+        if (!window.GEMINI_CONFIG) {
+            console.warn('❌ window.GEMINI_CONFIG is undefined — gemini-config.js not loaded');
+            return false;
+        }
+        if (!window.GEMINI_CONFIG.API_KEY || window.GEMINI_CONFIG.API_KEY.indexOf('PASTE_YOUR') !== -1) {
+            console.warn('❌ API key not set in gemini-config.js');
+            return false;
+        }
+        if (typeof window.GoogleGenerativeAI === 'undefined') {
+            console.warn('❌ GoogleGenerativeAI SDK not loaded — check script tag in HTML');
+            return false;
+        }
+
+        geminiClient = new window.GoogleGenerativeAI(window.GEMINI_CONFIG.API_KEY);
+        geminiModel = geminiClient.getGenerativeModel({
+            model: window.GEMINI_CONFIG.MODEL || 'gemini-2.0-flash',
+            generationConfig: {
+                temperature: 0.2,
+                maxOutputTokens: 500,
+                responseMimeType: 'application/json'
+            }
+        });
+        geminiReady = true;
+        console.log('✅ Gemini AI ready:', window.GEMINI_CONFIG.MODEL);
+        return true;
+    } catch (e) {
+        console.warn('❌ Gemini init failed:', e);
+        geminiReady = false;
+        return false;
+    }
+}
+
+const TYPE_DETECTION_KEYWORDS = {
+    fire: ['fire', 'flame', 'smoke', 'burn', 'burning', 'blaze', 'wildfire', 'sunog', 'apoy', 'usok', 'nagniningas', 'nasusunog', 'nasunog'],
+    medical: ['medical', 'injury', 'injured', 'sick', 'pain', 'chest pain', 'heart', 'breathing', 'unconscious', 'bleeding', 'faint', 'seizure', 'stroke', 'hospital', 'ambulance', 'doctor', 'nurse', 'patient', 'medikal', 'sakit', 'sugat', 'nasugatan', 'hindi humihinga', 'walang malay', 'dugo', 'atake', 'hilo', 'nahihilo', 'ospital', 'doktor'],
+    accident: ['accident', 'crash', 'collision', 'vehicle', 'car', 'motorcycle', 'truck', 'jeepney', 'tricycle', 'bike', 'fell', 'fall', 'hit', 'run over', 'aksidente', 'bangga', 'bumangga', 'nasagasaan', 'nahulog', 'nasalpok', 'sasakyan', 'kotse', 'motor'],
+    flood: ['flood', 'flooding', 'flooded', 'water rising', 'overflow', 'river', 'rain', 'typhoon', 'storm', 'drowning', 'submerged', 'baha', 'pagbaha', 'binaha', 'tubig', 'ilog', 'ulan', 'bagyo', 'lunod'],
+    crime: ['crime', 'rob', 'robbery', 'theft', 'steal', 'stolen', 'thief', 'burglar', 'attack', 'assault', 'fight', 'weapon', 'gun', 'knife', 'shooting', 'stab', 'stabbed', 'murder', 'homicide', 'holdap', 'krimen', 'holdap', 'nakaw', 'ninakaw', 'magnanakaw', 'pananakit', 'sinaktan', 'away', 'baril', 'kutsilyo', 'saksak', 'sinaksak', 'patayan']
+};
+
+function detectIncidentType(title, description) {
+    const text = ((title || '') + ' ' + (description || '')).toLowerCase();
+    const scores = { fire: 0, medical: 0, accident: 0, flood: 0, crime: 0 };
+
+    Object.keys(TYPE_DETECTION_KEYWORDS).forEach(function(type) {
+        TYPE_DETECTION_KEYWORDS[type].forEach(function(kw) {
+            if (kw.indexOf(' ') !== -1) {
+                if (text.indexOf(kw) !== -1) scores[type]++;
+            } else {
+                const re = new RegExp('\\b' + kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i');
+                if (re.test(text)) scores[type]++;
+            }
+        });
+    });
+
+    let detectedType = 'other';
+    let maxScore = 0;
+    Object.keys(scores).forEach(function(type) {
+        if (scores[type] > maxScore) {
+            maxScore = scores[type];
+            detectedType = type;
+        }
+    });
+
+    if (maxScore === 0) detectedType = 'other';
+
+    return { type: detectedType, score: maxScore, allScores: scores };
+}
+
+const AI_KEYWORDS = {
+    critical: {
+        3: ['explosion', 'exploded', 'shooting', 'shot', 'stabbing', 'stabbed', 'unconscious', 'not breathing', 'no pulse', 'severe bleeding', 'heart attack', 'stroke', 'cardiac arrest', 'drowning', 'drowned', 'gas leak', 'building collapse', 'collapsed', 'trapped', 'electrocuted', 'electrocution', 'seizure', 'choking', 'overdose', 'pagsabog', 'sumabog', 'bumaril', 'sinaksak', 'saksak', 'walang malay', 'hindi humihinga', 'walang pulso', 'matinding pagdurugo', 'atake sa puso', 'paglunod', 'nalunod', 'pagtagas ng gas', 'gumuhong gusali', 'naipit', 'nakuryente', 'kombulsyon', 'nasasakal'],
+        2: ['fire', 'burning', 'flames', 'smoke', 'sunog', 'nasusunog', 'nagniningas', 'usok']
+    },
+    high: {
+        2: ['accident', 'collision', 'crash', 'flood', 'flooding', 'robbery', 'holdap', 'assault', 'attacked', 'chest pain', 'difficulty breathing', 'heavy bleeding', 'fracture', 'broken bone', 'head injury', 'burns', 'landslide', 'earthquake', 'typhoon', 'aksidente', 'banggaan', 'bumangga', 'baha', 'pagbaha', 'pananakit', 'sinaktan', 'sakit sa dibdib', 'hirap huminga', 'bali', 'baling buto', 'pinsala sa ulo', 'pagguho', 'lindol', 'bagyo'],
+        1: ['injured', 'injury', 'wounded', 'bleeding', 'sugatan', 'nasugatan', 'dugo']
+    },
+    medium: {
+        1: ['medical', 'suspicious', 'theft', 'stolen', 'vandalism', 'fight', 'argument', 'noise', 'disturbance', 'fallen tree', 'power outage', 'medikal', 'kahina-hinala', 'pagnanakaw', 'ninakaw', 'bandalismo', 'away', 'gulo', 'ingay', 'nahulog na puno', 'walang kuryente']
+    }
+};
+
+const NEGATION_WORDS = ['no', 'not', 'none', 'without', 'false alarm', 'walang', 'wala', 'hindi', 'huwag'];
+const FAKE_INDICATORS = ['test', 'testing', 'asdf', 'qwerty', 'joke', 'prank', 'lol', 'haha', 'hehe', 'fake', 'sample', 'dummy', 'biruan', 'biro', 'kalokohan', 'peke', 'pagsubok'];
+
+function aiNormalize(text) {
+    return String(text || '').toLowerCase().replace(/[^\w\sáéíóúñàèìòùâêîôûäëïöü]/gi, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function aiContainsWord(text, word) {
+    if (!word) return false;
+    if (word.indexOf(' ') !== -1) return text.indexOf(word) !== -1;
+    var re = new RegExp('\\b' + word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i');
+    return re.test(text);
+}
+
+function aiIsNegated(text, word) {
+    var idx = text.indexOf(word);
+    if (idx === -1) return false;
+    var before = text.substring(Math.max(0, idx - 40), idx).trim();
+    var words = before.split(/\s+/).slice(-4);
+    return words.some(function(w) { return NEGATION_WORDS.indexOf(w.toLowerCase()) !== -1; });
+}
+
+function aiIsNonsense(text) {
+    if (!text || text.length < 8) return true;
+    if (/(.)\1{4,}/.test(text)) return true;
+    for (var i = 0; i < FAKE_INDICATORS.length; i++) {
+        if (aiContainsWord(text, FAKE_INDICATORS[i])) return true;
+    }
+    var vowels = text.match(/[aeiouáéíóúàèìòùâêîôûäëïöü]/gi);
+    if (text.length > 6 && (!vowels || vowels.length < text.length * 0.1)) return true;
+    return false;
+}
+
+function enhancedAIAnalysis(type, description, location, title) {
+    var normDesc = aiNormalize(description || '');
+    var normTitle = aiNormalize(title || '');
+    var normLoc = aiNormalize(location || '');
+    var text = (normTitle + ' ' + normDesc + ' ' + normLoc).trim();
+
+    var isNonsense = aiIsNonsense(normDesc) && aiIsNonsense(normTitle);
+
+    var score = 0;
+    var matched = [];
+
+    Object.keys(AI_KEYWORDS).forEach(function(cat) {
+        Object.keys(AI_KEYWORDS[cat]).forEach(function(w) {
+            AI_KEYWORDS[cat][w].forEach(function(kw) {
+                if (aiContainsWord(text, kw) && !aiIsNegated(text, kw)) {
+                    score += parseInt(w, 10);
+                    matched.push(kw);
+                }
+            });
+        });
+    });
+
+    var typeBoost = 0;
+    if (['fire','medical','accident','flood','crime'].indexOf(type) !== -1) typeBoost = 1;
+    var finalScore = score + typeBoost;
+
+    var priority = 'low', confidence = 0.70;
+    if (isNonsense) { priority = 'low'; confidence = 0.40; }
+    else if (finalScore >= 8) { priority = 'critical'; confidence = 0.92; }
+    else if (finalScore >= 5) { priority = 'high'; confidence = 0.84; }
+    else if (finalScore >= 2) { priority = 'medium'; confidence = 0.76; }
+    else { priority = 'low'; confidence = 0.68; }
+
+    return {
+        priority: priority,
+        confidence: confidence,
+        actions: getActionsForType(type),
+        verification: getVerificationText(priority, confidence),
+        reasoning: ['Local analysis: ' + (matched.length ? 'matched ' + matched.slice(0,5).join(', ') : 'no strong keywords — try adding more detail')],
+        detectedLanguage: 'unknown',
+        isNonsense: isNonsense,
+        source: 'rule-based'
+    };
+}
+
+async function analyzeWithGemini(type, title, description, location) {
+    if (!geminiReady || !geminiModel) throw new Error('Gemini not ready');
+
+    const cacheKey = `${type}|${title}|${description}|${location}`.toLowerCase().slice(0, 200);
+    if (window.GEMINI_CONFIG.ENABLE_CACHE && aiCache.has(cacheKey)) {
+        const cached = aiCache.get(cacheKey);
+        if (Date.now() - cached.ts < window.GEMINI_CONFIG.CACHE_TTL_MS) {
+            console.log('🎯 AI cache hit');
+            return cached.result;
+        }
+    }
+
+    const prompt = `You are an emergency dispatcher for a Barangay (village) emergency response system in the Philippines.
+
+Analyze the incident report below. You MUST understand English, Tagalog, and mixed Taglish.
+
+Title: ${title}
+Description: ${description}
+Location: ${location}
+User-selected type: ${type}
+
+TASK 1 — DETECT INCIDENT TYPE:
+Determine the actual incident type from the text. Choose ONE of:
+- "fire" (sunog, apoy, usok, nasusunog)
+- "medical" (sakit, sugat, ospital, hindi humihinga, atake)
+- "accident" (aksidente, bangga, nasagasaan, nahulog)
+- "flood" (baha, pagbaha, binaha, paglunod)
+- "crime" (holdap, nakaw, saksak, baril, away, pananakit)
+- "other" (none of the above)
+
+TASK 2 — DETECT PRIORITY:
+- "critical" = Life-threatening, immediate dispatch.
+- "high" = Serious, prompt response.
+- "medium" = Attention needed.
+- "low" = Non-urgent, unclear, nonsense, or test message.
+
+RULES:
+- If text is gibberish, return priority "low", confidence below 0.5.
+- If type is "fire" but says "no fire" or "walang sunog", do NOT mark critical.
+
+Return ONLY this JSON:
+{
+  "detectedType": "fire" | "medical" | "accident" | "flood" | "crime" | "other",
+  "priority": "critical" | "high" | "medium" | "low",
+  "confidence": 0.0,
+  "reasoning": "One sentence.",
+  "detectedLanguage": "english" | "tagalog" | "taglish" | "other",
+  "isNonsense": false
+}`;
+
+    const result = await geminiModel.generateContent(prompt);
+    const response = await result.response;
+    let text = response.text().trim();
+    text = text.replace(/```json\n?/gi, '').replace(/```\n?/g, '').trim();
+
+    let parsed;
+    try {
+        parsed = JSON.parse(text);
+    } catch (e) {
+        const match = text.match(/\{[\s\S]*\}/);
+        if (match) parsed = JSON.parse(match[0]);
+        else throw new Error('Invalid AI response format');
+    }
+
+    const validTypes = ['fire', 'medical', 'accident', 'flood', 'crime', 'other'];
+    const detectedType = validTypes.indexOf(parsed.detectedType) !== -1 ? parsed.detectedType : type;
+
+    const priority = ['critical','high','medium','low'].indexOf(parsed.priority) !== -1 ? parsed.priority : 'medium';
+    const confidence = Math.min(0.99, Math.max(0.5, parseFloat(parsed.confidence) || 0.75));
+
+    const aiResult = {
+        priority: priority,
+        confidence: confidence,
+        actions: getActionsForType(detectedType),
+        verification: getVerificationText(priority, confidence),
+        reasoning: [parsed.reasoning || 'AI classification completed'],
+        detectedLanguage: parsed.detectedLanguage || 'unknown',
+        detectedType: detectedType,
+        isNonsense: !!parsed.isNonsense,
+        source: 'gemini'
+    };
+
+    if (window.GEMINI_CONFIG.ENABLE_CACHE) {
+        aiCache.set(cacheKey, { result: aiResult, ts: Date.now() });
+    }
+
+    return aiResult;
+}
+
+function getActionsForType(type) {
+    const map = {
+        fire:     ['Evacuate immediately', 'Call fire department (BFP)', 'Use extinguisher only if safe', 'Avoid smoke inhalation'],
+        medical:  ['Call ambulance (911)', 'Perform CPR if trained', 'Keep victim calm', 'Do not move injured person'],
+        accident: ['Call emergency services', 'Secure the area', 'Provide first aid if safe', 'Direct traffic away'],
+        flood:    ['Move to higher ground', 'Turn off electricity', 'Avoid walking in floodwater', 'Secure documents'],
+        crime:    ['Ensure your safety first', 'Call police (117)', 'Do not confront suspects', 'Preserve evidence'],
+        other:    ['Assess the situation', 'Call emergency services if needed', 'Provide assistance if safe']
+    };
+    return map[type] || map.other;
+}
+
+function getVerificationText(priority, confidence) {
+    if (priority === 'critical') return '🔴 Urgent: dispatch responders immediately';
+    if (priority === 'high')     return '🟠 High priority: verify within 5 minutes';
+    if (priority === 'medium')   return '🟡 Schedule verification within 10–15 minutes';
+    return '🟢 Low priority: routine follow-up';
+}
+
+async function analyzeWithAI() {
+    const typeSelect = document.getElementById('incidentType');
+    const type  = typeSelect.value;
+    const title = document.getElementById('incidentTitle').value.trim();
+    const desc  = document.getElementById('incidentDescription').value.trim();
+    const loc   = document.getElementById('incidentLocation').value.trim();
+
+    if (!desc && !title) {
+        showToast('Please enter a title or description first', 'warning');
+        return;
+    }
+
     const resultDiv = document.getElementById('aiAnalysisResult');
-    const priorityBadge = document.getElementById('aiPriorityBadge');
-    const confidenceBadge = document.getElementById('aiConfidenceBadge');
-    const actionsList = document.getElementById('aiActionsList');
-    const verifyText = document.getElementById('aiVerifyText');
-
     resultDiv.classList.remove('d-none');
+    document.getElementById('aiPriorityBadge').textContent = 'Analyzing…';
+    document.getElementById('aiPriorityBadge').className = 'ai-badge bg-secondary text-white';
+    document.getElementById('aiConfidenceBadge').textContent = 'Please wait…';
+    document.getElementById('aiActionsList').innerHTML = '';
+    document.getElementById('aiVerifyText').textContent = '';
+
+    let result;
+    try {
+        if (geminiReady) {
+            result = await analyzeWithGemini(type, title, desc, loc);
+        } else {
+            console.warn('⚠️ Gemini not ready, using rule-based with local type detection');
+            const detected = detectIncidentType(title, desc);
+            result = enhancedAIAnalysis(detected.type, desc, loc, title);
+            result.detectedType = detected.type;
+        }
+    } catch (err) {
+        console.warn('Gemini call failed:', err);
+        if (window.GEMINI_CONFIG && window.GEMINI_CONFIG.ENABLE_FALLBACK) {
+            const detected = detectIncidentType(title, desc);
+            result = enhancedAIAnalysis(detected.type, desc, loc, title);
+            result.detectedType = detected.type;
+            result.source = 'rule-based (AI unavailable)';
+            showToast('AI busy — using local analysis', 'info', 3000);
+        } else {
+            showToast('AI analysis failed: ' + err.message, 'danger');
+            resultDiv.classList.add('d-none');
+            return;
+        }
+    }
+
+    if (result.detectedType && result.detectedType !== type) {
+        typeSelect.value = result.detectedType;
+        const hint = document.getElementById('autoTypeHint');
+        if (hint) {
+            hint.textContent = `✨ Auto-detected: ${result.detectedType}`;
+            hint.style.color = 'var(--primary)';
+            setTimeout(() => { hint.textContent = ''; }, 8000);
+        }
+    }
+
+    renderAIAnalysisResult(result);
+}
+
+function renderAIAnalysisResult(result) {
+    const resultDiv       = document.getElementById('aiAnalysisResult');
+    const priorityBadge   = document.getElementById('aiPriorityBadge');
+    const confidenceBadge = document.getElementById('aiConfidenceBadge');
+    const actionsList     = document.getElementById('aiActionsList');
+    const verifyText      = document.getElementById('aiVerifyText');
+
+    const colors = { critical: 'danger', high: 'warning', medium: 'primary', low: 'secondary' };
+
     priorityBadge.textContent = `Priority: ${result.priority.toUpperCase()}`;
-    priorityBadge.className = `ai-badge bg-${result.priority === 'critical' ? 'danger' : result.priority === 'high' ? 'warning' : result.priority === 'medium' ? 'primary' : 'secondary'} text-white`;
+    priorityBadge.className = `ai-badge bg-${colors[result.priority] || 'secondary'} text-white`;
     confidenceBadge.textContent = `Confidence: ${(result.confidence * 100).toFixed(0)}%`;
     actionsList.innerHTML = '<i class="fas fa-tasks me-1"></i> ' + result.actions.join(' · ');
     verifyText.textContent = result.verification;
-    resultDiv.style.borderLeftColor = result.priority === 'critical' ? '#dc3545' : result.priority === 'high' ? '#fd7e14' : '#0d6efd';
+
+    let reasoningEl = document.getElementById('aiReasoningList');
+    if (!reasoningEl) {
+        reasoningEl = document.createElement('div');
+        reasoningEl.id = 'aiReasoningList';
+        reasoningEl.className = 'mt-1 small text-muted-civic';
+        reasoningEl.style.fontStyle = 'italic';
+        verifyText.parentElement.parentElement.appendChild(reasoningEl);
+    }
+    const src = result.source === 'gemini' ? '🤖 Gemini AI' : '⚙️ Local analysis';
+    const lang = result.detectedLanguage && result.detectedLanguage !== 'unknown' ? ` [${result.detectedLanguage}]` : '';
+    const typeInfo = result.detectedType ? ` • type: ${result.detectedType}` : '';
+    reasoningEl.innerHTML = `${src}${lang}${typeInfo}: ` + (result.reasoning || []).join(' • ');
+
+    resultDiv.style.borderLeftColor =
+        result.priority === 'critical' ? '#dc3545' :
+        result.priority === 'high'     ? '#fd7e14' :
+        result.priority === 'medium'   ? '#0d6efd' : '#6c757d';
+
     window._aiResult = result;
-    showToast(`AI analysis: ${result.priority.toUpperCase()} priority with ${(result.confidence*100).toFixed(0)}% confidence`, 'info', 4000);
+
+    showToast(
+        `AI: ${result.priority.toUpperCase()} (${(result.confidence * 100).toFixed(0)}%)` +
+        (result.detectedType ? ` — Type: ${result.detectedType}` : ''),
+        result.priority === 'critical' ? 'danger' :
+        result.priority === 'high'     ? 'warning' : 'info',
+        4000
+    );
+}
+
+async function analyzeWithGeminiFallback(type, title, desc, loc) {
+    if (geminiReady) {
+        try {
+            return await analyzeWithGemini(type, title, desc, loc);
+        } catch (e) {
+            console.warn('Gemini failed during submit, using rule-based:', e);
+        }
+    }
+    const detected = detectIncidentType(title, desc);
+    const result = enhancedAIAnalysis(detected.type, desc, loc, title);
+    result.detectedType = detected.type;
+    return result;
 }
 
 // ============================================
 // PAGE LOADING
 // ============================================
 function loadPage(page) {
+    // Destroy barangay map when leaving dashboard
+    if (page !== 'dashboard' && barangayMap) {
+        try { barangayMap.remove(); } catch (e) {}
+        barangayMap = null;
+        barangayMarkers = [];
+        if (barangayRealtimeChannel) {
+            try { supabaseClient.removeChannel(barangayRealtimeChannel); } catch (e) {}
+            barangayRealtimeChannel = null;
+        }
+    }
+
     switch(page) {
         case 'dashboard': loadDashboard(); break;
         case 'report': openReportModal(); break;
@@ -405,7 +1078,7 @@ function loadPage(page) {
 }
 
 // ============================================
-// DASHBOARD (enhanced responsive)
+// DASHBOARD
 // ============================================
 async function loadDashboard() {
     const container = document.getElementById('pageContent');
@@ -417,7 +1090,7 @@ async function loadDashboard() {
             .order('created_at', { ascending: false });
         allReports = reports || [];
 
-        const { data: barangayIncidents } = await supabaseClient
+        const { data: barangayIncidentsData } = await supabaseClient
             .from('incident_reports')
             .select('*')
             .eq('barangay', currentProfile.barangay)
@@ -428,11 +1101,9 @@ async function loadDashboard() {
         const active = reports?.filter(r => !['resolved', 'closed'].includes(r.status)).length || 0;
         const resolved = reports?.filter(r => r.status === 'resolved').length || 0;
 
-        // Active barangay incidents count (excluding own)
-        const otherActiveIncidents = (barangayIncidents || []).filter(i => i.reporter_id !== currentUser.id);
+        const otherActiveIncidents = (barangayIncidentsData || []).filter(i => i.reporter_id !== currentUser.id);
 
         container.innerHTML = `
-            <!-- Welcome hero -->
             <div class="resident-hero">
                 <div class="row g-3 align-items-center">
                     <div class="col-lg-8">
@@ -440,14 +1111,13 @@ async function loadDashboard() {
                         <p><i class="fas fa-map-marker-alt me-1"></i>Barangay ${escapeHtml(currentProfile.barangay || 'Unknown')}</p>
                     </div>
                     <div class="col-lg-4 text-lg-end">
-                        <button class="btn btn-report" onclick="openReportModal()">
+                        <button class="btn-report" onclick="openReportModal()">
                             <i class="fas fa-exclamation-triangle me-2"></i>Report Emergency
                         </button>
                     </div>
                 </div>
             </div>
 
-            <!-- Stat cards -->
             <div class="row g-3 mb-4">
                 <div class="col-6 col-lg-4">
                     <div class="stat-card-r">
@@ -461,7 +1131,7 @@ async function loadDashboard() {
                 <div class="col-6 col-lg-4">
                     <div class="stat-card-r">
                         <div class="stat-info">
-                            <div class="stat-num" style="color:#d97706;">${active}</div>
+                            <div class="stat-num">${active}</div>
                             <div class="stat-lbl">Active</div>
                         </div>
                         <div class="stat-icon yellow"><i class="fas fa-clock"></i></div>
@@ -470,7 +1140,7 @@ async function loadDashboard() {
                 <div class="col-12 col-lg-4">
                     <div class="stat-card-r">
                         <div class="stat-info">
-                            <div class="stat-num" style="color:#16a34a;">${resolved}</div>
+                            <div class="stat-num">${resolved}</div>
                             <div class="stat-lbl">Resolved</div>
                         </div>
                         <div class="stat-icon green"><i class="fas fa-check-circle"></i></div>
@@ -478,7 +1148,32 @@ async function loadDashboard() {
                 </div>
             </div>
 
-            <!-- Active incidents banner (if any in barangay, excluding own) -->
+            <!-- LIVE BARANGAY MAP (NEW) -->
+            <div class="resident-map-card">
+                <div class="resident-map-header">
+                    <h6><i class="fas fa-map-marked-alt"></i> Live Barangay Map</h6>
+                    <span class="text-muted small"><i class="fas fa-circle" style="color:var(--primary);font-size:0.5rem;animation:pulse-dot 1.6s infinite;"></i> Real-time updates</span>
+                </div>
+                <div class="resident-map-body">
+                    <div id="barangayMap"></div>
+                    <div class="map-legend" id="mapLegend">
+                        <span class="map-legend-title">Incident Legend</span>
+                        <div class="map-legend-item"><span class="map-legend-marker fire"></span> Fire</div>
+                        <div class="map-legend-item"><span class="map-legend-marker medical"></span> Medical</div>
+                        <div class="map-legend-item"><span class="map-legend-marker accident"></span> Accident</div>
+                        <div class="map-legend-item"><span class="map-legend-marker flood"></span> Flood</div>
+                        <div class="map-legend-item"><span class="map-legend-marker crime"></span> Crime</div>
+                        <div class="map-legend-item"><span class="map-legend-marker other"></span> Other</div>
+                        <div class="map-legend-item" style="margin-top:4px;padding-top:4px;border-top:1px solid var(--border);">
+                            <span class="map-legend-marker resolved"></span> Resolved
+                        </div>
+                    </div>
+                    <div class="map-status-bar" id="mapStatusBar">
+                        <span class="map-live-dot"></span>Loading…
+                    </div>
+                </div>
+            </div>
+
             ${otherActiveIncidents.length > 0 ? `
                 <div class="alert-banner">
                     <div class="alert-icon"><i class="fas fa-bell"></i></div>
@@ -489,17 +1184,16 @@ async function loadDashboard() {
                 </div>
             ` : ''}
 
-            <!-- Active incidents in barangay -->
             <div class="section-card">
                 <div class="section-card-header">
-                    <h6><i class="fas fa-broadcast text-danger"></i>Active Incidents in Your Barangay</h6>
+                    <h6><i class="fas fa-broadcast"></i>Active Incidents in Your Barangay</h6>
                     <span class="badge-count">${otherActiveIncidents.length}</span>
                 </div>
                 <div>
                     ${otherActiveIncidents.length > 0
                         ? otherActiveIncidents.slice(0, 5).map(inc => renderIncidentRow(inc)).join('')
                         : `<div class="empty-state">
-                                <i class="fas fa-shield-halved" style="color:#16a34a;"></i>
+                                <i class="fas fa-shield-halved"></i>
                                 <h6>All Clear</h6>
                                 <p>No active incidents in your barangay.</p>
                            </div>`
@@ -507,11 +1201,10 @@ async function loadDashboard() {
                 </div>
             </div>
 
-            <!-- Your recent reports -->
             <div class="section-card">
                 <div class="section-card-header">
-                    <h6><i class="fas fa-history text-primary"></i>Your Recent Reports</h6>
-                    ${reports && reports.length > 5 ? `<button class="btn btn-sm btn-outline-secondary" onclick="loadHistory()">View All</button>` : ''}
+                    <h6><i class="fas fa-history"></i>Your Recent Reports</h6>
+                    ${reports && reports.length > 5 ? `<button class="btn-civic btn-outline btn-sm" onclick="loadHistory()">View All</button>` : ''}
                 </div>
                 <div>
                     ${reports && reports.length > 0
@@ -520,14 +1213,22 @@ async function loadDashboard() {
                                 <i class="fas fa-file-alt"></i>
                                 <h6>No reports yet</h6>
                                 <p>You haven't submitted any incident reports.</p>
-                                <button class="btn btn-danger btn-sm mt-3" onclick="openReportModal()">
-                                    <i class="fas fa-plus me-1"></i>Report Now
+                                <button class="btn-civic btn-primary btn-sm mt-3" onclick="openReportModal()">
+                                    <i class="fas fa-plus"></i>Report Now
                                 </button>
                            </div>`
                     }
                 </div>
             </div>
         `;
+
+        // Initialize barangay map AFTER DOM is rendered
+        setTimeout(initBarangayMap, 200);
+
+        if (window.CuliatDesign) {
+            window.CuliatDesign.initLucide();
+            window.CuliatDesign.initReveal();
+        }
 
     } catch (error) {
         console.error('Dashboard error:', error);
@@ -536,7 +1237,7 @@ async function loadDashboard() {
 }
 
 // ============================================
-// RENDER INCIDENT ROW (compact + clickable)
+// RENDER INCIDENT ROW
 // ============================================
 function renderIncidentRow(incident, isOwnReport) {
     const type = incident.type || 'other';
@@ -552,7 +1253,7 @@ function renderIncidentRow(incident, isOwnReport) {
     const mediaCount = getMediaUrls(incident).length;
 
     return `
-        <div class="incident-row priority-${priority}" onclick="viewResidentIncidentDetail('${incident.id}')">
+        <div class="incident-row priority-${priority} bg-transparent" onclick="viewResidentIncidentDetail('${incident.id}')">
             <div class="inc-icon ${typeClass}">
                 <i class="fas ${typeIcon}"></i>
             </div>
@@ -584,7 +1285,6 @@ function renderIncidentRow(incident, isOwnReport) {
 // VIEW RESIDENT INCIDENT DETAIL MODAL
 // ============================================
 async function viewResidentIncidentDetail(incidentId) {
-    // Always fetch fresh from DB
     let incident = null;
     try {
         const { data } = await supabaseClient
@@ -593,7 +1293,7 @@ async function viewResidentIncidentDetail(incidentId) {
             .eq('id', incidentId)
             .maybeSingle();
         if (data) incident = data;
-    } catch (e) { /* fall through */ }
+    } catch (e) {}
 
     if (!incident) {
         incident = allReports.find(r => r.id === incidentId);
@@ -609,7 +1309,6 @@ async function viewResidentIncidentDetail(incidentId) {
 
     const type = incident.type || 'other';
     const typeIcon = getTypeIcon(type);
-    const typeClass = getTypeClass(type);
     const priority = incident.priority || 'medium';
     const status = incident.status || 'reported';
     const mediaUrls = getMediaUrls(incident);
@@ -623,15 +1322,13 @@ async function viewResidentIncidentDetail(incidentId) {
 
     const rawDescription = (incident.description == null) ? '' : String(incident.description).trim();
     const escapedDescription = escapeHtml(rawDescription);
-
-    // Location display (full, but wrapped so it doesn't overflow)
     const fullLocation = escapeHtml(String(incident.location || 'Unknown location'));
 
     document.getElementById('residentDetailTitle').innerHTML =
         `<i class="fas ${typeIcon}"></i>${escapeHtml(incident.title || 'Incident Details')}`;
 
     document.getElementById('residentDetailBody').innerHTML = `
-        <div class="detail-badges">
+        <div class="d-flex gap-2 mb-3 flex-wrap">
             <span class="badge-priority-sm priority-${priority}" style="font-size:0.72rem;padding:6px 16px;">
                 <i class="fas fa-exclamation-triangle me-1"></i>${priority} priority
             </span>
@@ -643,7 +1340,7 @@ async function viewResidentIncidentDetail(incidentId) {
         <div class="detail-section-title"><i class="fas fa-align-left me-1"></i>Description</div>
         ${rawDescription
             ? `<div class="detail-desc">${escapedDescription}</div>`
-            : `<div class="detail-desc" style="color:#94a3b8;font-style:italic;">No description provided.</div>`
+            : `<div class="detail-desc" style="opacity:0.7;font-style:italic;">No description provided.</div>`
         }
 
         <div class="detail-meta-grid">
@@ -719,9 +1416,7 @@ async function viewResidentIncidentDetail(incidentId) {
     residentDetailModal.show();
 }
 
-// Simple media lightbox for resident detail modal
 function openResidentMedia(url, type) {
-    // Reuse the existing media lightbox if available, otherwise create a simple one
     let lb = document.getElementById('residentMediaLightbox');
     if (!lb) {
         lb = document.createElement('div');
@@ -742,7 +1437,7 @@ function openResidentMedia(url, type) {
 }
 
 // ============================================
-// HISTORY (card-based, responsive)
+// HISTORY
 // ============================================
 async function loadHistory() {
     const container = document.getElementById('pageContent');
@@ -756,7 +1451,7 @@ async function loadHistory() {
         container.innerHTML = `
             <div class="section-card">
                 <div class="section-card-header">
-                    <h6><i class="fas fa-history text-primary"></i>Report History</h6>
+                    <h6><i class="fas fa-history"></i>Report History</h6>
                     <span class="badge-count">${reports?.length || 0}</span>
                 </div>
                 <div>
@@ -766,14 +1461,16 @@ async function loadHistory() {
                                 <i class="fas fa-file-alt"></i>
                                 <h6>No reports submitted</h6>
                                 <p>You haven't submitted any incident reports yet.</p>
-                                <button class="btn btn-danger btn-sm mt-3" onclick="openReportModal()">
-                                    <i class="fas fa-plus me-1"></i>Report Now
+                                <button class="btn-civic btn-primary btn-sm mt-3" onclick="openReportModal()">
+                                    <i class="fas fa-plus"></i>Report Now
                                 </button>
                            </div>`
                     }
                 </div>
             </div>
         `;
+
+        if (window.CuliatDesign) window.CuliatDesign.initLucide();
     } catch (error) {
         container.innerHTML = '<div class="alert alert-danger">Error loading history</div>';
     }
@@ -785,14 +1482,14 @@ async function loadHistory() {
 function loadProfile() {
     const container = document.getElementById('pageContent');
     if (!currentProfile) {
-        container.innerHTML = `<div class="text-center py-5"><div class="spinner-border text-danger" role="status"><span class="visually-hidden">Loading...</span></div><p class="mt-2">Loading profile...</p></div>`;
+        container.innerHTML = `<div class="text-center py-5"><div class="spinner-border" role="status" style="color:var(--primary);"><span class="visually-hidden">Loading...</span></div><p class="mt-2 text-muted-civic">Loading profile...</p></div>`;
         refreshProfile(); return;
     }
 
     container.innerHTML = `
         <div class="section-card">
             <div class="section-card-header">
-                <h6><i class="fas fa-user text-primary"></i>My Profile</h6>
+                <h6><i class="fas fa-user"></i>My Profile</h6>
             </div>
             <div class="p-3 p-md-4">
                 <div class="row g-3">
@@ -835,11 +1532,13 @@ function loadProfile() {
                 </div>
                 <hr class="my-4">
                 <div class="d-flex gap-2 flex-wrap">
-                    <button class="btn btn-outline-primary" onclick="refreshProfile()"><i class="fas fa-sync me-2"></i>Refresh Profile</button>
+                    <button class="btn-civic btn-outline" onclick="refreshProfile()"><i class="fas fa-sync"></i>Refresh Profile</button>
                 </div>
             </div>
         </div>
     `;
+
+    if (window.CuliatDesign) window.CuliatDesign.initLucide();
 }
 
 async function refreshProfile() {
@@ -861,25 +1560,26 @@ async function refreshProfile() {
 // ============================================
 function openReportModal() {
     if (!reportModal) { reportModal = new bootstrap.Modal(document.getElementById('reportModal')); }
-    
+
     document.getElementById('reportForm').reset();
     document.getElementById('aiAnalysisResult').classList.add('d-none');
     document.getElementById('incidentContact').value = currentProfile?.contact_number || '';
     document.getElementById('geocodeSuggestions').classList.remove('show');
+    document.getElementById('autoTypeHint').textContent = '';
     window._aiResult = null;
-    
+
     selectedMediaFiles = [];
     clearMediaPreviews();
     document.getElementById('mediaCount').textContent = '0 / 5';
     document.getElementById('mediaUpload').value = '';
-    
+
     if (mapInstance && mapMarker) {
-        const defaultLat = 14.5995, defaultLng = 120.9842;
-        mapInstance.setView([defaultLat, defaultLng], 15);
+        const defaultLat = 14.6760, defaultLng = 121.0150;
+        mapInstance.setView([defaultLat, defaultLng], 14);
         mapMarker.setLatLng([defaultLat, defaultLng]);
         updateCoordDisplay(defaultLat, defaultLng);
     }
-    
+
     reportModal.show();
 }
 
@@ -895,8 +1595,17 @@ async function submitReport() {
     if (!title || !description || !location || !contact) { showToast('Please fill in all fields', 'warning'); return; }
     if (!lat || !lng) { showToast('Please select a location on the map or search for a place', 'warning'); return; }
 
-    let aiResult = window._aiResult || enhancedAIAnalysis(type, description, location);
-    if (!window._aiResult) { aiResult = enhancedAIAnalysis(type, description, location); window._aiResult = aiResult; }
+    // Enforce barangay scope
+    if (!isInsideBarangay(parseFloat(lat), parseFloat(lng))) {
+        showToast('⚠️ Location must be within Barangay Culiat (Tandang Sora, Quezon Ave, Congressional Ave Ext)', 'warning', 7000);
+        return;
+    }
+
+    let aiResult = window._aiResult;
+    if (!aiResult) {
+        aiResult = await analyzeWithGeminiFallback(type, title, description, location);
+        window._aiResult = aiResult;
+    }
 
     const btn = document.getElementById('submitReportBtn');
     btn.disabled = true;
@@ -922,7 +1631,10 @@ async function submitReport() {
                     confidence: aiResult.confidence,
                     actions: aiResult.actions,
                     verification: aiResult.verification,
-                    raw: aiResult.raw
+                    source: aiResult.source || 'rule-based',
+                    reasoning: aiResult.reasoning || [],
+                    detectedLanguage: aiResult.detectedLanguage || 'unknown',
+                    detectedType: aiResult.detectedType || type
                 },
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
@@ -932,13 +1644,11 @@ async function submitReport() {
 
         if (insertError) throw insertError;
 
-        console.log('✅ Report created with ID:', reportData.id);
-
         let mediaUrls = [];
         if (selectedMediaFiles.length > 0) {
             showToast('📤 Uploading media files...', 'info', 3000);
             mediaUrls = await uploadMediaFiles(reportData.id);
-            
+
             if (mediaUrls.length > 0) {
                 const { error: updateError } = await supabaseClient
                     .from('incident_reports')
@@ -950,7 +1660,7 @@ async function submitReport() {
         }
 
         showToast('✅ Report submitted successfully!', 'success');
-        
+
         try {
             if (typeof window.sendEmergencyEmailNotification === 'function') {
                 const result = await window.sendEmergencyEmailNotification(reportData, false);
@@ -961,7 +1671,7 @@ async function submitReport() {
         } catch (emailError) {
             console.error('Email notification error:', emailError);
         }
-        
+
         reportModal.hide();
         document.getElementById('reportForm').reset();
         document.getElementById('aiAnalysisResult').classList.add('d-none');
@@ -983,7 +1693,7 @@ async function submitReport() {
 }
 
 // ============================================
-// REALTIME
+// REALTIME (personal updates)
 // ============================================
 function setupRealtime() {
     supabaseClient
@@ -996,7 +1706,8 @@ function setupRealtime() {
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'incident_reports', filter: `barangay=eq.${currentProfile?.barangay || 'Unknown'}` }, (payload) => {
             if (payload.new.reporter_id !== currentUser.id) {
                 showToast(`🚨 New incident reported in your barangay: ${payload.new.title}`, 'emergency', 8000);
-                loadDashboard();
+                const activePage = document.querySelector('.dashboard-sidebar .nav-link.active')?.dataset?.page || 'dashboard';
+                if (activePage === 'dashboard') loadDashboard();
             }
         })
         .subscribe();
@@ -1043,9 +1754,20 @@ function createToastContainer() {
 
 async function logout() {
     try {
+        if (barangayMap) { try { barangayMap.remove(); } catch(e) {} }
+        if (barangayRealtimeChannel) { try { await supabaseClient.removeChannel(barangayRealtimeChannel); } catch(e) {} }
+        if (window.CuliatAuthSecurity) {
+            window.CuliatAuthSecurity.stopInactivityWatch();
+            window.CuliatAuthSecurity.clearOtpVerification();
+        }
         await supabaseClient.auth.signOut();
         window.location.href = '../index.html';
-    } catch (error) { window.location.href = '../index.html'; }
+    } catch (error) {
+        if (window.CuliatAuthSecurity) {
+            window.CuliatAuthSecurity.clearOtpVerification();
+        }
+        window.location.href = '../index.html';
+    }
 }
 
 // ============================================
@@ -1063,5 +1785,10 @@ window.loadPage = loadPage;
 window.removeMediaFile = removeMediaFile;
 window.viewResidentIncidentDetail = viewResidentIncidentDetail;
 window.openResidentMedia = openResidentMedia;
+window.initGemini = initGemini;
+window.analyzeWithGemini = analyzeWithGemini;
+window.analyzeWithGeminiFallback = analyzeWithGeminiFallback;
+window.enhancedAIAnalysis = enhancedAIAnalysis;
+window.detectIncidentType = detectIncidentType;
 
 document.addEventListener('DOMContentLoaded', initResidentDashboard);
