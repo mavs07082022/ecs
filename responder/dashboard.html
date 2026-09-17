@@ -3,832 +3,833 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
-  <title>Responder Dashboard - Barangay EMS</title>
+  <title>Responder Dashboard</title>
   <link rel="icon" href="../favicon.ico" sizes="any">
-<link rel="icon" type="image/svg+xml" href="../favicon.svg">
-<link rel="icon" type="image/png" sizes="96x96" href="../favicon-96x96.png">
-<link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
-<link rel="manifest" href="../site.webmanifest">
-<meta name="theme-color" content="#0A2342">
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+  <link rel="icon" type="image/png" sizes="96x96" href="../favicon-96x96.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
+  <link rel="manifest" href="../site.webmanifest">
+  <meta name="theme-color" content="#0A2342">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
-  <link href="../css/style.css" rel="stylesheet">
+  <link rel="stylesheet" href="../design.css" />
+  <link rel="stylesheet" href="../css/style.css">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js" defer></script>
+  <script>
+    (function () {
+      try {
+        var k = "culiat-ecs-theme";
+        var s = localStorage.getItem(k);
+        var d = s === "dark" || (!s && window.matchMedia("(prefers-color-scheme: dark)").matches);
+        if (d) document.documentElement.classList.add("dark");
+      } catch (e) {}
+    })();
+  </script>
   <style>
+    body { background: var(--content-bg); color: var(--foreground); }
 
-    .status-badge {
-      font-size: 0.7rem;
-      padding: 4px 14px;
-      border-radius: 50px;
-      font-weight: 600;
-      text-transform: capitalize;
-    }
-    .status-reported { background: #f8d7da; color: #721c24; }
-    .status-acknowledged { background: #cce5ff; color: #004085; }
-    .status-responding { background: #fff3cd; color: #856404; }
-    .status-resolved { background: #d4edda; color: #155724; }
-    .status-closed { background: #e2e3e5; color: #383d41; }
-
-    .priority-badge {
-      font-size: 0.7rem;
-      padding: 4px 14px;
-      border-radius: 50px;
-      font-weight: 600;
-      text-transform: uppercase;
-    }
-    .priority-critical { background: #dc3545; color: white; }
-    .priority-high { background: #fd7e14; color: white; }
-    .priority-medium { background: #ffc107; color: #212529; }
-    .priority-low { background: var(--accent-blue); color: white; }
-
+    /* ============================================================
+       EMERGENCY POPUP (Responder/Admin) — v2
+       ============================================================ */
     .emergency-popup {
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0,0,0,0.85);
-      z-index: 9999;
+      inset: 0;
+      z-index: 99998;
       display: none;
       align-items: center;
       justify-content: center;
-      backdrop-filter: blur(5px);
+      padding: 1rem;
+      background: rgba(0, 0, 0, 0.78);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      opacity: 0;
+      transition: opacity 0.3s ease;
     }
     .emergency-popup.active {
       display: flex;
+      opacity: 1;
     }
-    .emergency-popup-content {
-      background: white;
-      border-radius: 20px;
-      max-width: 500px;
-      width: 90%;
-      padding: 30px;
-      animation: popIn 0.5s ease-out;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-      max-height: 90vh;
-      overflow-y: auto;
-    }
-    @keyframes popIn {
-      0% { transform: scale(0.8) rotate(-5deg); opacity: 0; }
-      100% { transform: scale(1) rotate(0deg); opacity: 1; }
-    }
-    .emergency-popup .siren-top {
-      background: #dc3545;
-      color: white;
-      padding: 15px;
-      border-radius: 12px;
-      text-align: center;
-      margin-bottom: 20px;
-      animation: sirenFlash 0.8s ease-in-out infinite;
-      position: relative;
+    .emergency-popup .popup-content {
+      background: var(--card);
+      color: var(--card-foreground);
+      border-radius: calc(var(--radius) + 12px);
+      width: 100%;
+      max-width: 620px;
+      max-height: 92vh;
       overflow: hidden;
-    }
-    .emergency-popup .siren-top::before {
-      content: '';
-      position: absolute;
-      top: -50%;
-      left: -50%;
-      width: 200%;
-      height: 200%;
-      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-      animation: sirenGlow 1.5s ease-in-out infinite;
-    }
-    @keyframes sirenFlash {
-      0%, 100% { background: #dc3545; box-shadow: 0 0 20px rgba(220, 53, 69, 0.5); }
-      50% { background: #ff1744; box-shadow: 0 0 40px rgba(220, 53, 69, 0.8); }
-    }
-    @keyframes sirenGlow {
-      0%, 100% { transform: rotate(0deg); }
-      50% { transform: rotate(180deg); }
-    }
-    .siren-icon {
-      animation: sirenPulse 0.5s ease-in-out infinite;
-      font-size: 2rem;
-    }
-    @keyframes sirenPulse {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.3) rotate(10deg); }
-    }
-    .siren-wave {
       display: flex;
-      justify-content: center;
+      flex-direction: column;
+      box-shadow: 0 32px 90px -20px rgba(0, 0, 0, 0.7), 0 0 0 1px var(--border);
+      border: 1px solid var(--border);
+      animation: emergency-pop-in 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+      position: relative;
+    }
+    @keyframes emergency-pop-in {
+      from { transform: scale(0.92) translateY(20px); opacity: 0; }
+      to { transform: scale(1) translateY(0); opacity: 1; }
+    }
+    .emergency-popup .popup-content.critical {
+      animation: emergency-pop-in 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+                 critical-pulse 2s ease-in-out infinite 0.4s;
+    }
+    @keyframes critical-pulse {
+      0%, 100% {
+        box-shadow: 0 32px 90px -20px rgba(0, 0, 0, 0.7),
+                    0 0 0 1px var(--border),
+                    0 0 0 0 rgba(220, 53, 69, 0.7);
+      }
+      50% {
+        box-shadow: 0 32px 90px -20px rgba(0, 0, 0, 0.7),
+                    0 0 0 1px var(--border),
+                    0 0 0 18px rgba(220, 53, 69, 0);
+      }
+    }
+    .emergency-popup .popup-header {
+      background: linear-gradient(135deg, #dc3545 0%, #a71e2c 100%);
+      color: #fff;
+      padding: 1.25rem 1.5rem;
+      display: flex;
       align-items: center;
-      gap: 5px;
-      margin: 10px 0;
-    }
-    .siren-wave .bar {
-      width: 4px;
-      height: 20px;
-      background: rgba(255,255,255,0.8);
-      border-radius: 2px;
-      animation: waveBar 0.8s ease-in-out infinite;
-    }
-    .siren-wave .bar:nth-child(1) { animation-delay: 0s; }
-    .siren-wave .bar:nth-child(2) { animation-delay: 0.1s; }
-    .siren-wave .bar:nth-child(3) { animation-delay: 0.2s; }
-    .siren-wave .bar:nth-child(4) { animation-delay: 0.3s; }
-    .siren-wave .bar:nth-child(5) { animation-delay: 0.4s; }
-    @keyframes waveBar {
-      0%, 100% { height: 10px; }
-      50% { height: 30px; }
-    }
-    .siren-indicator .dot {
-      display: inline-block;
-      width: 10px;
-      height: 10px;
-      background: #ff4444;
-      border-radius: 50%;
-      animation: dotPulse 0.8s ease-in-out infinite;
-    }
-    @keyframes dotPulse {
-      0%, 100% { transform: scale(1); opacity: 1; }
-      50% { transform: scale(1.5); opacity: 0.5; }
-    }
-    .pulse-animation {
-      animation: pulseGlow 1s ease-in-out infinite;
-    }
-    @keyframes pulseGlow {
-      0%, 100% { box-shadow: 0 0 5px rgba(220, 53, 69, 0.5); opacity: 1; }
-      50% { box-shadow: 0 0 20px rgba(220, 53, 69, 0.8); opacity: 0.8; }
-    }
-    .popup-media-container {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin: 10px 0;
-    }
-    .popup-media-item {
-      width: 80px;
-      height: 80px;
-      border-radius: 8px;
-      overflow: hidden;
-      cursor: pointer;
-      border: 2px solid #dee2e6;
+      justify-content: space-between;
+      gap: 0.75rem;
       position: relative;
+      overflow: hidden;
       flex-shrink: 0;
     }
+    .emergency-popup .popup-header::before {
+      content: '';
+      position: absolute;
+      top: -60px; right: -60px;
+      width: 200px; height: 200px;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.18) 0%, transparent 70%);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+    .emergency-popup .popup-header::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(45deg, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 12px, transparent 12px, transparent 24px);
+      pointer-events: none;
+    }
+    .emergency-popup .popup-header h4 {
+      margin: 0;
+      font-family: "Sora", sans-serif;
+      font-weight: 900;
+      font-size: 1.15rem;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      position: relative;
+      z-index: 1;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .emergency-popup .popup-header h4 .popup-alert-icon {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      animation: alert-icon-shake 1.2s ease-in-out infinite;
+    }
+    .emergency-popup .popup-header h4 .popup-alert-icon i {
+      font-size: 1.05rem;
+      color: #fff;
+    }
+    @keyframes alert-icon-shake {
+      0%, 100% { transform: rotate(0deg); }
+      20% { transform: rotate(-12deg); }
+      40% { transform: rotate(12deg); }
+      60% { transform: rotate(-8deg); }
+      80% { transform: rotate(8deg); }
+    }
+    .emergency-popup .popup-close {
+      background: rgba(255, 255, 255, 0.15);
+      border: none;
+      color: #fff;
+      width: 38px; height: 38px;
+      border-radius: 50%;
+      font-size: 1.4rem;
+      line-height: 1;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 2;
+      padding: 0;
+    }
+    .emergency-popup .popup-close:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: rotate(90deg);
+    }
+    .emergency-popup .popup-body {
+      padding: 1.5rem;
+      overflow-y: auto;
+      flex: 1;
+      background: var(--card);
+      color: var(--card-foreground);
+      max-height: calc(92vh - 200px);
+    }
+    .siren-indicator {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.6rem 1.1rem;
+      background: linear-gradient(135deg, #dc3545 0%, #a71e2c 100%);
+      color: #fff;
+      border-radius: 9999px;
+      font-weight: 800;
+      font-size: 0.78rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin: 0 auto 1.15rem;
+      width: fit-content;
+      box-shadow: 0 8px 24px -8px rgba(220, 53, 69, 0.6);
+      animation: siren-flash 0.8s ease-in-out infinite;
+    }
+    .siren-indicator.show { display: inline-flex; }
+    @keyframes siren-flash {
+      0%, 100% { opacity: 1; box-shadow: 0 8px 24px -8px rgba(220, 53, 69, 0.6); }
+      50% { opacity: 0.85; box-shadow: 0 8px 32px -6px rgba(220, 53, 69, 0.9); }
+    }
+    .siren-indicator .siren-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: #fff;
+      animation: siren-dot-pulse 0.8s ease-in-out infinite;
+    }
+    @keyframes siren-dot-pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.4); opacity: 0.7; }
+    }
+    .popup-priority-banner {
+      border-radius: calc(var(--radius) + 2px);
+      padding: 1rem 1.15rem;
+      margin-bottom: 1.15rem;
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      border-left: 5px solid;
+      position: relative;
+      overflow: hidden;
+    }
+    .popup-priority-banner.critical {
+      background: color-mix(in oklab, #dc3545 14%, var(--card));
+      border-left-color: #dc3545;
+    }
+    .popup-priority-banner.high {
+      background: color-mix(in oklab, #fd7e14 14%, var(--card));
+      border-left-color: #fd7e14;
+    }
+    .popup-priority-banner.medium {
+      background: color-mix(in oklab, #ffc107 18%, var(--card));
+      border-left-color: #ffc107;
+    }
+    .popup-priority-banner.low {
+      background: color-mix(in oklab, #0d6efd 12%, var(--card));
+      border-left-color: #0d6efd;
+    }
+    .popup-priority-banner .priority-banner-icon {
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      color: #fff;
+      font-size: 1.2rem;
+    }
+    .popup-priority-banner.critical .priority-banner-icon { background: #dc3545; }
+    .popup-priority-banner.high .priority-banner-icon { background: #fd7e14; }
+    .popup-priority-banner.medium .priority-banner-icon { background: #ffc107; color: #212529; }
+    .popup-priority-banner.low .priority-banner-icon { background: #0d6efd; }
+    .popup-priority-banner .priority-banner-text {
+      flex: 1;
+      min-width: 0;
+    }
+    .popup-priority-banner .priority-banner-label {
+      font-size: 0.68rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted-foreground);
+      margin-bottom: 0.15rem;
+    }
+    .popup-priority-banner .priority-banner-value {
+      font-family: "Sora", sans-serif;
+      font-weight: 900;
+      font-size: 1.15rem;
+      letter-spacing: -0.01em;
+      line-height: 1.1;
+    }
+    .popup-priority-banner.critical .priority-banner-value { color: #dc3545; }
+    .popup-priority-banner.high .priority-banner-value { color: #fd7e14; }
+    .popup-priority-banner.medium .priority-banner-value { color: #b8860b; }
+    .popup-priority-banner.low .priority-banner-value { color: #0d6efd; }
+    .dark .popup-priority-banner.medium .priority-banner-value { color: #ffc107; }
+    .popup-info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 1.15rem;
+    }
+    .popup-info-item {
+      background: color-mix(in oklab, var(--muted) 70%, var(--card));
+      border-radius: calc(var(--radius) + 2px);
+      padding: 0.85rem 1rem;
+      border: 1px solid var(--border);
+      transition: all 0.2s ease;
+    }
+    .popup-info-item:hover {
+      border-color: color-mix(in oklab, var(--primary) 40%, transparent);
+      transform: translateY(-2px);
+    }
+    .popup-info-item .info-label {
+      font-size: 0.66rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted-foreground);
+      margin-bottom: 0.3rem;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .popup-info-item .info-label i {
+      color: var(--primary);
+      font-size: 0.7rem;
+    }
+    .popup-info-item .info-value {
+      font-weight: 700;
+      color: var(--card-foreground);
+      font-size: 0.9rem;
+      word-break: break-word;
+      line-height: 1.4;
+    }
+    .popup-info-item.full-width {
+      grid-column: 1 / -1;
+    }
+    .popup-title-block {
+      background: color-mix(in oklab, var(--primary) 8%, var(--card));
+      border: 1px solid color-mix(in oklab, var(--primary) 25%, transparent);
+      border-radius: calc(var(--radius) + 2px);
+      padding: 1rem 1.15rem;
+      margin-bottom: 1.15rem;
+      border-left: 4px solid var(--primary);
+    }
+    .popup-title-block .popup-title-label {
+      font-size: 0.66rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--primary);
+      margin-bottom: 0.35rem;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .popup-title-block .popup-title-text {
+      font-family: "Sora", sans-serif;
+      font-weight: 800;
+      font-size: 1.08rem;
+      color: var(--card-foreground);
+      line-height: 1.35;
+      letter-spacing: -0.01em;
+      word-break: break-word;
+    }
+    .popup-media-section {
+      margin-bottom: 1.15rem;
+    }
+    .popup-media-section .popup-section-title {
+      font-size: 0.68rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted-foreground);
+      margin-bottom: 0.6rem;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .popup-media-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+      gap: 0.6rem;
+    }
+    .popup-media-item {
+      aspect-ratio: 1 / 1;
+      border-radius: calc(var(--radius) + 2px);
+      overflow: hidden;
+      cursor: pointer;
+      border: 2px solid var(--border);
+      transition: all 0.2s ease;
+      position: relative;
+      background: #000;
+    }
     .popup-media-item:hover {
-      transform: scale(1.05);
-      border-color: var(--primary-green);
+      transform: translateY(-3px) scale(1.02);
+      border-color: #dc3545;
+      box-shadow: 0 8px 20px color-mix(in oklab, #dc3545 40%, transparent);
     }
     .popup-media-item img,
     .popup-media-item video {
       width: 100%;
       height: 100%;
       object-fit: cover;
-    }
-    .popup-media-item video {
-      background: #000;
+      display: block;
     }
     .popup-media-item .play-overlay {
       position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0,0,0,0.4);
+      inset: 0;
+      background: rgba(0, 0, 0, 0.45);
       display: flex;
       align-items: center;
       justify-content: center;
-      color: white;
-      font-size: 1.5rem;
+      color: #fff;
+      font-size: 1.2rem;
+      pointer-events: none;
     }
+    .popup-media-item .media-type-tag {
+      position: absolute;
+      top: 5px;
+      left: 5px;
+      background: rgba(0, 0, 0, 0.78);
+      color: #fff;
+      font-size: 0.58rem;
+      padding: 2px 7px;
+      border-radius: 9999px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 700;
+    }
+    .emergency-popup .popup-footer {
+      padding: 1rem 1.5rem;
+      display: flex;
+      gap: 0.75rem;
+      justify-content: flex-end;
+      background: color-mix(in oklab, var(--muted) 55%, var(--card));
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+    .emergency-popup .popup-footer .btn-civic {
+      min-height: 2.9rem;
+      padding: 0 1.5rem;
+      font-size: 0.9rem;
+    }
+    .emergency-popup .popup-footer .btn-civic.btn-acknowledge {
+      background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%);
+      color: #fff;
+      border: none;
+      font-weight: 800;
+      box-shadow: 0 8px 24px -8px rgba(40, 167, 69, 0.6);
+      animation: ack-btn-glow 2s ease-in-out infinite;
+    }
+    @keyframes ack-btn-glow {
+      0%, 100% { box-shadow: 0 8px 24px -8px rgba(40, 167, 69, 0.6); }
+      50% { box-shadow: 0 8px 32px -6px rgba(40, 167, 69, 0.9); }
+    }
+    .emergency-popup .popup-footer .btn-civic.btn-acknowledge:hover:not(:disabled) {
+      transform: translateY(-2px);
+      background: linear-gradient(135deg, #2fb350 0%, #237a3b 100%);
+    }
+    .emergency-popup .popup-footer .btn-civic.btn-acknowledge:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+      animation: none;
+    }
+    .popup-timer-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.7rem;
+      font-weight: 800;
+      padding: 0.3rem 0.7rem;
+      border-radius: 9999px;
+      background: color-mix(in oklab, #dc3545 15%, var(--card));
+      color: #dc3545;
+      border: 1px solid color-mix(in oklab, #dc3545 30%, transparent);
+      margin-left: auto;
+      font-variant-numeric: tabular-nums;
+      flex-shrink: 0;
+    }
+    .popup-timer-badge i { font-size: 0.7rem; }
+
+    @media (max-width: 640px) {
+      .emergency-popup .popup-content { max-width: 100%; max-height: 96vh; }
+      .emergency-popup .popup-header { padding: 1rem 1.15rem; }
+      .emergency-popup .popup-header h4 { font-size: 0.95rem; }
+      .emergency-popup .popup-header h4 .popup-alert-icon { width: 30px; height: 30px; }
+      .emergency-popup .popup-body { padding: 1.15rem; }
+      .popup-info-grid { grid-template-columns: 1fr; }
+      .popup-priority-banner { padding: 0.85rem 1rem; flex-wrap: wrap; }
+      .popup-priority-banner .priority-banner-icon { width: 38px; height: 38px; font-size: 1rem; }
+      .popup-timer-badge { margin-left: 0; }
+      .emergency-popup .popup-footer { padding: 0.85rem 1.15rem; flex-direction: column-reverse; }
+      .emergency-popup .popup-footer .btn-civic { width: 100%; }
+    }
+
+    /* Media Lightbox */
     .media-lightbox {
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0,0,0,0.92);
+      inset: 0;
+      background: rgba(0, 0, 0, 0.94);
       z-index: 99999;
       display: none;
       align-items: center;
       justify-content: center;
-      padding: 20px;
-      cursor: pointer;
+      padding: 24px;
+      cursor: zoom-out;
     }
-    .media-lightbox.active {
-      display: flex;
-    }
-    .media-lightbox-content {
-      max-width: 90%;
-      max-height: 90%;
-      border-radius: 12px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-    }
-    .media-lightbox-content img,
-    .media-lightbox-content video {
-      max-width: 100%;
-      max-height: 85vh;
-      border-radius: 12px;
-      display: block;
-      margin: 0 auto;
-    }
-    .media-lightbox-close {
-      position: fixed;
-      top: 20px;
-      right: 30px;
-      font-size: 2.5rem;
-      color: white;
-      cursor: pointer;
-      z-index: 999999;
-      background: rgba(0,0,0,0.5);
-      width: 50px;
-      height: 50px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: none;
-      transition: all 0.3s ease;
-    }
-    .media-lightbox-close:hover {
-      background: rgba(220, 53, 69, 0.8);
-      transform: rotate(90deg);
-    }
+    .media-lightbox.active { display: flex; }
+    .media-lightbox #lightboxContent { max-width: 95%; max-height: 90%; }
+
+    /* Fallback popup styles for the rest of the dashboard */
     .media-badge {
       display: inline-block;
       font-size: 0.7rem;
       padding: 4px 10px;
       border-radius: 30px;
       background: #e8f0fe;
-      color: var(--accent-blue);
+      color: #0d6efd;
       cursor: pointer;
       transition: all 0.2s ease;
       border: 1px solid transparent;
     }
     .media-badge:hover {
-      background: var(--accent-blue);
+      background: #0d6efd;
       color: white;
-      border-color: var(--accent-blue);
+      border-color: #0d6efd;
       transform: scale(1.05);
     }
-    .stat-card .number {
-      font-size: 1.8rem;
-      font-weight: 700;
-      color: var(--primary-navy);
-    }
-    .stat-card .label {
-      color: var(--text-muted);
-      font-size: 0.85rem;
-      font-weight: 500;
-    }
-    .stat-card .icon-circle {
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.2rem;
-    }
-    .stat-card .icon-circle.green {
-      background: rgba(22, 163, 74, 0.1);
-      color: var(--primary-green);
-    }
-    .stat-card .icon-circle.red {
-      background: rgba(220, 53, 69, 0.1);
-      color: #dc3545;
-    }
-    .stat-card .icon-circle.blue {
-      background: rgba(37, 83, 184, 0.1);
-      color: var(--accent-blue);
-    }
-    .stat-card .icon-circle.yellow {
-      background: rgba(255, 193, 7, 0.1);
-      color: #ffc107;
-    }
-    .stat-card {
-      background: var(--white);
-      border-radius: var(--radius);
-      padding: 20px 24px;
-      box-shadow: var(--shadow-sm);
-      transition: var(--transition);
-      border: 1px solid rgba(0,0,0,0.02);
-      height: 100%;
-    }
-    .stat-card:hover {
-      box-shadow: var(--shadow-md);
-      transform: translateY(-2px);
-    }
-    @media (max-width: 768px) {
-      .popup-media-item { width: 60px; height: 60px; }
-      .stat-card .number { font-size: 1.4rem; }
-    }
-
-    /* ============================================ */
-    /* ENHANCED INCIDENTS PAGE STYLES               */
-    /* ============================================ */
-    .incidents-header {
-      background: linear-gradient(135deg, var(--primary-navy) 0%, #1e3a5f 100%);
-      border-radius: var(--radius);
-      padding: 28px 32px;
-      color: white;
-      margin-bottom: 24px;
-      position: relative;
-      overflow: hidden;
-    }
-    .incidents-header::after {
-      content: '';
-      position: absolute;
-      top: -50%;
-      right: -10%;
-      width: 300px;
-      height: 300px;
-      background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
-      border-radius: 50%;
-    }
-    .incidents-header h4 {
-      font-weight: 700;
-      margin-bottom: 4px;
-    }
-    .incidents-header p {
-      opacity: 0.85;
-      margin-bottom: 0;
-      font-size: 0.9rem;
-    }
-    .incidents-stat-pill {
-      background: rgba(255,255,255,0.12);
-      border-radius: 12px;
-      padding: 12px 20px;
-      text-align: center;
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255,255,255,0.1);
-      min-width: 100px;
-    }
-    .incidents-stat-pill .num {
-      font-size: 1.6rem;
-      font-weight: 700;
-      line-height: 1.2;
-    }
-    .incidents-stat-pill .lbl {
-      font-size: 0.7rem;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      opacity: 0.8;
-    }
-    .incidents-filter-bar {
-      background: white;
-      border-radius: var(--radius);
-      padding: 16px 20px;
-      box-shadow: var(--shadow-sm);
-      margin-bottom: 20px;
-      border: 1px solid rgba(0,0,0,0.04);
-    }
-    .incident-card {
-      background: white;
-      border-radius: var(--radius);
-      box-shadow: var(--shadow-sm);
-      border: 1px solid rgba(0,0,0,0.04);
-      margin-bottom: 16px;
-      overflow: hidden;
-      transition: var(--transition);
-      position: relative;
-    }
-    .incident-card:hover {
-      box-shadow: var(--shadow-md);
-      transform: translateY(-2px);
-    }
-    .incident-card::before {
-      content: '';
-      position: absolute;
-      left: 0;
-      top: 0;
-      bottom: 0;
-      width: 5px;
-    }
-    .incident-card.priority-critical::before { background: #dc3545; }
-    .incident-card.priority-high::before { background: #fd7e14; }
-    .incident-card.priority-medium::before { background: #ffc107; }
-    .incident-card.priority-low::before { background: #0d6efd; }
-    .incident-card-header {
-      padding: 20px 24px 16px 28px;
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 16px;
-      flex-wrap: wrap;
-    }
-    .incident-card-title {
-      font-size: 1.05rem;
-      font-weight: 700;
-      color: var(--primary-navy);
-      margin-bottom: 6px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-    .incident-card-meta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 16px;
-      font-size: 0.82rem;
-      color: var(--text-muted);
-    }
-    .incident-card-meta span {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      color: black;
-    }
-    .incident-card-body {
-      padding: 0 24px 20px 28px;
-    }
-    /* ==== DESCRIPTION BOX (FIXED: dark text) ==== */
-    .incident-description-box {
-      background: #f1f5f9;
-      border-radius: 10px;
-      padding: 14px 18px;
-      font-size: 0.92rem;
-      color: #0f172a;                 /* <- solid dark/black text */
-      line-height: 1.65;
-      border-left: 4px solid #94a3b8;
-      margin-bottom: 14px;
-      position: relative;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-    .incident-description-box .desc-label {
-      display: block;
-      font-size: 0.68rem;
-      text-transform: uppercase;
-      letter-spacing: 0.6px;
-      font-weight: 700;
-      color: #64748b;
-      margin-bottom: 6px;
-    }
-    .incident-description-box .desc-text {
-      color: #0f172a;                 /* <- ensure inner text is dark */
-      font-weight: 500;
-    }
-    .incident-description-box.clamped .desc-text {
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
-    .incident-no-desc {
-      font-size: 0.85rem;
-      color: #94a3b8;
-      font-style: italic;
-      margin-bottom: 14px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .incident-card-footer {
-      padding: 14px 24px 18px 28px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      border-top: 1px solid #f0f2f5;
-      flex-wrap: wrap;
-    }
-    .incident-action-group {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
-    .btn-incident-action {
-      font-size: 0.78rem;
-      padding: 7px 14px;
-      border-radius: 8px;
-      font-weight: 600;
-      transition: var(--transition);
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      color:black;
-    }
-    .btn-incident-action:hover { transform: translateY(-1px); }
-    .incident-empty-state {
-      text-align: center;
-      padding: 60px 20px;
-      color: var(--text-muted);
-    }
-    .incident-empty-state i {
-      font-size: 3rem;
-      color: var(--primary-green);
-      margin-bottom: 16px;
-      display: block;
-    }
-    /* ==== MODAL DESCRIPTION (FIXED: dark text) ==== */
-    .incident-modal-description {
-      background: #f1f5f9;
-      border-radius: 10px;
-      padding: 16px 20px;
-      line-height: 1.7;
-      color: #0f172a;                 /* <- solid dark/black text */
-      font-size: 0.95rem;
-      font-weight: 500;
-      white-space: pre-wrap;
-      word-break: break-word;
-      border-left: 4px solid #64748b;
-    }
-    .incident-modal-meta-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 12px;
-    }
-    .incident-modal-meta-item {
-      background: #f8f9fc;
-      border-radius: 10px;
-      padding: 12px 16px;
-    }
-    .incident-modal-meta-item .lbl {
-      font-size: 0.7rem;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: var(--text-muted);
-      font-weight: 600;
-      margin-bottom: 3px;
-    }
-    .incident-modal-meta-item .val {
-      font-weight: 600;
-      color: var(--primary-navy);
-      font-size: 0.9rem;
-    }
-    .incident-type-icon {
-      width: 36px;
-      height: 36px;
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.95rem;
-      flex-shrink: 0;
-    }
-    .incident-type-icon.fire { background: #fee2e2; color: #dc2626; }
-    .incident-type-icon.medical { background: #dbeafe; color: #2563eb; }
-    .incident-type-icon.accident { background: #fef3c7; color: #d97706; }
-    .incident-type-icon.flood { background: #cffafe; color: #0891b2; }
-    .incident-type-icon.crime { background: #ede9fe; color: #7c3aed; }
-    .incident-type-icon.other { background: #f1f5f9; color: #475569; }
-    @media (max-width: 768px) {
-      .incident-card-header { padding: 16px 16px 12px 22px; }
-      .incident-card-body { padding: 0 16px 16px 22px; }
-      .incident-card-footer { padding: 12px 16px 16px 22px; }
-      .incidents-header { padding: 20px 22px; }
-    }
-    .sidebar-brand .sidebar-logo {
-  width: 68px;
-  height: 68px;
-  border-radius: 50%;
-  object-fit: cover;
-  display: block;
-  margin: 0 auto 10px;
-  background: #fff;
-  padding: 3px;
-  box-shadow: 0 4px 14px rgba(0,0,0,0.18);
-  border: 2px solid #fff;
-  transition: transform 0.25s ease;
-}
-
-.sidebar-brand .sidebar-logo:hover {
-  transform: scale(1.06);
-}
-
-/* Responsive: smaller on mobile */
-@media (max-width: 768px) {
-  .sidebar-brand .sidebar-logo {
-    width: 56px;
-    height: 56px;
-  }
-}
   </style>
 </head>
-<body>
+<body class="dashboard-page">
 
-  <div class="emergency-popup" id="emergencyPopup">
-    <div class="emergency-popup-content">
-      <div class="siren-top">
-        <i class="fas fa-exclamation-triangle siren-icon"></i>
-        <h4 class="mt-2 mb-0">NEW EMERGENCY REPORT</h4>
-        <div id="popupPriorityLabel" class="badge bg-danger mt-2" style="font-size:1rem;padding:8px 20px;">CRITICAL</div>
-        <div class="siren-wave">
-          <span class="bar"></span>
-          <span class="bar"></span>
-          <span class="bar"></span>
-          <span class="bar"></span>
-          <span class="bar"></span>
-        </div>
-      </div>
-      <div id="popupContent">
-        <p><strong>Title:</strong> <span id="popupIncidentTitle">-</span></p>
-        <p><strong>Type:</strong> <span id="popupIncidentType">-</span></p>
-        <p><strong>Priority:</strong> <span id="popupIncidentPriority" class="badge">-</span></p>
-        <p><strong>Location:</strong> <span id="popupIncidentLocation">-</span></p>
-        <p><strong>Reporter:</strong> <span id="popupReporter">-</span></p>
-        <p><strong>Time:</strong> <span id="popupTime">-</span></p>
-        <div id="popupMediaContainer" style="display:none;">
-          <hr>
-          <p><strong><i class="fas fa-paperclip me-1"></i>Attachments:</strong></p>
-          <div class="popup-media-container" id="popupMediaList"></div>
-        </div>
-      </div>
-      <div class="d-flex gap-2 mt-3">
-        <button class="btn btn-success flex-grow-1" onclick="acknowledgePopup()" id="acknowledgeBtn">
-          <i class="fas fa-check me-2"></i>Acknowledge & Dispatch
-        </button>
-        <button class="btn btn-secondary" onclick="closePopup()">
-          <i class="fas fa-times"></i>
-        </button>
-      </div>
-      <div class="text-center mt-2">
-        <small class="text-muted">
-          <i class="fas fa-volume-up me-1"></i>Siren will stop when acknowledged
-        </small>
-      </div>
-    </div>
-  </div>
-
-
-  <div class="media-lightbox" id="mediaLightbox" onclick="closeLightbox()">
-    <button class="media-lightbox-close" onclick="closeLightbox()">
-      <i class="fas fa-times"></i>
+  <!-- Mobile top bar -->
+  <div class="mobile-topbar" id="mobileTopbar">
+    <button class="hamburger-btn" id="mobileMenuBtn" aria-label="Open menu">
+      <i data-lucide="menu" style="width:22px;height:22px;"></i>
     </button>
-    <div class="media-lightbox-content" id="lightboxContent"></div>
+    <h1 class="topbar-title">Barangay Culiat</h1>
+    <img src="/logoooo.png" alt="Logo" class="topbar-logo" onerror="this.onerror=null;this.src='../logoooo.png';">
   </div>
+
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
   <div class="container-fluid p-0">
     <div class="row g-0">
-  
-      <div class="col-md-3 col-lg-2 dashboard-sidebar">
+      <!-- Sidebar -->
+      <div class="col-md-3 col-lg-2 dashboard-sidebar" id="responderSidebar">
         <div class="sidebar-brand">
-          <img src="/logoooo.png" alt="Barangay Culiat Logo" class="sidebar-logo">
+          <img src="/logoooo.png" alt="Barangay Culiat Logo" class="sidebar-logo" onerror="this.onerror=null;this.src='../logoooo.png';">
           <h5>Barangay Culiat</h5>
           <small id="userNameDisplay">Responder</small>
-          <div class="mt-1">
-            <span class="badge bg-danger" id="sirenIndicator" style="display:none;">
-              <i class="fas fa-bell siren-icon me-1"></i>
-              <span class="siren-indicator">
-                <span class="dot"></span>
+          <div class="mt-3">
+            <button type="button" data-theme-toggle class="btn-civic btn-outline btn-sm w-100 theme-toggle-btn theme-toggle-sidebar" aria-label="Toggle theme">
+              <span class="theme-toggle-label">Theme</span>
+              <span class="theme-toggle-icon-wrap">
+                <i data-lucide="sun" data-icon="sun" class="theme-toggle-icon" style="width:16px;height:16px;"></i>
+                <i data-lucide="moon" data-icon="moon" class="theme-toggle-icon hidden-icon" style="width:16px;height:16px;"></i>
               </span>
-              New Alert
-            </span>
+            </button>
           </div>
         </div>
         <nav class="nav flex-column">
-          <a class="nav-link active" href="#" data-page="dashboard">
-            <i class="fas fa-chart-pie"></i>Dashboard
-          </a>
-          <a class="nav-link" href="#" data-page="incidents">
-            <i class="fas fa-list"></i>Incidents
-          </a>
-          <a class="nav-link" href="#" data-page="responders" id="respondersLink" style="display:none;">
-            <i class="fas fa-users"></i>Responders
-          </a>
-          <a class="nav-link" href="#" data-page="alerts">
-            <i class="fas fa-broadcast"></i>Alerts
-          </a>
-          <a class="nav-link" href="#" data-page="profile">
-            <i class="fas fa-user"></i>Profile
-          </a>
+          <a class="nav-link active" href="#" data-page="dashboard"><i data-lucide="pie-chart"></i>Dashboard</a>
+          <a class="nav-link" href="#" data-page="incidents"><i data-lucide="list"></i>All Incidents</a>
+          <a class="nav-link" href="#" data-page="analytics"><i data-lucide="bar-chart-3"></i>Analytics</a>
+          <a class="nav-link" href="#" data-page="responders" id="respondersLink" style="display:none;"><i data-lucide="users"></i>Responders</a>
+          <a class="nav-link" href="#" data-page="alerts"><i data-lucide="broadcast"></i>Alerts</a>
+          <a class="nav-link" href="#" data-page="profile"><i data-lucide="user"></i>Profile</a>
         </nav>
         <div class="sidebar-footer">
-          <button class="btn btn-outline-danger btn-sm w-100" onclick="logout()">
-            <i class="fas fa-sign-out-alt me-2"></i>Logout
+          <button class="btn-civic btn-destructive w-100" onclick="logout()">
+            <i data-lucide="log-out"></i> Logout
           </button>
         </div>
       </div>
 
-
+      <!-- Main content -->
       <div class="col-md-9 col-lg-10 dashboard-content" id="mainContent">
-        <div id="pageContent">
-          <div class="text-center py-5">
-            <div class="spinner-border text-danger" role="status">
-              <span class="visually-hidden">Loading...</span>
-            </div>
-            <p class="mt-2 text-muted">Loading dashboard...</p>
-          </div>
-        </div>
+        <div id="pageContent"></div>
       </div>
     </div>
   </div>
 
-
+  <!-- ============================================================
+       ACTION MODAL
+       ============================================================ -->
   <div class="modal fade" id="actionModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title"><i class="fas fa-edit text-primary me-2"></i>Update Incident</h5>
+          <h5 class="modal-title"><i class="fas fa-edit me-2"></i>Update Incident</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
           <input type="hidden" id="actionIncidentId">
-          <div class="mb-3">
-            <label class="form-label fw-semibold">Action</label>
-            <select class="form-select" id="actionType">
-              <option value="acknowledge">Acknowledge</option>
-              <option value="responding">Mark as Responding</option>
-              <option value="resolved">Mark as Resolved</option>
-              <option value="closed">Close</option>
-            </select>
-          </div>
-          <div class="mb-3">
-            <label class="form-label fw-semibold">Notes</label>
-            <textarea class="form-control" id="actionNotes" rows="3" placeholder="Add notes..."></textarea>
-          </div>
+          <label class="form-label">Action</label>
+          <select class="form-select" id="actionType">
+            <option value="acknowledge">Acknowledge</option>
+            <option value="responding">Mark Responding</option>
+            <option value="resolved">Mark Resolved</option>
+            <option value="closed">Close Incident</option>
+          </select>
         </div>
         <div class="modal-footer">
-          <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button class="btn btn-primary" onclick="performAction()">
-            <i class="fas fa-check me-2"></i>Confirm
+          <button class="btn-civic btn-outline" data-bs-dismiss="modal">Cancel</button>
+          <button class="btn-civic btn-primary" onclick="performAction()">
+            <i class="fas fa-check"></i> Update
           </button>
         </div>
       </div>
     </div>
   </div>
 
-
+  <!-- ============================================================
+       ADD RESPONDER MODAL
+       ============================================================ -->
   <div class="modal fade" id="addResponderModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title"><i class="fas fa-user-plus text-danger me-2"></i>Add Responder</h5>
+          <h5 class="modal-title"><i class="fas fa-user-plus me-2"></i>Add Responder</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
           <form id="addResponderForm">
             <div class="mb-3">
-              <label class="form-label fw-semibold">Full Name</label>
+              <label class="form-label">Full Name</label>
               <input type="text" class="form-control" id="respFullName" required>
             </div>
             <div class="mb-3">
-              <label class="form-label fw-semibold">Email</label>
+              <label class="form-label">Email</label>
               <input type="email" class="form-control" id="respEmail" required>
             </div>
             <div class="mb-3">
-              <label class="form-label fw-semibold">Password</label>
+              <label class="form-label">Password</label>
               <input type="password" class="form-control" id="respPassword" minlength="6" required>
             </div>
             <div class="mb-3">
-              <label class="form-label fw-semibold">Barangay</label>
+              <label class="form-label">Barangay</label>
               <input type="text" class="form-control" id="respBarangay" required>
             </div>
             <div class="mb-3">
-              <label class="form-label fw-semibold">Contact Number</label>
+              <label class="form-label">Contact</label>
               <input type="text" class="form-control" id="respContact" required>
             </div>
           </form>
         </div>
         <div class="modal-footer">
-          <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button class="btn btn-danger" id="addResponderBtn" onclick="addResponder()">
-            <i class="fas fa-user-plus me-2"></i>Add Responder
+          <button class="btn-civic btn-outline" data-bs-dismiss="modal">Cancel</button>
+          <button class="btn-civic btn-primary" onclick="addResponder()" id="addResponderBtn">
+            <i class="fas fa-user-plus"></i> Add Responder
           </button>
         </div>
       </div>
     </div>
   </div>
 
-
+  <!-- ============================================================
+       ALERT MODAL
+       ============================================================ -->
   <div class="modal fade" id="alertModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title"><i class="fas fa-broadcast text-danger me-2"></i>Send Alert</h5>
+          <h5 class="modal-title"><i class="fas fa-broadcast-tower me-2"></i>Send Alert</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
           <form id="alertForm">
             <div class="mb-3">
-              <label class="form-label fw-semibold">Title</label>
+              <label class="form-label">Title</label>
               <input type="text" class="form-control" id="alertTitle" required>
             </div>
             <div class="mb-3">
-              <label class="form-label fw-semibold">Message</label>
-              <textarea class="form-control" id="alertMessage" rows="4" required></textarea>
+              <label class="form-label">Message</label>
+              <textarea class="form-control" id="alertMessage" rows="3" required></textarea>
             </div>
             <div class="mb-3">
-              <label class="form-label fw-semibold">Priority</label>
+              <label class="form-label">Priority</label>
               <select class="form-select" id="alertPriority">
-                <option value="critical">Critical</option>
+                <option value="medium">Medium</option>
                 <option value="high">High</option>
-                <option value="medium" selected>Medium</option>
-                <option value="low">Low</option>
+                <option value="critical">Critical</option>
               </select>
             </div>
           </form>
         </div>
         <div class="modal-footer">
-          <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button class="btn btn-danger" onclick="sendAlert()">
-            <i class="fas fa-paper-plane me-2"></i>Send Alert
+          <button class="btn-civic btn-outline" data-bs-dismiss="modal">Cancel</button>
+          <button class="btn-civic btn-destructive" onclick="sendAlert()">
+            <i class="fas fa-paper-plane"></i> Send Alert
           </button>
         </div>
       </div>
     </div>
   </div>
 
+  <!-- ============================================================
+       EMERGENCY POPUP (Enhanced v2)
+       ============================================================ -->
+  <div class="emergency-popup" id="emergencyPopup" role="alertdialog" aria-modal="true" aria-labelledby="popupIncidentTitle">
+    <div class="popup-content" id="emergencyPopupContent">
+      <div class="popup-header">
+        <h4>
+          <span class="popup-alert-icon">
+            <i class="fas fa-exclamation-triangle"></i>
+          </span>
+          Emergency Alert
+        </h4>
+        <button type="button" class="popup-close" onclick="closePopup()" aria-label="Close">&times;</button>
+      </div>
+      <div class="popup-body">
+        <!-- Siren indicator -->
+        <div class="siren-indicator" id="sirenIndicator">
+          <span class="siren-dot"></span>
+          <i class="fas fa-bullhorn"></i>
+          Siren Active — Respond Now
+        </div>
+
+        <!-- Priority banner -->
+        <div class="popup-priority-banner" id="popupPriorityBanner">
+          <div class="priority-banner-icon" id="popupPriorityIcon">
+            <i class="fas fa-exclamation-triangle"></i>
+          </div>
+          <div class="priority-banner-text">
+            <div class="priority-banner-label">Priority Level</div>
+            <div class="priority-banner-value" id="popupPriorityLabel">MEDIUM</div>
+          </div>
+          <span class="popup-timer-badge" id="popupTimerBadge">
+            <i class="fas fa-clock"></i>
+            <span id="popupTimerText">just now</span>
+          </span>
+        </div>
+
+        <!-- Title block -->
+        <div class="popup-title-block">
+          <div class="popup-title-label">
+            <i class="fas fa-file-alt"></i>
+            Incident
+          </div>
+          <div class="popup-title-text" id="popupIncidentTitle">Loading…</div>
+        </div>
+
+        <!-- Info grid -->
+        <div class="popup-info-grid">
+          <div class="popup-info-item">
+            <div class="info-label"><i class="fas fa-tag"></i>Type</div>
+            <div class="info-value" id="popupIncidentType">—</div>
+          </div>
+          <div class="popup-info-item">
+            <div class="info-label"><i class="fas fa-user"></i>Reporter</div>
+            <div class="info-value" id="popupReporter">Loading…</div>
+          </div>
+          <div class="popup-info-item">
+            <div class="info-label"><i class="fas fa-clock"></i>Reported At</div>
+            <div class="info-value" id="popupTime">—</div>
+          </div>
+          <div class="popup-info-item">
+            <div class="info-label"><i class="fas fa-phone"></i>Contact</div>
+            <div class="info-value" id="popupContact">—</div>
+          </div>
+          <div class="popup-info-item full-width">
+            <div class="info-label"><i class="fas fa-map-marker-alt"></i>Location</div>
+            <div class="info-value" id="popupIncidentLocation">—</div>
+          </div>
+        </div>
+
+        <!-- Attachments -->
+        <div class="popup-media-section" id="popupMediaContainer" style="display:none;">
+          <div class="popup-section-title">
+            <i class="fas fa-paperclip"></i>
+            Attachments
+          </div>
+          <div class="popup-media-grid" id="popupMediaList"></div>
+        </div>
+
+        <!-- Hidden legacy element (kept for compatibility) -->
+        <span id="popupIncidentPriority" style="display:none;"></span>
+      </div>
+      <div class="popup-footer">
+        <button class="btn-civic btn-outline" onclick="closePopup()">
+          <i class="fas fa-times"></i> Dismiss
+        </button>
+        <button class="btn-civic btn-acknowledge" onclick="acknowledgePopup()" id="acknowledgeBtn">
+          <i class="fas fa-check"></i> Acknowledge &amp; Dispatch
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       MEDIA LIGHTBOX
+       ============================================================ -->
+  <div class="media-lightbox" id="mediaLightbox" onclick="closeLightbox()">
+    <div id="lightboxContent"></div>
+  </div>
 
   <div class="toast-container" id="toastContainer"></div>
 
+  <!-- ============================================================
+       CORE LIBRARIES
+       ============================================================ -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
   <script src="../js/supabase.js"></script>
+  <script src="../design.js"></script>
+  <script src="../js/auth-security.js"></script>
   <script src="../js/responder.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+
+  <!-- ============================================================
+       MOBILE DRAWER
+       ============================================================ -->
+  <script>
+    (function() {
+      var menuBtn = document.getElementById('mobileMenuBtn');
+      var sidebar = document.getElementById('responderSidebar');
+      var backdrop = document.getElementById('sidebarBackdrop');
+      function openDrawer() {
+        sidebar.classList.add('mobile-open');
+        backdrop.classList.add('show');
+        document.body.classList.add('mobile-drawer-open');
+      }
+      function closeDrawer() {
+        sidebar.classList.remove('mobile-open');
+        backdrop.classList.remove('show');
+        document.body.classList.remove('mobile-drawer-open');
+      }
+      if (menuBtn) menuBtn.addEventListener('click', openDrawer);
+      if (backdrop) backdrop.addEventListener('click', closeDrawer);
+      document.querySelectorAll('.dashboard-sidebar .nav-link').forEach(function(link) {
+        link.addEventListener('click', function() { if (window.innerWidth <= 991.98) closeDrawer(); });
+      });
+      window.addEventListener('resize', function() { if (window.innerWidth > 991.98) closeDrawer(); });
+      document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeDrawer(); });
+    })();
+
+    const mo = new MutationObserver(() => {
+      if (window.CuliatDesign) {
+        window.CuliatDesign.initReveal();
+        window.CuliatDesign.initLucide();
+      }
+    });
+    document.addEventListener('DOMContentLoaded', () => {
+      const t = document.getElementById('pageContent');
+      if (t) mo.observe(t, { childList: true, subtree: true });
+    });
+  </script>
 </body>
 </html>
