@@ -1,499 +1,351 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Responder / Admin Login · Barangay Culiat</title>
-    <link rel="icon" href="/favicon.ico" sizes="any">
-<link rel="icon" type="image/svg+xml" href="/favicon.svg">
-<link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
-<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-<link rel="manifest" href="/site.webmanifest">
-<meta name="theme-color" content="#0A2342">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --primary-navy: #0A2342;
-            --navy-deep: #061428;
-            --primary-green: #0f973d;
-            --green-light: #4ADE80;
-            --dark-green: #0b7a30;
-            --text-muted: #6c757d;
-            --danger: #dc3545;
-            --warning: #ffc107;
-        }
-        * { box-sizing: border-box; }
-        body {
-            background: linear-gradient(135deg, var(--navy-deep) 0%, var(--primary-navy) 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
-            margin: 0;
-            padding: 20px;
-            position: relative;
-            overflow-x: hidden;
-        }
-        body::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background-image: 
-                radial-gradient(circle at 15% 25%, rgba(15, 151, 61, 0.12) 0%, transparent 45%),
-                radial-gradient(circle at 85% 75%, rgba(74, 222, 128, 0.08) 0%, transparent 45%);
-            pointer-events: none;
-        }
-        .login-container {
-            position: relative;
-            z-index: 1;
-            width: 100%;
-            max-width: 440px;
-        }
-        .login-card {
-            width: 100%;
-            padding: 40px 34px;
-            background: white;
-            border-radius: 24px;
-            box-shadow: 0 32px 80px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.05);
-        }
-        .login-card .logo {
-            text-align: center;
-            margin-bottom: 28px;
-        }
-        .login-card .logo .logo-wrapper {
-            width: 84px;
-            height: 84px;
-            border-radius: 50%;
-            overflow: hidden;
-            border: 3px solid var(--primary-green);
-            margin: 0 auto 14px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: rgba(15, 151, 61, 0.05);
-            padding: 8px;
-            box-shadow: 0 8px 24px rgba(15, 151, 61, 0.15);
-        }
-        .login-card .logo .logo-wrapper img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            border-radius: 50%;
-        }
-        .login-card .logo h4 {
-            font-weight: 800;
-            margin-top: 4px;
-            color: var(--primary-navy);
-            letter-spacing: -0.02em;
-        }
-        .login-card .logo .role-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
-            color: #856404;
-            font-size: 0.72rem;
-            font-weight: 700;
-            padding: 4px 12px;
-            border-radius: 20px;
-            margin-top: 6px;
-            letter-spacing: 0.3px;
-            text-transform: uppercase;
-            border: 1px solid #ffeaa7;
-        }
-        .form-floating {
-            margin-bottom: 15px;
-            position: relative;
-        }
-        .form-floating .form-control {
-            border-radius: 12px;
-            border: 2px solid #e9ecef;
-            transition: all 0.3s ease;
-            padding: 1rem 0.75rem;
-            height: 58px;
-            background: #f8fafc;
-            font-size: 0.95rem;
-        }
-        .form-floating .form-control:focus {
-            border-color: var(--primary-green);
-            box-shadow: 0 0 0 4px rgba(15, 151, 61, 0.1);
-            background: #fff;
-        }
-        .form-floating .form-control:focus ~ label,
-        .form-floating .form-control:not(:placeholder-shown) ~ label {
-            color: var(--primary-green);
-            font-weight: 500;
-        }
-        .form-floating label {
-            padding: 1rem 0.75rem;
-            color: #6c757d;
-        }
-        .password-wrapper {
-            position: relative;
-        }
-        .password-wrapper .form-control {
-            padding-right: 48px;
-        }
-        .toggle-password {
-            position: absolute;
-            right: 14px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: none;
-            border: none;
-            color: #6c757d;
-            cursor: pointer;
-            padding: 8px;
-            border-radius: 50%;
-            transition: all 0.2s ease;
-            z-index: 10;
-            font-size: 1.1rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .toggle-password:hover {
-            color: var(--primary-green);
-            background: rgba(15, 151, 61, 0.08);
-        }
-        .toggle-password:focus { outline: none; color: var(--primary-green); }
-        .btn-login {
-            width: 100%;
-            padding: 14px;
-            border-radius: 12px;
-            font-weight: 700;
-            background: var(--primary-green);
-            color: white;
-            border: none;
-            transition: all 0.3s ease;
-            font-size: 1rem;
-            letter-spacing: 0.3px;
-        }
-        .btn-login:hover:not(:disabled) {
-            background: var(--dark-green);
-            transform: translateY(-2px);
-            box-shadow: 0 12px 32px rgba(15, 151, 61, 0.35);
-            color: white;
-        }
-        .btn-login:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none !important;
-        }
-        .back-link {
-            color: var(--text-muted);
-            text-decoration: none;
-            transition: color 0.3s ease;
-            font-weight: 500;
-            font-size: 0.9rem;
-        }
-        .back-link:hover { color: var(--primary-green); }
-        .alert-custom {
-            border-radius: 12px;
-            padding: 12px 16px;
-            border: none;
-            font-size: 0.9rem;
-        }
-        .toast-container {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 9999;
-            max-width: 400px;
-            width: 100%;
-        }
-        .toast {
-            border-radius: 12px !important;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
-            margin-bottom: 10px;
-            border: none !important;
-        }
-        .security-notice {
-            display: flex;
-            align-items: flex-start;
-            gap: 8px;
-            background: #f0fdf4;
-            border: 1px solid #bbf7d0;
-            color: #166534;
-            font-size: 0.78rem;
-            padding: 10px 12px;
-            border-radius: 10px;
-            margin-top: 16px;
-            line-height: 1.4;
-        }
-        .security-notice i {
-            color: var(--primary-green);
-            font-size: 0.9rem;
-            margin-top: 1px;
-            flex-shrink: 0;
-        }
-        .security-notice a {
-            color: var(--primary-green);
-            font-weight: 600;
-            text-decoration: none;
-        }
-        .security-notice a:hover { text-decoration: underline; }
-        @media (max-width: 576px) {
-            .login-card { padding: 30px 22px; margin: 0; border-radius: 20px; }
-            body { padding: 12px; }
-            .login-card .logo .logo-wrapper { width: 68px; height: 68px; padding: 6px; }
-            .login-card .logo h4 { font-size: 1.1rem; }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Responder / Admin Login · Barangay Culiat</title>
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <meta name="theme-color" content="#0A2342">
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="design.css" />
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js" defer></script>
+  <script>
+    (function () {
+      try {
+        var k = "culiat-ecs-theme";
+        var s = localStorage.getItem(k);
+        var d = s === "dark" || (!s && window.matchMedia("(prefers-color-scheme: dark)").matches);
+        if (d) document.documentElement.classList.add("dark");
+      } catch (e) {}
+    })();
+  </script>
+  <style>
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.25rem;
+      position: relative;
+      overflow-x: hidden;
+      background: var(--background);
+    }
+    .theme-toggle-wrap {
+      position: fixed;
+      top: 1.25rem;
+      right: 1.25rem;
+      z-index: 100;
+    }
+    .login-container { position: relative; z-index: 1; width: 100%; max-width: 440px; }
+    .login-card {
+      width: 100%;
+      padding: 2.5rem 2.1rem;
+      background: var(--card);
+      color: var(--card-foreground);
+      border-radius: calc(var(--radius) + 8px);
+      border: 1px solid var(--border);
+      box-shadow: 0 32px 80px -12px rgb(0 0 0 / 0.25);
+    }
+    .login-card .logo { text-align: center; margin-bottom: 1.75rem; }
+    .login-card .logo .logo-wrapper {
+      width: 84px; height: 84px;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 3px solid var(--primary);
+      margin: 0 auto 14px;
+      display: flex; align-items: center; justify-content: center;
+      background: color-mix(in oklab, var(--primary) 8%, var(--card));
+      padding: 8px;
+      box-shadow: 0 8px 24px color-mix(in oklab, var(--primary) 25%, transparent);
+    }
+    .login-card .logo .logo-wrapper img {
+      width: 100%; height: 100%;
+      object-fit: contain;
+      border-radius: 50%;
+    }
+    .login-card .logo h4 {
+      font-family: "Sora", sans-serif;
+      font-weight: 800;
+      color: var(--card-foreground);
+      letter-spacing: -0.02em;
+      margin: 0.5rem 0 0;
+      font-size: 1.35rem;
+    }
+    .login-card .logo .role-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: color-mix(in oklab, var(--pri-medium) 30%, var(--card));
+      color: oklch(0.3 0.09 75);
+      font-size: 0.72rem;
+      font-weight: 800;
+      padding: 0.35rem 0.8rem;
+      border-radius: 9999px;
+      margin-top: 0.6rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      border: 1px solid color-mix(in oklab, var(--pri-medium) 55%, transparent);
+    }
+    .dark .login-card .logo .role-badge { color: oklch(0.92 0.09 75); }
+
+    /* password toggle — bottom-right so it doesn't overlap the floating label */
+    .password-wrapper { position: relative; }
+    .password-wrapper .form-control { padding-right: 3rem !important; }
+    .toggle-password {
+      position: absolute;
+      right: 12px;
+      bottom: 12px;
+      background: none; border: none;
+      color: var(--muted-foreground);
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 50%;
+      z-index: 10;
+      transition: all 0.2s ease;
+      display: flex; align-items: center; justify-content: center;
+      line-height: 0;
+    }
+    .toggle-password:hover { color: var(--primary); background: color-mix(in oklab, var(--primary) 10%, transparent); }
+
+    .security-notice {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.55rem;
+      background: color-mix(in oklab, var(--primary) 10%, var(--card));
+      border: 1px solid color-mix(in oklab, var(--primary) 30%, transparent);
+      color: var(--card-foreground);
+      font-size: 0.8rem;
+      padding: 0.85rem 1rem;
+      border-radius: calc(var(--radius) + 2px);
+      margin-top: 1rem;
+      line-height: 1.5;
+      font-weight: 500;
+    }
+    .security-notice svg, .security-notice .lucide { color: var(--primary); flex-shrink: 0; margin-top: 2px; }
+    .back-link {
+      color: var(--muted-foreground);
+      text-decoration: none;
+      transition: color 0.25s ease;
+      font-weight: 700;
+      font-size: 0.9rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .back-link:hover { color: var(--primary); }
+    .alert-civic-danger {
+      border-radius: calc(var(--radius) + 2px);
+      padding: 0.85rem 1rem;
+      border: 1px solid color-mix(in oklab, var(--destructive) 35%, transparent);
+      background: color-mix(in oklab, var(--destructive) 12%, var(--card));
+      color: var(--destructive);
+      font-size: 0.88rem;
+      font-weight: 600;
+      display: none;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      line-height: 1.5;
+    }
+    .alert-civic-danger.show { display: flex; }
+    @media (max-width: 576px) {
+      .login-card { padding: 2rem 1.5rem; }
+      body { padding: 0.75rem; }
+      .login-card .logo .logo-wrapper { width: 68px; height: 68px; padding: 6px; }
+      .login-card .logo h4 { font-size: 1.15rem; }
+    }
+  </style>
 </head>
 <body>
-    <div class="login-container">
-        <div class="login-card">
-            <div class="logo">
-                <div class="logo-wrapper">
-                    <img src="logoooo.png" alt="Barangay Culiat Logo" onerror="this.src='sd.png'">
-                </div>
-                <h4>Barangay Culiat</h4>
-                <div class="role-badge">
-                    <i class="fas fa-user-shield"></i> Responder / Admin Access
-                </div>
-            </div>
+  <div class="theme-toggle-wrap">
+    <button type="button" data-theme-toggle class="btn-civic btn-icon theme-toggle-btn" aria-label="Toggle theme">
+      <i data-lucide="sun" data-icon="sun" class="theme-toggle-icon" style="width:20px;height:20px;"></i>
+      <i data-lucide="moon" data-icon="moon" class="theme-toggle-icon hidden-icon" style="width:20px;height:20px;"></i>
+    </button>
+  </div>
 
-            <div id="loginError" class="alert alert-danger alert-custom" style="display:none;">
-                <i class="fas fa-exclamation-circle me-2"></i>
-                <span id="errorMessage">Invalid credentials</span>
-            </div>
-
-            <form id="loginForm" onsubmit="handleLogin(event)" autocomplete="on">
-                <div class="form-floating">
-                    <input type="email" class="form-control" id="loginEmail" placeholder="Email" required autocomplete="email">
-                    <label for="loginEmail"><i class="fas fa-envelope me-2"></i>Email Address</label>
-                </div>
-                <div class="form-floating password-wrapper">
-                    <input type="password" class="form-control" id="loginPassword" placeholder="Password" required autocomplete="current-password">
-                    <label for="loginPassword"><i class="fas fa-lock me-2"></i>Password</label>
-                    <button type="button" class="toggle-password" onclick="togglePassword('loginPassword', this)" aria-label="Toggle password visibility">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                </div>
-                <button type="submit" class="btn-login" id="loginBtn">
-                    <i class="fas fa-sign-in-alt me-2"></i>Login as Responder / Admin
-                </button>
-            </form>
-
-            <div class="security-notice">
-                <i class="fas fa-shield-alt"></i>
-                <div>
-                    <strong>    Authorized personnel only.</strong> 
-                  
-                </div>
-            </div>
-
-            <hr style="margin: 20px 0; border-color: #e9ecef;">
-            <div class="text-center">
-                <a href="index.html" class="back-link">
-                    <i class="fas fa-arrow-left me-1"></i>Back to Home
-                </a>
-            </div>
+  <div class="login-container">
+    <div class="login-card animate-rise">
+      <div class="logo">
+        <div class="logo-wrapper">
+          <img src="logoooo.png" alt="Barangay Culiat Logo" onerror="this.onerror=null;this.src='sd.png';">
         </div>
+        <h4>Barangay Culiat</h4>
+        <div class="role-badge">
+          <i data-lucide="shield-check" style="width:14px;height:14px;"></i> Responder / Admin Access
+        </div>
+      </div>
+
+      <div id="loginError" class="alert-civic-danger">
+        <i data-lucide="alert-circle" style="width:16px;height:16px;"></i>
+        <span id="errorMessage">Invalid credentials</span>
+      </div>
+
+      <form id="loginForm" onsubmit="handleLogin(event)" autocomplete="on">
+        <div class="form-floating">
+          <input type="email" class="form-control" id="loginEmail" placeholder=" " required autocomplete="email">
+          <label for="loginEmail"><i data-lucide="mail"></i> Email Address</label>
+        </div>
+        <div class="form-floating password-wrapper">
+          <input type="password" class="form-control" id="loginPassword" placeholder=" " required autocomplete="current-password">
+          <label for="loginPassword"><i data-lucide="lock"></i> Password</label>
+          <button type="button" class="toggle-password" onclick="togglePassword('loginPassword', this)" aria-label="Toggle password visibility">
+            <i data-lucide="eye" style="width:18px;height:18px;"></i>
+          </button>
+        </div>
+        <button type="submit" class="btn-civic btn-primary btn-lg w-100 mt-2" id="loginBtn">
+          <i data-lucide="log-in"></i> Login as Responder / Admin
+        </button>
+      </form>
+
+      <div class="security-notice">
+        <i data-lucide="shield" style="width:16px;height:16px;"></i>
+        <div><strong>Authorized personnel only.</strong> </div>
+      </div>
+
+      <hr style="margin:1.25rem 0;border-color:var(--border);opacity:1;">
+
+      <div class="text-center">
+        <a href="index.html" class="back-link">
+          <i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Back to Home
+        </a>
+      </div>
     </div>
+  </div>
 
-    <div class="toast-container" id="toastContainer"></div>
+  <div class="toast-container" id="toastContainer"></div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
-    <script src="js/supabase.js"></script>
-    <script>
-        function togglePassword(inputId, buttonElement) {
-            const input = document.getElementById(inputId);
-            const icon = buttonElement.querySelector('i');
-            
-            if (input.type === 'password') {
-                input.type = 'text';
-                icon.classList.remove('fa-eye');
-                icon.classList.add('fa-eye-slash');
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="design.js"></script>
+  <script>
+    function togglePassword(inputId, buttonElement) {
+      const input = document.getElementById(inputId);
+      if (input.type === 'password') {
+        input.type = 'text';
+        buttonElement.innerHTML = '<i data-lucide="eye-off" style="width:18px;height:18px;"></i>';
+      } else {
+        input.type = 'password';
+        buttonElement.innerHTML = '<i data-lucide="eye" style="width:18px;height:18px;"></i>';
+      }
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    function showToast(message, type = 'info', duration = 5000) {
+      const container = document.getElementById('toastContainer');
+      const colors = { success: 'bg-success text-white', danger: 'bg-danger text-white', warning: 'bg-warning text-dark', info: 'bg-info text-white' };
+      const icons  = { success: 'check-circle-2', danger: 'x-circle', warning: 'alert-triangle', info: 'info' };
+      const toast = document.createElement('div');
+      toast.className = `toast align-items-center ${colors[type] || colors.info} border-0`;
+      toast.role = 'alert';
+      toast.innerHTML = `<div class="d-flex"><div class="toast-body"><i data-lucide="${icons[type] || icons.info}" style="width:16px;height:16px;"></i> ${message}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
+      container.appendChild(toast);
+      if (window.lucide) window.lucide.createIcons();
+      const bsToast = new bootstrap.Toast(toast, { autohide: true, delay: duration });
+      bsToast.show();
+      setTimeout(() => toast.remove(), duration + 500);
+    }
+
+    function showError(message) {
+      const errorDiv = document.getElementById('loginError');
+      document.getElementById('errorMessage').textContent = message;
+      errorDiv.classList.add('show');
+      setTimeout(() => { errorDiv.classList.remove('show'); }, 6000);
+    }
+
+    async function handleLogin(event) {
+      event.preventDefault();
+      const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+      const password = document.getElementById('loginPassword').value;
+      const btn = document.getElementById('loginBtn');
+      document.getElementById('loginError').classList.remove('show');
+      if (!email || !password) { showError('Please fill in all fields'); return; }
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Logging in...';
+      try {
+        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (error) {
+          showError(error.message || 'Invalid credentials');
+          btn.disabled = false;
+          btn.innerHTML = '<i data-lucide="log-in"></i> Login as Responder / Admin';
+          if (window.lucide) window.lucide.createIcons();
+          return;
+        }
+        if (!data.user) {
+          showError('User not found');
+          btn.disabled = false;
+          btn.innerHTML = '<i data-lucide="log-in"></i> Login as Responder / Admin';
+          if (window.lucide) window.lucide.createIcons();
+          return;
+        }
+        await new Promise(resolve => setTimeout(resolve, 400));
+        const { data: profile, error: profileError } = await supabaseClient
+          .from('profiles').select('*').eq('id', data.user.id).maybeSingle();
+        if (profileError) console.error('Profile error:', profileError);
+        if (!profile) {
+          await supabaseClient.from('profiles').insert([{
+            id: data.user.id,
+            full_name: data.user.user_metadata?.full_name || 'User',
+            email: email,
+            barangay: data.user.user_metadata?.barangay || 'Unknown',
+            contact_number: data.user.user_metadata?.contact_number || 'N/A',
+            role: data.user.user_metadata?.role || 'resident'
+          }]);
+        }
+        const { data: freshProfile } = await supabaseClient
+          .from('profiles').select('role').eq('id', data.user.id).single();
+        const role = freshProfile?.role || 'resident';
+        if (role !== 'responder' && role !== 'admin') {
+          showError('Access denied. This page is for responders and admins only. Residents must use the main login page.');
+          await supabaseClient.auth.signOut();
+          btn.disabled = false;
+          btn.innerHTML = '<i data-lucide="log-in"></i> Login as Responder / Admin';
+          if (window.lucide) window.lucide.createIcons();
+          return;
+        }
+        showToast('Login successful! Redirecting...', 'success', 2000);
+        setTimeout(() => { window.location.href = 'responder/dashboard.html'; }, 1200);
+      } catch (error) {
+        console.error('Login error:', error);
+        showError(error.message || 'Login failed. Please try again.');
+        btn.disabled = false;
+        btn.innerHTML = '<i data-lucide="log-in"></i> Login as Responder / Admin';
+        if (window.lucide) window.lucide.createIcons();
+      }
+    }
+
+    async function checkSession() {
+      try {
+        if (window.location.pathname.includes('login.html')) {
+          const { data: { session } } = await supabaseClient.auth.getSession();
+          if (session) {
+            const { data: profile } = await supabaseClient
+              .from('profiles').select('role').eq('id', session.user.id).maybeSingle();
+            const role = profile?.role || 'resident';
+            if (role === 'responder' || role === 'admin') {
+              setTimeout(() => { window.location.href = 'responder/dashboard.html'; }, 500);
             } else {
-                input.type = 'password';
-                icon.classList.remove('fa-eye-slash');
-                icon.classList.add('fa-eye');
+              await supabaseClient.auth.signOut();
+              window.location.href = 'index.html';
             }
+          }
         }
+      } catch (error) { console.error('Session check error:', error); }
+    }
 
-        function showToast(message, type = 'info', duration = 5000) {
-            const container = document.getElementById('toastContainer');
-            const colors = {
-                success: 'bg-success text-white',
-                danger: 'bg-danger text-white',
-                warning: 'bg-warning text-dark',
-                info: 'bg-info text-white'
-            };
-            const icons = {
-                success: 'check-circle',
-                danger: 'times-circle',
-                warning: 'exclamation-triangle',
-                info: 'info-circle'
-            };
-            
-            const toast = document.createElement('div');
-            toast.className = `toast align-items-center ${colors[type] || colors.info} border-0`;
-            toast.role = 'alert';
-            toast.innerHTML = `
-                <div class="d-flex">
-                    <div class="toast-body">
-                        <i class="fas fa-${icons[type] || icons.info} me-2"></i>${message}
-                    </div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-                </div>
-            `;
-            container.appendChild(toast);
-            const bsToast = new bootstrap.Toast(toast, { autohide: true, delay: duration });
-            bsToast.show();
-            setTimeout(() => toast.remove(), duration + 500);
-        }
+    document.addEventListener('DOMContentLoaded', function() {
+      checkSession();
+      if (window.lucide) window.lucide.createIcons();
+    });
 
-        async function handleLogin(event) {
-            event.preventDefault();
-            
-            const email = document.getElementById('loginEmail').value.trim().toLowerCase();
-            const password = document.getElementById('loginPassword').value;
-            const btn = document.getElementById('loginBtn');
-
-            document.getElementById('loginError').style.display = 'none';
-
-            if (!email || !password) {
-                showError('Please fill in all fields');
-                return;
-            }
-
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Logging in...';
-
-            try {
-                console.log('🔐 Responder/Admin login attempt for:', email);
-                
-                const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-
-                if (error) {
-                    console.error('❌ Login error:', error);
-                    showError(error.message || 'Invalid credentials');
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Login as Responder / Admin';
-                    return;
-                }
-
-                if (!data.user) {
-                    showError('User not found');
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Login as Responder / Admin';
-                    return;
-                }
-
-                console.log('✅ User authenticated:', data.user.id);
-
-                await new Promise(resolve => setTimeout(resolve, 400));
-
-                const { data: profile, error: profileError } = await supabaseClient
-                    .from('profiles')
-                    .select('*')
-                    .eq('id', data.user.id)
-                    .maybeSingle();
-
-                if (profileError) console.error('❌ Profile error:', profileError);
-
-                // If no profile, create one as resident (fallback — but this page is for responders)
-                if (!profile) {
-                    console.log('⚠️ No profile found, creating default...');
-                    const { error: insertError } = await supabaseClient
-                        .from('profiles')
-                        .insert([{
-                            id: data.user.id,
-                            full_name: data.user.user_metadata?.full_name || 'User',
-                            email: email,
-                            barangay: data.user.user_metadata?.barangay || 'Unknown',
-                            contact_number: data.user.user_metadata?.contact_number || 'N/A',
-                            role: data.user.user_metadata?.role || 'resident'
-                        }]);
-                    
-                    if (insertError) console.error('❌ Profile creation error:', insertError);
-                }
-
-                const { data: freshProfile } = await supabaseClient
-                    .from('profiles')
-                    .select('role')
-                    .eq('id', data.user.id)
-                    .single();
-
-                const role = freshProfile?.role || 'resident';
-                console.log('📝 User role:', role);
-
-                // 🚫 Block residents from responder login page
-                if (role !== 'responder' && role !== 'admin') {
-                    console.log('❌ Access denied - role is:', role);
-                    showError('Access denied. This page is for responders and admins only. Residents must use the main login page.');
-                    await supabaseClient.auth.signOut();
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Login as Responder / Admin';
-                    return;
-                }
-
-                showToast('✅ Login successful! Redirecting...', 'success', 2000);
-                
-                setTimeout(() => {
-                    window.location.href = 'responder/dashboard.html';
-                }, 1200);
-
-            } catch (error) {
-                console.error('❌ Login error:', error);
-                showError(error.message || 'Login failed. Please try again.');
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Login as Responder / Admin';
-            }
-        }
-
-        function showError(message) {
-            const errorDiv = document.getElementById('loginError');
-            document.getElementById('errorMessage').textContent = message;
-            errorDiv.style.display = 'block';
-            setTimeout(() => { errorDiv.style.display = 'none'; }, 6000);
-        }
-
-        async function checkSession() {
-            try {
-                if (window.location.pathname.includes('login.html')) {
-                    const { data: { session } } = await supabaseClient.auth.getSession();
-                    
-                    if (session) {
-                        console.log('📋 Session found for:', session.user.email);
-                        
-                        const { data: profile } = await supabaseClient
-                            .from('profiles')
-                            .select('role')
-                            .eq('id', session.user.id)
-                            .maybeSingle();
-                        
-                        const role = profile?.role || 'resident';
-                        
-                        if (role === 'responder' || role === 'admin') {
-                            console.log('✅ User is responder/admin, redirecting to dashboard...');
-                            setTimeout(() => { window.location.href = 'responder/dashboard.html'; }, 500);
-                        } else {
-                            // Resident session on responder page → sign out, send to index
-                            console.log('❌ Resident trying to access responder login');
-                            await supabaseClient.auth.signOut();
-                            window.location.href = 'index.html';
-                        }
-                    }
-                }
-            } catch (error) {
-                console.error('❌ Session check error:', error);
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            checkSession();
-            console.log('📄 Responder/Admin login page loaded');
-        });
-
-        window.handleLogin = handleLogin;
-        window.togglePassword = togglePassword;
-    </script>
+    window.handleLogin = handleLogin;
+    window.togglePassword = togglePassword;
+  </script>
 </body>
 </html>
