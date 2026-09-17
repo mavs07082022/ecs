@@ -5,1039 +5,1244 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes" />
   <title>Barangay Culiat · Emergency Communication System</title>
   <link rel="icon" href="/favicon.ico" sizes="any">
-<link rel="icon" type="image/svg+xml" href="/favicon.svg">
-<link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
-<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-<link rel="manifest" href="/site.webmanifest">
-<meta name="theme-color" content="#0A2342">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <meta name="theme-color" content="#0A2342">
+
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="design.css" />
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js" defer></script>
+  <script>
+    (function () {
+      try {
+        var k = "culiat-ecs-theme";
+        var s = localStorage.getItem(k);
+        var d = s === "dark" || (!s && window.matchMedia("(prefers-color-scheme: dark)").matches);
+        if (d) document.documentElement.classList.add("dark");
+      } catch (e) {}
+    })();
+  </script>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: 'Inter', system-ui, -apple-system, sans-serif;
-      background: #f6f9fc; color: #0b1a33; overflow-x: hidden; line-height: 1.6;
+    /* ============ HEADER ============ */
+    .site-header {
+      position: fixed;
+      inset: 0 0 auto 0;
+      top: 0;
+      z-index: 50;
+      border-bottom: 1px solid color-mix(in oklab, var(--border) 80%, transparent);
+      background: color-mix(in oklab, var(--background) 88%, transparent);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      transition: height 300ms var(--ease-civic), box-shadow 300ms var(--ease-civic);
+      height: 88px;
     }
-    :root {
-      --navy: #0A2342; --navy-deep: #061428; --green: #0f973d; --green-light: #4ADE80;
-      --green-dark: #0b7a30; --white: #ffffff; --gray-light: #f0f4fa;
-      --shadow: 0 20px 40px -12px rgba(10, 35, 66, 0.12); --radius: 24px;
-      --danger: #dc3545; --warning: #ffc107;
+    @media (min-width: 1024px) { .site-header { height: 96px; } }
+    .site-header.scrolled {
+      height: 72px;
+      box-shadow: 0 4px 20px -8px rgb(0 0 0 / 0.12);
     }
+    @media (min-width: 1024px) { .site-header.scrolled { height: 80px; } }
 
-    /* ========== NAVBAR ========== */
-    .navbar-custom { background: transparent; transition: all 0.25s ease; padding: 14px 0; }
-    .navbar-custom.scrolled {
-      background: rgba(10, 35, 66, 0.92); backdrop-filter: blur(10px);
-      box-shadow: 0 8px 28px rgba(0,0,0,0.08); padding: 8px 0;
+    .site-header .header-inner {
+      max-width: 100rem;
+      margin-inline: auto;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0 1.25rem;
     }
-    .navbar-custom .navbar-brand {
-      font-weight: 700; color: var(--white);
-      display: flex; align-items: center; gap: 12px; letter-spacing: -0.02em;
-    }
-    .navbar-custom .navbar-brand .logo-wrapper {
-      width: 48px; height: 48px; border-radius: 50%; overflow: hidden;
-      border: 2px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.06);
+    @media (min-width: 640px) { .site-header .header-inner { padding: 0 2rem; } }
+    @media (min-width: 1024px) { .site-header .header-inner { padding: 0 3rem; } }
+
+    .brand-seal {
+      width: 48px; height: 48px;
+      border-radius: 50% !important;
+      overflow: hidden;
+      border: 2px solid var(--border);
+      background: var(--card);
       display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0; padding: 3px;
+      padding: 4px;
+      flex-shrink: 0;
+      object-fit: cover;
+      transition: transform 0.3s var(--ease-civic);
     }
-    .navbar-custom .navbar-brand .logo-wrapper img {
-      width: 100%; height: 100%; object-fit: contain; border-radius: 50%;
-    }
-    .navbar-custom .navbar-brand .brand-text { display: flex; flex-direction: column; line-height: 1.2; }
-    .navbar-custom .navbar-brand .brand-text .main { font-size: 1.2rem; font-weight: 700; letter-spacing: -0.01em; }
-    .navbar-custom .navbar-brand .brand-text .sub {
-      font-size: 0.6rem; font-weight: 400; opacity: 0.7;
-      letter-spacing: 0.5px; text-transform: uppercase;
-    }
-    .navbar-custom .nav-link {
-      color: rgba(255,255,255,0.8); font-weight: 500; font-size: 0.95rem; transition: 0.2s;
-    }
-    .navbar-custom .nav-link:hover { color: #fff; }
-    .navbar-custom .navbar-collapse { transition: all 0.25s ease; }
+    .brand-seal:hover { transform: scale(1.06) rotate(3deg); }
+    @media (min-width: 640px) { .brand-seal { width: 54px; height: 54px; } }
+    @media (min-width: 1024px) { .brand-seal { width: 60px; height: 60px; } }
 
-    .btn-green {
-      background: var(--green); color: #fff; border: none; font-weight: 600;
-      transition: 0.25s ease; border-radius: 50px; padding: 10px 28px; font-size: 0.95rem;
+    .brand-title {
+      font-family: "Sora", sans-serif;
+      font-weight: 900;
+      font-size: 1rem;
+      color: var(--foreground);
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+      display: block;
     }
-    .btn-green:hover {
-      background: var(--green-dark); color: #fff;
-      transform: translateY(-2px); box-shadow: 0 10px 24px rgba(15, 151, 61, 0.3);
+    .brand-sub {
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--muted-foreground);
+      line-height: 1.2;
+      display: block;
+      margin-top: 2px;
     }
-    .btn-outline-light { border-radius: 50px; padding: 10px 26px; font-weight: 500; }
+    @media (min-width: 640px) {
+      .brand-title { font-size: 1.1rem; }
+      .brand-sub { font-size: 0.62rem; }
+    }
+    .brand-text-wrap { display: none; }
+    @media (min-width: 480px) { .brand-text-wrap { display: block; } }
 
-    /* ========== HERO ========== */
+    .nav-link-civic {
+      border-radius: 9999px;
+      padding: 0.55rem 1rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--muted-foreground);
+      text-decoration: none;
+      transition: all 250ms var(--ease-civic);
+    }
+    .nav-link-civic:hover { background: var(--accent); color: var(--accent-foreground); }
+
+    .mobile-nav-panel {
+      max-height: 0;
+      overflow: hidden;
+      border-top: 1px solid var(--border);
+      background: var(--card);
+      transition: max-height 320ms var(--ease-civic);
+    }
+    .mobile-nav-panel.open { max-height: 24rem; }
+
+    /* ============ HERO ============ */
     .hero-section {
-      position: relative; min-height: 100vh; display: flex; align-items: center;
-      background: var(--navy-deep); overflow: hidden; padding: 140px 0 80px;
+      position: relative;
+      overflow: hidden;
+      padding-top: 8rem;
+      padding-bottom: 4rem;
+      background-color: var(--background);
+      isolation: isolate;
     }
-    .hero-section::before {
-      content: ''; position: absolute; inset: 0;
-      background-image: url('bg.png'); background-repeat: no-repeat;
-      background-size: cover; background-position: center center;
-      opacity: 0.35; pointer-events: none; z-index: 0;
+    @media (min-width: 1024px) {
+      .hero-section { padding-top: 11rem; padding-bottom: 6rem; }
     }
-    .hero-section::after {
-      content: ''; position: absolute; inset: 0;
-      background:
-        linear-gradient(135deg, rgba(6, 20, 40, 0.85) 0%, rgba(10, 35, 66, 0.70) 45%, rgba(6, 20, 40, 0.85) 100%),
-        radial-gradient(circle at 80% 50%, rgba(15, 151, 61, 0.15) 0%, transparent 55%);
-      pointer-events: none; z-index: 1;
-    }
-    .hero-section .container { position: relative; z-index: 2; }
-    .hero-title {
-      font-size: 3.8rem; font-weight: 800; color: #fff;
-      line-height: 1.05; letter-spacing: -0.02em;
-      text-shadow: 0 2px 20px rgba(0,0,0,0.25);
-    }
-    .hero-title .highlight {
-      background: linear-gradient(135deg, var(--green-light), var(--green));
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    .hero-subtitle {
-      color: rgba(255,255,255,0.82); font-size: 1.15rem;
-      max-width: 520px; margin: 20px 0 32px;
-    }
-    .hero-badge {
-      display: inline-flex; align-items: center; gap: 10px;
-      background: rgba(255,255,255,0.10); backdrop-filter: blur(8px);
-      padding: 8px 22px; border-radius: 40px; color: var(--green-light);
-      font-weight: 600; border: 1px solid rgba(74, 222, 128, 0.25);
-      margin-bottom: 28px; font-size: 0.9rem;
-    }
-    .pulse-dot {
-      width: 10px; height: 10px; background: var(--green);
-      border-radius: 50%; display: inline-block;
-      animation: pulse-dot 1.8s infinite;
-    }
-    @keyframes pulse-dot {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.5; transform: scale(1.3); }
-    }
-    .hero-stats {
-      display: flex; gap: 48px; margin-top: 42px; padding-top: 32px;
-      border-top: 1px solid rgba(255,255,255,0.12); flex-wrap: wrap;
-    }
-    .stat-item .number {
-      font-size: 2rem; font-weight: 700; color: #fff;
-      display: block; letter-spacing: -0.01em;
-    }
-    .stat-item .label {
-      font-size: 0.75rem; color: rgba(255,255,255,0.7); font-weight: 500;
-      text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px;
-    }
-    .hero-visual { position: relative; display: flex; justify-content: center; align-items: center; }
-    .pulse-ring {
-      width: 260px; height: 260px; border-radius: 50%;
-      border: 2px solid rgba(74, 222, 128, 0.25);
-      position: relative; animation: ring-pulse 4s infinite;
-    }
-    .pulse-ring::after {
-      content: ''; position: absolute; inset: -20px; border-radius: 50%;
-      border: 1px solid rgba(74, 222, 128, 0.10);
-      animation: ring-pulse 4s infinite 1s;
-    }
-    @keyframes ring-pulse {
-      0% { transform: scale(0.95); opacity: 0.5; }
-      50% { transform: scale(1.05); opacity: 1; }
-      100% { transform: scale(0.95); opacity: 0.5; }
-    }
-    .emergency-icon {
-      position: absolute; width: 110px; height: 110px;
-      background: rgba(15, 151, 61, 0.15); backdrop-filter: blur(8px);
-      border-radius: 50%; display: flex; align-items: center; justify-content: center;
-      font-size: 3.6rem; color: var(--green-light);
-      border: 1px solid rgba(74, 222, 128, 0.3);
-      box-shadow: 0 8px 32px rgba(15, 151, 61, 0.3);
-    }
-
-    /* ========== SECTIONS ========== */
-    .section-header { text-align: center; max-width: 640px; margin: 0 auto 48px; }
-    .section-header .badge {
-      background: rgba(15, 151, 61, 0.10); color: var(--green);
-      font-weight: 600; padding: 6px 20px; border-radius: 40px; font-size: 0.8rem;
-    }
-    .section-header h2 {
-      font-weight: 700; color: var(--navy); margin-top: 14px;
-      font-size: 2.3rem; letter-spacing: -0.02em;
-    }
-    .section-header p { color: #5a6e8a; font-size: 1.05rem; }
-    .feature-card, .action-card {
-      background: #fff; border-radius: var(--radius); padding: 32px 24px;
-      box-shadow: var(--shadow); transition: 0.3s ease; height: 100%;
-      border: 1px solid rgba(0,0,0,0.02);
-    }
-    .feature-card:hover, .action-card:hover {
-      transform: translateY(-6px);
-      box-shadow: 0 28px 48px -16px rgba(10, 35, 66, 0.14);
-    }
-    .feature-card .icon {
-      width: 56px; height: 56px; background: rgba(15, 151, 61, 0.07);
-      border-radius: 16px; display: flex; align-items: center; justify-content: center;
-      font-size: 1.6rem; color: var(--green); margin-bottom: 18px;
-    }
-    .feature-card h5 { font-weight: 700; font-size: 1.1rem; color: var(--navy); }
-    .feature-card p { color: #5a6e8a; font-size: 0.92rem; }
-    .about-section { background: #fff; padding: 80px 0; }
-    .about-stat .number { font-size: 2.2rem; font-weight: 800; color: var(--navy); display: block; }
-    .about-stat .label { color: #5a6e8a; font-weight: 500; }
-    .quick-actions { padding: 60px 0; background: var(--gray-light); }
-    .footer { background: var(--navy); color: rgba(255,255,255,0.7); padding: 48px 0 24px; }
-    .footer h5, .footer h6 { color: #fff; font-weight: 600; }
-    .footer a { color: rgba(255,255,255,0.6); text-decoration: none; transition: 0.2s; }
-    .footer a:hover { color: var(--green-light); }
-    .emergency-float {
-      position: fixed; bottom: 28px; right: 28px; width: 64px; height: 64px;
-      border-radius: 50%; background: var(--green); border: none; color: #fff;
-      font-size: 1.6rem; box-shadow: 0 8px 28px rgba(15, 151, 61, 0.35);
-      z-index: 999; transition: 0.25s ease;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .emergency-float:hover { transform: scale(1.06); background: var(--green-dark); }
-    .reveal {
-      opacity: 0; transform: translateY(28px);
-      transition: opacity 0.7s ease, transform 0.7s ease;
-    }
-    .reveal.visible { opacity: 1; transform: translateY(0); }
-    .toast-container { position: fixed; top: 80px; right: 20px; z-index: 9999; max-width: 380px; }
-
-    /* ========== AUTH MODALS ========== */
-    .auth-modal .modal-content {
-      border: none; border-radius: 24px; overflow: hidden;
-      box-shadow: 0 32px 80px rgba(0,0,0,0.25);
-    }
-    .auth-modal .modal-header {
-      background: linear-gradient(135deg, var(--navy) 0%, var(--navy-deep) 100%);
-      color: #fff; border: none; padding: 24px 28px;
-      position: relative; overflow: hidden;
-    }
-    .auth-modal .modal-header::before {
-      content: ''; position: absolute; top: -50%; right: -20%;
-      width: 200px; height: 200px;
-      background: radial-gradient(circle, rgba(15,151,61,0.25) 0%, transparent 70%);
+    .hero-bg-image {
+      position: absolute;
+      inset: 0;
+      background-image: url('bg.png');
+      background-repeat: no-repeat;
+      background-size: cover;
+      background-position: center;
+      opacity: 0.35;
+      z-index: -3;
       pointer-events: none;
     }
-    .auth-modal .modal-header .modal-title {
-      font-weight: 700; font-size: 1.15rem;
-      display: flex; align-items: center; gap: 10px;
-      position: relative; z-index: 1;
+    .dark .hero-bg-image { opacity: 0.2; }
+    .hero-bg-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: -2;
+      background:
+        linear-gradient(135deg,
+          color-mix(in oklab, var(--background) 92%, transparent) 0%,
+          color-mix(in oklab, var(--background) 78%, transparent) 45%,
+          color-mix(in oklab, var(--background) 92%, transparent) 100%);
+      pointer-events: none;
     }
-    .auth-modal .modal-header .btn-close {
-      filter: brightness(0) invert(1); opacity: 0.8;
-      position: relative; z-index: 1;
+    .dark .hero-bg-overlay {
+      background:
+        linear-gradient(135deg,
+          color-mix(in oklab, var(--background) 88%, transparent) 0%,
+          color-mix(in oklab, var(--background) 70%, transparent) 45%,
+          color-mix(in oklab, var(--background) 88%, transparent) 100%),
+        radial-gradient(circle at 78% 45%, color-mix(in oklab, var(--primary) 18%, transparent) 0%, transparent 55%);
     }
-    .auth-modal .modal-header .btn-close:hover { opacity: 1; }
-    .auth-modal .modal-body { padding: 28px; background: #fff; }
-    .auth-modal .form-floating { position: relative; }
-    .auth-modal .form-floating > .form-control {
-      border-radius: 14px; border: 2px solid #e9ecef; height: 58px;
-      font-size: 0.95rem; transition: all 0.25s ease; background: #f8fafc;
-    }
-    .auth-modal .form-floating > .form-control:focus {
-      border-color: var(--green);
-      box-shadow: 0 0 0 4px rgba(15, 151, 61, 0.1);
-      background: #fff;
-    }
-    .auth-modal .form-floating > label {
-      color: #6c757d; font-size: 0.9rem; padding: 1rem 0.85rem;
-    }
-    .auth-modal .form-floating > .form-control:focus ~ label,
-    .auth-modal .form-floating > .form-control:not(:placeholder-shown) ~ label {
-      color: var(--green); font-weight: 500;
-    }
-    .auth-modal .form-control.is-invalid { border-color: var(--danger); background-image: none; }
-    .auth-modal .invalid-feedback { font-size: 0.8rem; font-weight: 500; }
-    .auth-modal .btn-green {
-      padding: 14px 28px; font-size: 1rem; border-radius: 14px;
-      font-weight: 600; letter-spacing: 0.3px;
-    }
-    .auth-modal .btn-green:disabled {
-      opacity: 0.6; cursor: not-allowed; transform: none !important;
-    }
-    .auth-modal .auth-divider {
-      display: flex; align-items: center; gap: 12px;
-      color: #adb5bd; font-size: 0.8rem; font-weight: 500; margin: 18px 0;
-    }
-    .auth-modal .auth-divider::before,
-    .auth-modal .auth-divider::after {
-      content: ''; flex: 1; height: 1px; background: #e9ecef;
-    }
-    .auth-modal .link-green {
-      color: var(--green); font-weight: 600;
-      text-decoration: none; transition: all 0.2s;
-    }
-    .auth-modal .link-green:hover { color: var(--green-dark); text-decoration: underline; }
-    .auth-modal .security-badge {
-      display: flex; align-items: center; justify-content: center; gap: 6px;
-      font-size: 0.75rem; color: #6c757d; margin-top: 16px;
-      padding: 8px 12px; background: #f8fafc;
-      border-radius: 10px; border: 1px solid #e9ecef;
-    }
-    .auth-modal .security-badge i { color: var(--green); }
 
-    /* Forgot password row */
-    .forgot-row {
-      display: flex; align-items: center; justify-content: space-between;
-      margin-bottom: 18px; gap: 8px; flex-wrap: wrap;
+    .hero-title {
+      font-family: "Sora", sans-serif;
+      font-weight: 900;
+      font-size: clamp(2rem, 8vw, 5rem);
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+      margin-bottom: 1.1rem;
+      color: var(--foreground);
+    }
+    .hero-title .hero-accent { color: var(--primary); }
+    .hero-subtitle {
+      color: var(--muted-foreground);
+      font-size: 1rem;
+      max-width: 34rem;
+      margin-bottom: 2rem;
+      line-height: 1.75;
+    }
+    @media (min-width: 640px) { .hero-subtitle { font-size: 1.1rem; } }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      background: color-mix(in oklab, var(--primary) 12%, transparent);
+      border: 1px solid color-mix(in oklab, var(--primary) 30%, transparent);
+      color: var(--primary);
+      padding: 0.5rem 1.1rem;
+      border-radius: 9999px;
+      font-weight: 700;
+      font-size: 0.8rem;
+      margin-bottom: 1.5rem;
+    }
+    .pulse-dot {
+      width: 10px; height: 10px;
+      background: var(--primary);
+      border-radius: 50%;
+      display: inline-block;
+      animation: pulse-dot 1.8s infinite;
+      flex-shrink: 0;
+    }
+
+    .hero-visual {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 320px;
+    }
+    .pulse-ring {
+      width: 260px; height: 260px;
+      border-radius: 50%;
+      border: 2px solid color-mix(in oklab, var(--primary) 35%, transparent);
+      position: relative;
+      animation: ring-pulse 4s infinite;
+    }
+    .pulse-ring::after {
+      content: '';
+      position: absolute; inset: -20px;
+      border-radius: 50%;
+      border: 1px solid color-mix(in oklab, var(--primary) 20%, transparent);
+      animation: ring-pulse 4s infinite 1s;
+    }
+    .hero-icon {
+      position: absolute;
+      width: 110px; height: 110px;
+      border-radius: 50%;
+      background: color-mix(in oklab, var(--primary) 15%, transparent);
+      backdrop-filter: blur(8px);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--primary);
+      border: 1px solid color-mix(in oklab, var(--primary) 35%, transparent);
+      box-shadow: 0 8px 32px color-mix(in oklab, var(--primary) 35%, transparent);
+    }
+    .hero-icon svg { width: 48px; height: 48px; }
+
+    .hero-stats {
+      display: flex;
+      gap: 2rem;
+      margin-top: 2.5rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .hero-stats .stat-number { font-size: clamp(1.5rem, 4vw, 2rem); color: var(--foreground); }
+    .hero-stats .stat-label { color: var(--muted-foreground); }
+
+    /* ============ SECTION CARDS ============ */
+    .feature-card, .action-card {
+      height: 100%;
+      border-radius: calc(var(--radius) + 8px);
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--card-foreground);
+      box-shadow: 0 10px 30px -12px rgb(0 0 0 / 0.1);
+      padding: 1.75rem 1.5rem;
+      transition: all 450ms var(--ease-civic);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+    }
+    .feature-card:hover, .action-card:hover {
+      transform: translateY(-8px);
+      border-color: color-mix(in oklab, var(--primary) 50%, transparent);
+      box-shadow: 0 28px 65px -34px color-mix(in oklab, var(--primary) 55%, transparent);
+    }
+    .feature-card h5 {
+      font-family: "Sora", sans-serif;
+      font-weight: 800;
+      font-size: 1.05rem;
+      margin: 1rem 0 0.6rem;
+      color: var(--card-foreground);
+      letter-spacing: -0.01em;
+    }
+    .feature-card p { color: var(--muted-foreground); font-size: 0.9rem; margin: 0; line-height: 1.65; }
+
+    .about-stat .number {
+      font-family: "Sora", sans-serif;
+      font-size: 2rem;
+      font-weight: 900;
+      color: var(--primary);
+      display: block;
+      letter-spacing: -0.02em;
+    }
+    .about-stat .label { color: var(--muted-foreground); font-weight: 600; font-size: 0.85rem; }
+
+    .emergency-float {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      width: 60px; height: 60px;
+      border-radius: 50%;
+      background: var(--destructive);
+      color: var(--destructive-foreground);
+      border: none;
+      box-shadow: 0 12px 28px -8px color-mix(in oklab, var(--destructive) 55%, transparent);
+      z-index: 999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 250ms var(--ease-civic);
+    }
+    .emergency-float:hover { transform: scale(1.08); }
+    @media (max-width: 576px) {
+      .emergency-float { width: 54px; height: 54px; bottom: 1rem; right: 1rem; }
+    }
+
+    /* Auth helpers */
+    .auth-helper-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 0.6rem 0 1.1rem;
+      gap: 0.5rem;
+      flex-wrap: wrap;
     }
     .forgot-link {
-      color: var(--green); font-weight: 600; text-decoration: none;
-      font-size: 0.85rem; display: inline-flex; align-items: center;
-      gap: 6px; padding: 6px 12px; border-radius: 8px;
+      color: var(--primary);
+      font-weight: 700;
+      text-decoration: none;
+      font-size: 0.83rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.35rem 0.7rem;
+      border-radius: 9999px;
       transition: all 0.2s ease;
     }
-    .forgot-link:hover {
-      color: var(--green-dark); background: rgba(15, 151, 61, 0.08);
-      text-decoration: none;
-    }
-    .forgot-link i { font-size: 0.8rem; }
-
-    /* Attempt warning */
+    .forgot-link:hover { background: var(--accent); color: var(--accent-foreground); }
     .attempt-warning {
-      display: none; align-items: center; gap: 8px;
-      padding: 10px 14px; border-radius: 10px;
-      background: #fff3cd; color: #856404;
-      font-size: 0.82rem; font-weight: 500;
-      margin-bottom: 16px; border: 1px solid #ffeaa7;
+      display: none;
+      align-items: center;
+      gap: 0.55rem;
+      padding: 0.7rem 0.95rem;
+      border-radius: calc(var(--radius) + 2px);
+      background: color-mix(in oklab, var(--pri-medium) 35%, var(--card));
+      color: oklch(0.28 0.09 75);
+      font-size: 0.83rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      border: 1px solid color-mix(in oklab, var(--pri-medium) 60%, transparent);
     }
-    .attempt-warning.danger { background: #f8d7da; color: #842029; border-color: #f5c2c7; }
+    .dark .attempt-warning { color: oklch(0.92 0.09 75); }
+    .attempt-warning.danger {
+      background: color-mix(in oklab, var(--destructive) 18%, var(--card));
+      color: var(--destructive);
+      border-color: color-mix(in oklab, var(--destructive) 35%, transparent);
+    }
     .attempt-warning.show { display: flex; }
-    .attempt-warning i { font-size: 1rem; flex-shrink: 0; }
 
-    /* Lockout overlay */
-    .lockout-overlay { display: none; text-align: center; padding: 20px 0; }
+    .lockout-overlay { display: none; text-align: center; padding: 1.25rem 0; }
     .lockout-overlay.show { display: block; }
     .lockout-icon {
-      width: 80px; height: 80px; margin: 0 auto 16px;
-      border-radius: 50%; background: linear-gradient(135deg, #fee2e2, #fecaca);
+      width: 80px; height: 80px;
+      margin: 0 auto 1rem;
+      border-radius: 50%;
+      background: color-mix(in oklab, var(--destructive) 15%, var(--card));
       display: flex; align-items: center; justify-content: center;
-      font-size: 2.2rem; color: var(--danger);
-      animation: lockout-shake 0.6s ease;
+      color: var(--destructive);
     }
-    @keyframes lockout-shake {
-      0%, 100% { transform: rotate(0); }
-      25% { transform: rotate(-8deg); }
-      75% { transform: rotate(8deg); }
+    .lockout-title {
+      font-family: "Sora", sans-serif;
+      font-weight: 800;
+      color: var(--card-foreground);
+      font-size: 1.15rem;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.01em;
     }
-    .lockout-title { font-weight: 700; color: var(--navy); font-size: 1.15rem; margin-bottom: 8px; }
-    .lockout-text { color: #6c757d; font-size: 0.9rem; margin-bottom: 4px; }
+    .lockout-text { color: var(--muted-foreground); font-size: 0.9rem; margin-bottom: 0.25rem; }
     .lockout-timer {
-      font-weight: 700; color: var(--danger);
-      font-size: 1.3rem; font-variant-numeric: tabular-nums;
-    }
-    .lockout-actions {
-      display: flex; gap: 8px; justify-content: center;
-      margin-top: 18px; flex-wrap: wrap;
-    }
-    .lockout-actions .btn {
-      border-radius: 12px; font-weight: 600;
-      font-size: 0.85rem; padding: 10px 20px;
+      font-family: "Sora", sans-serif;
+      font-weight: 900;
+      color: var(--destructive);
+      font-size: 1.4rem;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.02em;
     }
 
-    /* Password wrapper */
     .password-wrapper { position: relative; }
-    .password-wrapper .form-control { padding-right: 48px; }
+    .password-wrapper .form-control { padding-right: 3rem !important; }
     .toggle-password {
-      position: absolute; right: 14px; top: 50%;
-      transform: translateY(-50%); background: none; border: none;
-      color: #6c757d; cursor: pointer; padding: 8px;
-      border-radius: 50%; transition: all 0.2s ease;
-      z-index: 10; font-size: 1.1rem;
+      position: absolute;
+      right: 12px;
+      bottom: 12px;
+      background: none; border: none;
+      color: var(--muted-foreground);
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 50%;
+      z-index: 10;
+      transition: all 0.2s ease;
       display: flex; align-items: center; justify-content: center;
+      line-height: 0;
     }
-    .toggle-password:hover { color: var(--green); background: rgba(15, 151, 61, 0.08); }
-    .toggle-password:focus { outline: none; color: var(--green); }
+    .toggle-password:hover { color: var(--primary); background: color-mix(in oklab, var(--primary) 10%, transparent); }
 
-    /* ========== RESPONSIVE ========== */
-    @media (max-width: 992px) {
-      .hero-title { font-size: 2.8rem; }
-      .hero-stats { gap: 28px; }
+    /* Footer */
+    .site-footer {
+      background: var(--footer);
+      color: var(--footer-foreground);
+      padding: 4rem 1.25rem 1.5rem;
     }
-    @media (max-width: 768px) {
-      .hero-section { padding: 120px 0 60px; min-height: auto; }
-      .hero-title { font-size: 2.2rem; }
-      .hero-subtitle { font-size: 0.95rem; }
-      .hero-stats .stat-item .number { font-size: 1.5rem; }
-      .section-header h2 { font-size: 1.8rem; }
-      .pulse-ring { width: 180px; height: 180px; }
-      .emergency-icon { width: 80px; height: 80px; font-size: 2.6rem; }
-      .navbar-custom .navbar-brand .logo-wrapper { width: 38px; height: 38px; }
-      .navbar-custom .navbar-brand .brand-text .main { font-size: 1rem; }
-      .navbar-custom .navbar-brand .brand-text .sub { font-size: 0.5rem; }
-      .navbar-custom .navbar-collapse {
-        background: rgba(10, 35, 66, 0.97); backdrop-filter: blur(12px);
-        border-radius: 16px; padding: 16px; margin-top: 12px;
-        box-shadow: 0 12px 32px rgba(0,0,0,0.25);
-      }
-      .navbar-custom .navbar-nav { gap: 6px !important; }
-      .navbar-custom .nav-link { padding: 10px 14px !important; border-radius: 8px; color: rgba(255,255,255,0.9); }
-      .navbar-custom .nav-link:hover, .navbar-custom .nav-link.active { background: rgba(255,255,255,0.08); color: #fff; }
-      .navbar-custom .nav-item { width: 100%; }
-      .navbar-custom .btn { margin-bottom: 4px; }
-      .hero-section .btn-lg { width: 100%; padding: 12px 20px; font-size: 1rem; }
-      .about-section { padding: 56px 0; }
-      .feature-card, .action-card { padding: 24px 20px; }
-      .emergency-float { width: 56px; height: 56px; font-size: 1.4rem; bottom: 20px; right: 20px; }
-      .toast-container { right: 12px; left: 12px; max-width: none; }
-      .footer { text-align: center; }
-      .footer .row > div { margin-bottom: 24px; }
-      .footer .text-success.fs-4 { font-size: 1.1rem !important; }
-      .auth-modal .modal-body { padding: 22px 20px; }
+    .site-footer .footer-title {
+      font-family: "Sora", sans-serif;
+      font-weight: 800;
+      font-size: 1.15rem;
+      color: var(--footer-foreground);
+      letter-spacing: -0.02em;
     }
-    @media (max-width: 576px) {
-      .hero-section { padding: 110px 0 48px; }
-      .hero-title { font-size: 1.9rem; }
-      .hero-subtitle { font-size: 0.9rem; margin: 16px 0 24px; }
-      .hero-badge { font-size: 0.75rem; padding: 6px 16px; margin-bottom: 20px; }
-      .hero-stats { gap: 16px; margin-top: 32px; padding-top: 24px; }
-      .stat-item .number { font-size: 1.3rem; }
-      .stat-item .label { font-size: 0.65rem; }
-      .section-header h2 { font-size: 1.5rem; }
-      .section-header p { font-size: 0.9rem; }
-      .section-header { margin-bottom: 32px; }
-      .navbar-custom .container { padding-left: 14px; padding-right: 14px; }
-      .navbar-custom .navbar-brand .brand-text .main { font-size: 0.9rem; }
-      .navbar-custom .navbar-brand .brand-text .sub { font-size: 0.45rem; }
-      .feature-card .icon { width: 48px; height: 48px; font-size: 1.3rem; }
-      .feature-card h5 { font-size: 1rem; }
-      .feature-card p { font-size: 0.85rem; }
-      .footer .text-success.fs-4 { font-size: 1rem !important; }
+    .site-footer .footer-h {
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--footer-accent);
+      margin-bottom: 1rem;
     }
-    @media (max-width: 380px) {
-      .hero-title { font-size: 1.65rem; }
-      .hero-stats { gap: 12px; }
-      .stat-item .number { font-size: 1.15rem; }
+    .site-footer a { color: var(--footer-muted); text-decoration: none; transition: color 0.2s ease; }
+    .site-footer a:hover { color: var(--footer-accent); }
+    .site-footer .footer-bottom {
+      border-top: 1px solid color-mix(in oklab, var(--footer-foreground) 12%, transparent);
+      margin-top: 2.5rem;
+      padding-top: 1.25rem;
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--footer-muted);
     }
   </style>
 </head>
 <body>
 
-<nav class="navbar navbar-expand-lg fixed-top navbar-custom" id="mainNav">
-  <div class="container">
-    <a class="navbar-brand" href="#">
-      <div class="logo-wrapper"><img src="sd.png" alt="Barangay Culiat Logo"></div>
-      <div class="brand-text">
-        <span class="main">Barangay Culiat</span>
-        <span class="sub">Emergency Communication System</span>
-      </div>
-    </a>
-    <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <div class="collapse navbar-collapse" id="navbarNav">
-      <ul class="navbar-nav ms-auto align-items-lg-center gap-1">
-        <li class="nav-item"><a class="nav-link active" href="#home">Home</a></li>
-        <li class="nav-item"><a class="nav-link" href="#features">Features</a></li>
-        <li class="nav-item"><a class="nav-link" href="#about">About</a></li>
-        <li class="nav-item">
-          <button class="btn btn-outline-light btn-sm me-lg-2 w-100 w-lg-auto" onclick="openLoginModal()">
-            <i class="fas fa-sign-in-alt me-1"></i>Login
-          </button>
-        </li>
-        <li class="nav-item">
-          <button class="btn btn-green btn-sm w-100 w-lg-auto" onclick="openRegisterModal()">
-            <i class="fas fa-user-plus me-1"></i>Register
-          </button>
-        </li>
-      </ul>
-    </div>
-  </div>
-</nav>
+  <!-- ================= HEADER ================= -->
+  <header id="mainNav" class="site-header">
+    <div class="header-inner">
+      <a href="#home" class="d-flex align-items-center gap-2 gap-sm-3 text-decoration-none" style="color:inherit;">
+        <img src="sd.png" alt="Barangay Culiat seal" class="brand-seal" onerror="this.onerror=null;this.src='logoooo.png';">
+        <div class="brand-text-wrap">
+          <span class="brand-title">Barangay Culiat</span>
+          <span class="brand-sub">Emergency Communication System</span>
+        </div>
+      </a>
 
-<section id="home" class="hero-section">
-  <div class="container">
-    <div class="row align-items-center g-5">
-      <div class="col-lg-7">
-        <div class="hero-badge">
-          <span class="pulse-dot"></span> 24/7 Emergency Response · Barangay Culiat
-        </div>
-        <h1 class="hero-title">
-          Emergency<br><span class="highlight">Communication System</span>
-        </h1>
-        <p class="hero-subtitle">
-          Real-time incident reporting, AI-powered analysis, and coordinated response
-          for safer communities across Barangay Culiat.
-        </p>
-        <div class="d-flex gap-3 flex-wrap">
-          <button class="btn btn-green btn-lg" onclick="openRegisterModal()">
-            <i class="fas fa-rocket me-2"></i>Get Started
-          </button>
-          <button class="btn btn-outline-light btn-lg" onclick="document.getElementById('features').scrollIntoView({behavior:'smooth'})">
-            <i class="fas fa-info-circle me-2"></i>Learn More
-          </button>
-        </div>
-        <div class="hero-stats">
-          <div class="stat-item">
-            <span class="number count-number" data-target="67804">0</span>
-            <span class="label">Total Population</span>
-          </div>
-          <div class="stat-item">
-            <span class="number count-number" data-target="328646">0</span>
-            <span class="label">Barangay Area (km²)</span>
-          </div>
-          <div class="stat-item">
-            <span class="number count-number" data-target="12">0</span>
-            <span class="label">Active Responders</span>
-          </div>
-        </div>
-      </div>
-      <div class="col-lg-5 d-none d-lg-block">
-        <div class="hero-visual">
-          <div class="pulse-ring"></div>
-          <div class="emergency-icon"><i class="fas fa-shield-halved"></i></div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
+      <nav class="d-none d-lg-flex align-items-center gap-1">
+        <a href="#home" class="nav-link-civic">Home</a>
+        <a href="#features" class="nav-link-civic">Features</a>
+        <a href="#about" class="nav-link-civic">About</a>
+        <a href="#quick-actions" class="nav-link-civic">Quick Actions</a>
+      </nav>
 
-<section id="features" class="py-5">
-  <div class="container">
-    <div class="section-header reveal">
-      <span class="badge">Features</span>
-      <h2>Why Choose Our Emergency System?</h2>
-      <p class="text-muted">Built with cutting-edge technology to ensure rapid emergency response</p>
-    </div>
-    <div class="row g-4">
-      <div class="col-md-3 col-6 reveal">
-        <div class="feature-card">
-          <div class="icon"><i class="fas fa-robot"></i></div>
-          <h5>AI-Powered Analysis</h5>
-          <p class="text-muted">Instant incident verification and severity assessment using artificial intelligence</p>
-        </div>
-      </div>
-      <div class="col-md-3 col-6 reveal">
-        <div class="feature-card">
-          <div class="icon"><i class="fas fa-bolt"></i></div>
-          <h5>Real-Time Updates</h5>
-          <p class="text-muted">Live notifications and updates for all stakeholders in your community</p>
-        </div>
-      </div>
-      <div class="col-md-3 col-6 reveal">
-        <div class="feature-card">
-          <div class="icon"><i class="fas fa-map-marked-alt"></i></div>
-          <h5>Interactive Maps</h5>
-          <p class="text-muted">Visual incident tracking with location-based alerts and navigation</p>
-        </div>
-      </div>
-      <div class="col-md-3 col-6 reveal">
-        <div class="feature-card">
-          <div class="icon"><i class="fas fa-shield-alt"></i></div>
-          <h5>Secure & Reliable</h5>
-          <p class="text-muted">Enterprise-grade security with role-based access control and data protection</p>
-        </div>
+      <div class="d-flex align-items-center gap-2">
+        <button type="button" data-theme-toggle class="btn-civic btn-icon theme-toggle-btn" aria-label="Toggle theme">
+          <i data-lucide="sun" data-icon="sun" class="theme-toggle-icon" style="width:20px;height:20px;"></i>
+          <i data-lucide="moon" data-icon="moon" class="theme-toggle-icon hidden-icon" style="width:20px;height:20px;"></i>
+        </button>
+        <button type="button" class="btn-civic btn-outline d-none d-sm-inline-flex" onclick="openLoginModal()">
+          <i data-lucide="log-in"></i> Login
+        </button>
+        <button type="button" class="btn-civic btn-primary d-none d-sm-inline-flex" onclick="openRegisterModal()">
+          <i data-lucide="user-plus"></i> Register
+        </button>
+        <button type="button" class="btn-civic btn-icon d-lg-none" aria-label="Open menu" onclick="document.getElementById('mobileNav').classList.toggle('open')">
+          <i data-lucide="menu" style="width:20px;height:20px;"></i>
+        </button>
       </div>
     </div>
-  </div>
-</section>
 
-<section id="about" class="about-section">
-  <div class="container">
-    <div class="row align-items-center g-5">
-      <div class="col-lg-6 reveal">
-        <span class="badge bg-danger mb-3">About Us</span>
-        <h2 class="fw-bold mb-4">Empowering Communities Through Technology</h2>
-        <p class="text-muted mb-4">
-          The Barangay Culiat Emergency Communication System is a comprehensive platform designed to
-          connect residents with emergency responders in real-time. Our mission is to
-          reduce response times and save lives through intelligent incident management.
-        </p>
-        <div class="row g-3">
+    <div id="mobileNav" class="mobile-nav-panel d-lg-none">
+      <div class="max-civic px-3 py-3 d-flex flex-column gap-1">
+        <a href="#home" class="nav-link-civic">Home</a>
+        <a href="#features" class="nav-link-civic">Features</a>
+        <a href="#about" class="nav-link-civic">About</a>
+        <a href="#quick-actions" class="nav-link-civic">Quick Actions</a>
+        <div class="row g-2 mt-2">
           <div class="col-6">
-            <div class="about-stat">
-              <span class="number">99.9%</span>
-              <span class="label">System Uptime</span>
-            </div>
+            <button type="button" class="btn-civic btn-outline w-100" onclick="openLoginModal()">Login</button>
           </div>
           <div class="col-6">
-            <div class="about-stat">
-              <span class="number">&lt;30s</span>
-              <span class="label">Average Response</span>
-            </div>
+            <button type="button" class="btn-civic btn-primary w-100" onclick="openRegisterModal()">Register</button>
           </div>
         </div>
       </div>
-      <div class="col-lg-6 reveal">
-        <div class="bg-white p-4 rounded-4 shadow-sm text-center">
-          <img src="logoooo.png" alt="Barangay Culiat Logo" class="img-fluid" style="max-height:120px; opacity:0.9;">
-          <p class="text-muted mt-2 small">Barangay Culiat · Emergency Communication System</p>
-        </div>
-      </div>
     </div>
-  </div>
-</section>
+  </header>
 
-<section class="quick-actions">
-  <div class="container">
-    <div class="section-header reveal">
-      <span class="badge">Quick Actions</span>
-      <h2>Get Started in Minutes</h2>
-    </div>
-    <div class="row g-4">
-      <div class="col-md-4 reveal">
-        <div class="action-card text-center" onclick="openRegisterModal()">
-          <div class="icon mx-auto"><i class="fas fa-user-plus"></i></div>
-          <h5>Create Account</h5>
-          <p class="text-muted">Sign up as a resident to report emergencies and stay informed</p>
-        </div>
-      </div>
-      <div class="col-md-4 reveal">
-        <div class="action-card text-center" onclick="openLoginModal()">
-          <div class="icon mx-auto"><i class="fas fa-sign-in-alt"></i></div>
-          <h5>Login</h5>
-          <p class="text-muted">Access your dashboard to manage reports and view updates</p>
-        </div>
-      </div>
-      <div class="col-md-4 reveal">
-        <div class="action-card text-center" onclick="quickReport()">
-          <div class="icon mx-auto"><i class="fas fa-exclamation-triangle"></i></div>
-          <h5>Report Emergency</h5>
-          <p class="text-muted">Quickly report an emergency incident to responders</p>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<footer class="footer">
-  <div class="container">
-    <div class="row">
-      <div class="col-md-4">
-        <h5><i class="fas fa-shield-halved me-2 text-success"></i>Barangay Culiat</h5>
-        <p class="text-footer">Emergency Communication System · Making communities safer.</p>
-      </div>
-      <div class="col-md-4">
-        <h6>Quick Links</h6>
-        <ul class="list-unstyled">
-          <li><a href="#features">Features</a></li>
-          <li><a href="#" onclick="openLoginModal()">Login</a></li>
-          <li><a href="#" onclick="openRegisterModal()">Register</a></li>
-        </ul>
-      </div>
-      <div class="col-md-4">
-        <h6>Emergency Hotline</h6>
-        <p class="text-success fw-bold fs-4"><i class="fas fa-phone me-2"></i>911</p>
-        <h6>Contact Us</h6>
-        <p class="text-success fw-bold fs-4"><i class="fas fa-phone me-2"></i>0962-582-1531 / 856-722-60</p>
-        <p class="text-success fw-bold fs-4"><i class="fa-solid fa-envelope"></i> brgy.culiat@yahoo.com</p>
-      </div>
-    </div>
-    <hr class="border-secondary">
-    <div class="text-center text-footer">&copy; 2026 Barangay Culiat Emergency Communication System.</div>
-  </div>
-</footer>
-
-<button class="emergency-float" onclick="quickReport()">
-  <i class="fas fa-exclamation-triangle"></i>
-</button>
-
-<!-- ============================================================
-     LOGIN MODAL (with Forgot Password + 5-min lockout)
-     ============================================================ -->
-<div class="modal fade auth-modal" id="loginModal" tabindex="-1" data-bs-backdrop="static">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title"><i class="fas fa-shield-halved"></i> Resident Login</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <div class="attempt-warning" id="loginAttemptWarning">
-          <i class="fas fa-exclamation-triangle"></i>
-          <span id="loginAttemptWarningText">Incorrect password. <strong>2</strong> attempts remaining.</span>
-        </div>
-
-        <div class="lockout-overlay" id="lockoutOverlay">
-          <div class="lockout-icon"><i class="fas fa-lock"></i></div>
-          <div class="lockout-title">Account Temporarily Locked</div>
-          <div class="lockout-text">Too many failed attempts. Try again in</div>
-          <div class="lockout-timer" id="lockoutTimer">05:00</div>
-          <div class="lockout-text mt-2" style="font-size:0.8rem;">
-            <i class="fas fa-info-circle me-1"></i>
-            You can still recover your password below.
+  <!-- ================= HERO ================= -->
+  <section id="home" class="hero-section">
+    <div class="hero-bg-image" aria-hidden="true"></div>
+    <div class="hero-bg-overlay" aria-hidden="true"></div>
+    <div class="civic-grid" style="position:absolute;inset:0;opacity:1;pointer-events:none;z-index:-1;"></div>
+    <div class="max-civic position-relative" style="z-index:1;">
+      <div class="row align-items-center g-5">
+        <div class="col-lg-7 animate-rise">
+          <div class="hero-badge">
+            <span class="pulse-dot"></span> 24/7 Emergency Response · Barangay Culiat
           </div>
-          <div class="lockout-actions">
-            <button type="button" class="btn btn-green" onclick="openForgotPasswordModal()">
-              <i class="fas fa-key me-1"></i>Forgot Password
+          <h1 class="hero-title">
+            Emergency<br><span class="hero-accent">Communication System</span>
+          </h1>
+          <p class="hero-subtitle">
+            Real-time incident reporting, AI-powered analysis, and coordinated response
+            for safer communities across Barangay Culiat.
+          </p>
+          <div class="d-flex gap-2 flex-wrap">
+            <button class="btn-civic btn-primary btn-lg" onclick="openRegisterModal()">
+              <i data-lucide="rocket"></i> Get Started
             </button>
-            <button type="button" class="btn btn-outline-secondary" onclick="closeLockoutAndShowForm()">
-              <i class="fas fa-redo me-1"></i>Retry
-            </button>
-          </div>
-        </div>
-
-        <form id="loginForm" onsubmit="handleLogin(event)" autocomplete="on">
-          <div class="form-floating mb-3">
-            <input type="email" class="form-control" id="loginEmail" placeholder="Email" required autocomplete="email">
-            <label for="loginEmail"><i class="fas fa-envelope me-2"></i>Email Address</label>
-          </div>
-          <div class="form-floating mb-2 password-wrapper">
-            <input type="password" class="form-control" id="loginPassword" placeholder="Password" required autocomplete="current-password">
-            <label for="loginPassword"><i class="fas fa-lock me-2"></i>Password</label>
-            <button type="button" class="toggle-password" onclick="togglePassword('loginPassword', this)" aria-label="Toggle password visibility">
-              <i class="fas fa-eye"></i>
-            </button>
-          </div>
-          <div class="forgot-row">
-            <small class="text-muted">
-              <i class="fas fa-shield-alt me-1" style="color:var(--green);"></i>
-              Max 5 attempts · 5 min lockout
-            </small>
-            <a href="#" class="forgot-link" onclick="event.preventDefault(); openForgotPasswordModal();">
-              <i class="fas fa-key"></i> Forgot Password?
+            <a href="#features" class="btn-civic btn-outline btn-lg">
+              <i data-lucide="info"></i> Learn More
             </a>
           </div>
-          <button type="submit" class="btn btn-green btn-lg w-100" id="loginBtn">
-            <i class="fas fa-sign-in-alt me-2"></i>Login
-          </button>
-
-          <div class="auth-divider">or</div>
-
-          <div class="text-center">
-            <small class="text-muted">Don't have an account?
-              <a href="#" class="link-green" onclick="event.preventDefault(); switchToRegister();">Register here</a>
-            </small>
+          <div class="hero-stats">
+            <div class="stat-item">
+              <span class="stat-number count-number" data-target="67804">0</span>
+              <span class="stat-label">Total Population</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-number count-number" data-target="328646">0</span>
+              <span class="stat-label">Barangay Area (km²)</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-number count-number" data-target="12">0</span>
+              <span class="stat-label">Active Responders</span>
+            </div>
           </div>
-
-          <div class="security-badge">
-            <i class="fas fa-lock"></i>
-            <span>Secured with 256-bit encryption</span>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ============================================================
-     FORGOT PASSWORD MODAL — Supabase Built-in Reset
-     ============================================================ -->
-<div class="modal fade auth-modal" id="forgotPasswordModal" tabindex="-1" data-bs-backdrop="static">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title"><i class="fas fa-key"></i> Reset Password</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <p class="text-muted mb-3" style="font-size:0.9rem;">
-          Enter your registered email address. We'll send you a password reset link.
-        </p>
-        <div class="form-floating mb-3">
-          <input type="email" class="form-control" id="forgotEmail" placeholder="Email" required>
-          <label for="forgotEmail"><i class="fas fa-envelope me-2"></i>Registered Email</label>
         </div>
-        <button type="button" class="btn btn-green btn-lg w-100" id="sendResetBtn" onclick="sendPasswordReset()">
-          <i class="fas fa-paper-plane me-2"></i>Send Reset Link
-        </button>
-        <div class="text-center mt-3">
-          <a href="#" class="link-green" style="font-size:0.85rem;" onclick="event.preventDefault(); backToLoginFromForgot();">
-            <i class="fas fa-arrow-left me-1"></i>Back to Login
-          </a>
+        <div class="col-lg-5 d-none d-lg-block">
+          <div class="hero-visual animate-float">
+            <div class="pulse-ring"></div>
+            <div class="hero-icon"><i data-lucide="shield-check"></i></div>
+          </div>
         </div>
       </div>
     </div>
-  </div>
-</div>
+  </section>
 
-<!-- ============================================================
-     REGISTER MODAL
-     ============================================================ -->
-<div class="modal fade" id="registerModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title"><i class="fas fa-user-plus text-danger me-2"></i>Create Account</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+  <!-- ================= FEATURES ================= -->
+  <section id="features" class="section-pad section-pad-alt" style="scroll-margin-top:6rem;">
+    <div class="max-civic">
+      <div class="text-center mb-5" data-reveal style="max-width:640px;margin-inline:auto;">
+        <span class="section-label">Features</span>
+        <h2 class="font-display fw-black mt-2" style="font-size:clamp(1.8rem,4vw,3rem);letter-spacing:-0.03em;">Why Choose Our Emergency System?</h2>
+        <p class="text-muted-civic mt-2">Built with cutting-edge technology to ensure rapid emergency response.</p>
       </div>
-      <div class="modal-body">
-        <div class="rate-limit-warning" id="rateLimitWarning" style="display:none;">
-          <i class="fas fa-exclamation-triangle"></i>
-          <span>Too many registration attempts. Please wait a few minutes.</span>
-        </div>
-        <div class="admin-create-section" id="adminCreateSection" style="display:none;">
-          <div class="alert alert-warning mb-3">
-            <i class="fas fa-shield-alt me-2"></i>
-            <strong>Admin Mode:</strong> Creates account with auto-confirmation.
-            <button class="btn btn-sm btn-outline-secondary ms-2" onclick="toggleAdminMode()">Switch to Normal</button>
+      <div class="row g-4">
+        <div class="col-md-6 col-xl-3" data-reveal>
+          <div class="feature-card group">
+            <span class="icon-chip"><i data-lucide="bot"></i></span>
+            <h5>AI-Powered Analysis</h5>
+            <p>Instant incident verification and severity assessment using artificial intelligence.</p>
           </div>
         </div>
-        <form id="registerForm" onsubmit="handleRegister(event)">
-          <div class="form-floating mb-3">
-            <input type="text" class="form-control" id="regFullName" placeholder="Full Name" required>
-            <label for="regFullName">Full Name</label>
+        <div class="col-md-6 col-xl-3" data-reveal>
+          <div class="feature-card group">
+            <span class="icon-chip"><i data-lucide="zap"></i></span>
+            <h5>Real-Time Updates</h5>
+            <p>Live notifications and updates for all stakeholders in your community.</p>
           </div>
-          <div class="form-floating mb-3">
-            <input type="email" class="form-control" id="regEmail" placeholder="Email" required>
-            <label for="regEmail">Email Address</label>
+        </div>
+        <div class="col-md-6 col-xl-3" data-reveal>
+          <div class="feature-card group">
+            <span class="icon-chip"><i data-lucide="map-pin"></i></span>
+            <h5>Interactive Maps</h5>
+            <p>Visual incident tracking with location-based alerts and navigation.</p>
           </div>
-          <div class="form-floating mb-3 password-wrapper">
-            <input type="password" class="form-control" id="regPassword" placeholder="Password" minlength="6" required>
-            <label for="regPassword">Password (min 6 characters)</label>
-            <button type="button" class="toggle-password" onclick="togglePassword('regPassword', this)" aria-label="Toggle password visibility">
-              <i class="fas fa-eye"></i>
+        </div>
+        <div class="col-md-6 col-xl-3" data-reveal>
+          <div class="feature-card group">
+            <span class="icon-chip"><i data-lucide="shield"></i></span>
+            <h5>Secure & Reliable</h5>
+            <p>Enterprise-grade security with role-based access control and data protection.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= ABOUT ================= -->
+  <section id="about" class="section-pad" style="scroll-margin-top:6rem;">
+    <div class="max-civic">
+      <div class="row align-items-center g-5">
+        <div class="col-lg-6" data-reveal>
+          <span class="section-label">About Us</span>
+          <h2 class="font-display fw-black mt-2 mb-3" style="font-size:clamp(1.8rem,4vw,2.6rem);letter-spacing:-0.03em;">Empowering Communities Through Technology</h2>
+          <p class="text-muted-civic mb-4" style="line-height:1.8;font-size:1rem;">
+            The Barangay Culiat Emergency Communication System is a comprehensive platform designed to
+            connect residents with emergency responders in real-time. Our mission is to
+            reduce response times and save lives through intelligent incident management.
+          </p>
+          <div class="row g-3">
+            <div class="col-6">
+              <div class="about-stat">
+                <span class="number">99.9%</span>
+                <span class="label">System Uptime</span>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="about-stat">
+                <span class="number">&lt;30s</span>
+                <span class="label">Average Response</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-6" data-reveal>
+          <div class="card-surface text-center p-4">
+            <img src="logoooo.png" alt="Barangay Culiat Logo" style="max-height:120px;opacity:0.95;" onerror="this.onerror=null;this.src='sd.png';">
+            <p class="text-muted-civic mt-3 mb-0 small">Barangay Culiat · Emergency Communication System</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= QUICK ACTIONS ================= -->
+  <section id="quick-actions" class="band-primary" style="scroll-margin-top:6rem;">
+    <div class="max-civic">
+      <div class="text-center mb-5" data-reveal style="max-width:640px;margin-inline:auto;">
+        <span class="section-label" style="color:var(--brand-surface-muted) !important;">Quick Actions</span>
+        <h2 class="font-display fw-black mt-2" style="font-size:clamp(1.8rem,4vw,3rem);color:var(--brand-surface-foreground);letter-spacing:-0.03em;">Get Started in Minutes</h2>
+      </div>
+      <div class="row g-4">
+        <div class="col-md-4" data-reveal>
+          <div class="card-on-band text-center h-100" onclick="openRegisterModal()" role="button" tabindex="0">
+            <span class="icon-chip mx-auto" style="background:color-mix(in oklab, var(--brand-surface-foreground) 18%, transparent);color:var(--brand-surface-foreground);">
+              <i data-lucide="user-plus"></i>
+            </span>
+            <h5 class="font-display fw-extrabold mt-3 mb-2" style="color:var(--brand-surface-foreground);font-size:1.05rem;">Create Account</h5>
+            <p class="mb-0" style="opacity:0.9;font-size:0.9rem;">Sign up as a resident to report emergencies and stay informed.</p>
+          </div>
+        </div>
+        <div class="col-md-4" data-reveal>
+          <div class="card-on-band text-center h-100" onclick="openLoginModal()" role="button" tabindex="0">
+            <span class="icon-chip mx-auto" style="background:color-mix(in oklab, var(--brand-surface-foreground) 18%, transparent);color:var(--brand-surface-foreground);">
+              <i data-lucide="log-in"></i>
+            </span>
+            <h5 class="font-display fw-extrabold mt-3 mb-2" style="color:var(--brand-surface-foreground);font-size:1.05rem;">Login</h5>
+            <p class="mb-0" style="opacity:0.9;font-size:0.9rem;">Access your dashboard to manage reports and view updates.</p>
+          </div>
+        </div>
+        <div class="col-md-4" data-reveal>
+          <div class="card-on-band text-center h-100" onclick="quickReport()" role="button" tabindex="0">
+            <span class="icon-chip mx-auto" style="background:color-mix(in oklab, var(--brand-surface-foreground) 18%, transparent);color:var(--brand-surface-foreground);">
+              <i data-lucide="alert-triangle"></i>
+            </span>
+            <h5 class="font-display fw-extrabold mt-3 mb-2" style="color:var(--brand-surface-foreground);font-size:1.05rem;">Report Emergency</h5>
+            <p class="mb-0" style="opacity:0.9;font-size:0.9rem;">Quickly report an emergency incident to responders.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= FOOTER ================= -->
+  <footer class="site-footer">
+    <div class="max-civic">
+      <div class="row g-4">
+        <div class="col-md-5">
+          <div class="d-flex align-items-center gap-3 mb-3">
+            <img src="sd.png" alt="Barangay Culiat seal" style="width:48px;height:48px;border-radius:50%;background:var(--card);padding:4px;" onerror="this.onerror=null;this.src='logoooo.png';">
+            <span class="footer-title">Barangay Culiat</span>
+          </div>
+          <p class="mb-0" style="color:var(--footer-muted);max-width:22rem;font-size:0.9rem;line-height:1.7;">
+            Emergency Communication System · Making communities safer through real-time incident reporting and coordinated response.
+          </p>
+        </div>
+        <div class="col-md-3">
+          <div class="footer-h">Quick Links</div>
+          <ul class="list-unstyled mb-0">
+            <li class="mb-2"><a href="#features" style="font-size:0.9rem;">Features</a></li>
+            <li class="mb-2"><a href="#" onclick="event.preventDefault();openLoginModal();" style="font-size:0.9rem;">Login</a></li>
+            <li class="mb-2"><a href="#" onclick="event.preventDefault();openRegisterModal();" style="font-size:0.9rem;">Register</a></li>
+          </ul>
+        </div>
+        <div class="col-md-4">
+          <div class="footer-h">Emergency Contacts</div>
+          <ul class="list-unstyled mb-0" style="color:var(--footer-muted);font-size:0.9rem;">
+            <li class="mb-2 d-flex align-items-center gap-2">
+              <i data-lucide="shield" style="width:16px;height:16px;color:var(--footer-accent);"></i>
+              <span style="font-family:Sora,sans-serif;font-weight:900;font-size:1.3rem;color:var(--footer-accent);">911</span>
+            </li>
+            <li class="mb-2 d-flex align-items-center gap-2">
+              <i data-lucide="phone" style="width:16px;height:16px;color:var(--footer-accent);"></i>
+              <span>0962-582-1531 · 856-722-60</span>
+            </li>
+            <li class="mb-2 d-flex align-items-center gap-2">
+              <i data-lucide="mail" style="width:16px;height:16px;color:var(--footer-accent);"></i>
+              <span>brgy.culiat@yahoo.com</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        © 2026 Barangay Culiat Emergency Communication System. All rights reserved.
+      </div>
+    </div>
+  </footer>
+
+  <button class="emergency-float" onclick="quickReport()" aria-label="Quick emergency report">
+    <i data-lucide="alert-triangle" style="width:26px;height:26px;"></i>
+  </button>
+
+  <!-- ================= LOGIN MODAL ================= -->
+  <div class="modal fade auth-modal" id="loginModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i data-lucide="shield-check"></i> Resident Login</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="attempt-warning" id="loginAttemptWarning">
+            <i data-lucide="alert-triangle" style="width:16px;height:16px;"></i>
+            <span id="loginAttemptWarningText">Incorrect password. <strong>2</strong> attempts remaining.</span>
+          </div>
+
+          <div class="lockout-overlay" id="lockoutOverlay">
+            <div class="lockout-icon"><i data-lucide="lock" style="width:36px;height:36px;"></i></div>
+            <div class="lockout-title">Account Temporarily Locked</div>
+            <div class="lockout-text">Too many failed attempts. Try again in</div>
+            <div class="lockout-timer" id="lockoutTimer">05:00</div>
+            <div class="lockout-text mt-2" style="font-size:0.8rem;">
+              <i data-lucide="info" style="width:14px;height:14px;"></i>
+              You can still recover your password below.
+            </div>
+            <div class="d-flex gap-2 justify-content-center mt-3 flex-wrap">
+              <button type="button" class="btn-civic btn-primary" onclick="openForgotPasswordModal()">
+                <i data-lucide="key"></i> Forgot Password
+              </button>
+              <button type="button" class="btn-civic btn-outline" onclick="closeLockoutAndShowForm()">
+                <i data-lucide="rotate-cw"></i> Retry
+              </button>
+            </div>
+          </div>
+
+          <form id="loginForm" onsubmit="handleLogin(event)" autocomplete="on">
+            <div class="form-floating">
+              <input type="email" class="form-control" id="loginEmail" placeholder=" " required autocomplete="email">
+              <label for="loginEmail"><i data-lucide="mail"></i> Email Address</label>
+            </div>
+            <div class="form-floating password-wrapper">
+              <input type="password" class="form-control" id="loginPassword" placeholder=" " required autocomplete="current-password">
+              <label for="loginPassword"><i data-lucide="lock"></i> Password</label>
+              <button type="button" class="toggle-password" onclick="togglePassword('loginPassword', this)" aria-label="Toggle password visibility">
+                <i data-lucide="eye" style="width:18px;height:18px;"></i>
+              </button>
+            </div>
+            <div class="auth-helper-row">
+              <small class="text-muted-civic" style="font-weight:600;">
+                <i data-lucide="shield" style="width:12px;height:12px;"></i> Max 5 attempts · 5 min lockout
+              </small>
+              <a href="#" class="forgot-link" onclick="event.preventDefault(); openForgotPasswordModal();">
+                <i data-lucide="key" style="width:14px;height:14px;"></i> Forgot Password?
+              </a>
+            </div>
+            <button type="submit" class="btn-civic btn-primary btn-lg w-100" id="loginBtn">
+              <i data-lucide="log-in"></i> Login
             </button>
-          </div>
-          <div class="form-floating mb-3">
-            <input type="text" class="form-control" id="regBarangay" placeholder="Barangay" required>
-            <label for="regBarangay">Barangay</label>
-          </div>
-          <div class="form-floating mb-3">
-            <input type="text" class="form-control" id="regContact" placeholder="Contact Number" required>
-            <label for="regContact">Contact Number</label>
-          </div>
-          <button type="submit" class="btn btn-green btn-lg w-100" id="registerBtn">Create Account</button>
-          <div class="text-center mt-3">
-            <small class="text-muted">Already have an account? <a href="#" onclick="event.preventDefault(); switchToLogin();">Login</a></small>
-          </div>
-        </form>
+
+            <div class="text-center text-muted-civic my-3" style="font-size:0.8rem;">or</div>
+
+            <div class="text-center">
+              <small class="text-muted-civic">Don't have an account?
+                <a href="#" class="text-primary-civic fw-bold text-decoration-none" onclick="event.preventDefault(); switchToRegister();">Register here</a>
+              </small>
+            </div>
+
+            <div class="text-center text-muted-civic mt-3 p-2 rounded-3" style="background:var(--muted);font-size:0.75rem;font-weight:600;">
+              <i data-lucide="lock" style="width:12px;height:12px;"></i> Secured with 256-bit encryption · OTP verification required
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
-<div class="toast-container" id="toastContainer"></div>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
-<script src="js/supabase.js"></script>
-<script>
-  // ============================================================
-  // CONFIG
-  // ============================================================
-  const MAX_LOGIN_ATTEMPTS = 5;
-  const LOCKOUT_DURATION_MS = 5 * 60 * 1000; // 5 minutes
-  const ATTEMPT_KEY = 'culiat_login_attempts';
-  const LOCKOUT_KEY = 'culiat_login_lockout';
-  const RESET_REDIRECT_URL = 'https://ecs.culiatpublicsafety.com/reset-password.html';
-
-  // ============================================================
-  // PASSWORD TOGGLE
-  // ============================================================
-  function togglePassword(inputId, buttonElement) {
-    const input = document.getElementById(inputId);
-    const icon = buttonElement.querySelector('i');
-    if (input.type === 'password') {
-      input.type = 'text';
-      icon.classList.remove('fa-eye');
-      icon.classList.add('fa-eye-slash');
-    } else {
-      input.type = 'password';
-      icon.classList.remove('fa-eye-slash');
-      icon.classList.add('fa-eye');
-    }
-  }
-
-  // ============================================================
-  // TOAST
-  // ============================================================
-  function showToast(message, type = 'info', duration = 5000) {
-    const container = document.getElementById('toastContainer');
-    const colors = { success: 'bg-success text-white', danger: 'bg-danger text-white', warning: 'bg-warning text-dark', info: 'bg-info text-white' };
-    const icons = { success: 'check-circle', danger: 'times-circle', warning: 'exclamation-triangle', info: 'info-circle' };
-    const toast = document.createElement('div');
-    toast.className = `toast align-items-center ${colors[type] || colors.info} border-0`;
-    toast.role = 'alert';
-    toast.innerHTML = `
-      <div class="d-flex">
-        <div class="toast-body"><i class="fas fa-${icons[type] || icons.info} me-2"></i>${message}</div>
-        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+  <!-- ================= FORGOT PASSWORD MODAL ================= -->
+  <div class="modal fade auth-modal" id="forgotPasswordModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i data-lucide="key"></i> Reset Password</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted-civic mb-3" style="font-size:0.9rem;">
+            Enter your registered email address. We'll send you a password reset link.
+          </p>
+          <div class="form-floating">
+            <input type="email" class="form-control" id="forgotEmail" placeholder=" " required>
+            <label for="forgotEmail"><i data-lucide="mail"></i> Registered Email</label>
+          </div>
+          <button type="button" class="btn-civic btn-primary btn-lg w-100 mt-2" id="sendResetBtn" onclick="sendPasswordReset()">
+            <i data-lucide="send"></i> Send Reset Link
+          </button>
+          <div class="text-center mt-3">
+            <a href="#" class="text-primary-civic fw-bold text-decoration-none" style="font-size:0.85rem;" onclick="event.preventDefault(); backToLoginFromForgot();">
+              <i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Back to Login
+            </a>
+          </div>
+        </div>
       </div>
-    `;
-    container.appendChild(toast);
-    const bsToast = new bootstrap.Toast(toast, { autohide: true, delay: duration });
-    bsToast.show();
-    setTimeout(() => toast.remove(), duration + 500);
-  }
+    </div>
+  </div>
 
-  // ============================================================
-  // LOGIN ATTEMPT TRACKING
-  // ============================================================
-  function getLoginAttempts() {
-    try {
-      const raw = localStorage.getItem(ATTEMPT_KEY);
-      return raw ? JSON.parse(raw) : { count: 0, firstAttempt: null, email: null };
-    } catch { return { count: 0, firstAttempt: null, email: null }; }
-  }
-  function saveLoginAttempts(data) { localStorage.setItem(ATTEMPT_KEY, JSON.stringify(data)); }
-  function resetLoginAttempts() { localStorage.removeItem(ATTEMPT_KEY); }
+  <!-- ================= REGISTER MODAL ================= -->
+  <div class="modal fade auth-modal" id="registerModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i data-lucide="user-plus"></i> Create Your Account</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="attempt-warning" id="rateLimitWarning">
+            <i data-lucide="alert-triangle" style="width:16px;height:16px;"></i>
+            <span>Too many registration attempts. Please wait a few minutes.</span>
+          </div>
+          <div id="adminCreateSection" style="display:none;margin-bottom:1rem;">
+            <div class="p-3 rounded-3" style="background:color-mix(in oklab,var(--pri-medium) 35%,var(--card));color:oklch(0.28 0.09 75);border:1px solid color-mix(in oklab,var(--pri-medium) 60%,transparent);font-size:0.85rem;font-weight:600;">
+              <i data-lucide="shield" style="width:16px;height:16px;"></i>
+              <strong>Admin Mode:</strong> Creates account with auto-confirmation.
+              <button class="btn-civic btn-outline btn-sm ms-2" onclick="toggleAdminMode()">Switch to Normal</button>
+            </div>
+          </div>
 
-  function getLockoutUntil() {
-    try {
-      const raw = localStorage.getItem(LOCKOUT_KEY);
-      if (!raw) return null;
-      const ts = parseInt(raw, 10);
-      if (Date.now() >= ts) { localStorage.removeItem(LOCKOUT_KEY); return null; }
-      return ts;
-    } catch { return null; }
-  }
-  function setLockoutUntil(ts) { localStorage.setItem(LOCKOUT_KEY, String(ts)); }
+          <div class="auth-trust-row" style="margin-top:0;margin-bottom:1.25rem;padding-top:0;border-top:none;padding-bottom:0.85rem;border-bottom:1px dashed var(--border);">
+            <span class="auth-trust-badge"><i data-lucide="shield" style="width:12px;height:12px;"></i> 256-bit Encrypted</span>
+            <span class="auth-trust-badge"><i data-lucide="lock" style="width:12px;height:12px;"></i> OTP Verified</span>
+            <span class="auth-trust-badge"><i data-lucide="users" style="width:12px;height:12px;"></i> Trusted by Residents</span>
+          </div>
 
-  function checkLockout() {
-    const until = getLockoutUntil();
-    if (until) { showLockoutUI(until); return true; }
-    return false;
-  }
+          <form id="registerForm" onsubmit="handleRegister(event)" autocomplete="on" novalidate>
+            <div class="form-floating">
+              <input type="text" class="form-control" id="regFullName" placeholder=" " required minlength="2" maxlength="80" autocomplete="name">
+              <label for="regFullName"><i data-lucide="user" style="width:14px;height:14px;"></i> Full Name</label>
+            </div>
 
-  function showLockoutUI(until) {
-    const overlay = document.getElementById('lockoutOverlay');
-    const form = document.getElementById('loginForm');
-    const warning = document.getElementById('loginAttemptWarning');
-    if (!overlay) return;
-    overlay.classList.add('show');
-    if (form) form.style.display = 'none';
-    if (warning) warning.classList.remove('show');
+            <div class="form-floating">
+              <input type="email" class="form-control" id="regEmail" placeholder=" " required autocomplete="email" maxlength="120">
+              <label for="regEmail"><i data-lucide="mail" style="width:14px;height:14px;"></i> Email Address</label>
+            </div>
 
-    const updateTimer = () => {
-      const remaining = until - Date.now();
-      if (remaining <= 0) {
-        overlay.classList.remove('show');
-        if (form) form.style.display = '';
-        resetLoginAttempts();
-        localStorage.removeItem(LOCKOUT_KEY);
-        showToast('Lockout expired. You may try again.', 'success');
-        return;
+            <div class="form-floating password-wrapper">
+              <input type="password" class="form-control" id="regPassword" placeholder=" " minlength="8" required autocomplete="new-password">
+              <label for="regPassword"><i data-lucide="lock" style="width:14px;height:14px;"></i> Password</label>
+              <button type="button" class="toggle-password" onclick="togglePassword('regPassword', this)" aria-label="Toggle password visibility">
+                <i data-lucide="eye" style="width:18px;height:18px;"></i>
+              </button>
+            </div>
+
+            <!-- Password strength meter -->
+            <div class="password-strength-meter" id="passwordStrengthMeter" style="display:none;">
+              <div class="password-strength-bar">
+                <div class="password-strength-fill" id="passwordStrengthFill"></div>
+              </div>
+              <div class="password-strength-info">
+                <span class="password-strength-label" id="passwordStrengthLabel">Weak</span>
+                <span class="password-strength-hint" id="passwordStrengthHint">Add more characters</span>
+              </div>
+              <div class="password-requirements">
+                <div class="password-req-item" data-req="length">
+                  <i data-lucide="circle" class="req-icon"></i> 8+ characters
+                </div>
+                <div class="password-req-item" data-req="upper">
+                  <i data-lucide="circle" class="req-icon"></i> Uppercase letter
+                </div>
+                <div class="password-req-item" data-req="lower">
+                  <i data-lucide="circle" class="req-icon"></i> Lowercase letter
+                </div>
+                <div class="password-req-item" data-req="digit">
+                  <i data-lucide="circle" class="req-icon"></i> Number
+                </div>
+                <div class="password-req-item" data-req="special">
+                  <i data-lucide="circle" class="req-icon"></i> Special character
+                </div>
+                <div class="password-req-item" data-req="long">
+                  <i data-lucide="circle" class="req-icon"></i> 12+ characters
+                </div>
+              </div>
+            </div>
+
+            <div class="form-floating password-wrapper" style="margin-top:1rem;">
+              <input type="password" class="form-control" id="regPasswordConfirm" placeholder=" " minlength="8" required autocomplete="new-password">
+              <label for="regPasswordConfirm"><i data-lucide="shield-check" style="width:14px;height:14px;"></i> Confirm Password</label>
+              <button type="button" class="toggle-password" onclick="togglePassword('regPasswordConfirm', this)" aria-label="Toggle password visibility">
+                <i data-lucide="eye" style="width:18px;height:18px;"></i>
+              </button>
+            </div>
+            <div class="otp-error-msg" id="passwordMismatchMsg" style="margin-top:-0.5rem;margin-bottom:0.75rem;">
+              Passwords do not match.
+            </div>
+
+            <div class="form-floating">
+              <input type="text" class="form-control" id="regBarangay" placeholder=" " required maxlength="60" value="Culiat">
+              <label for="regBarangay"><i data-lucide="map-pin" style="width:14px;height:14px;"></i> Barangay</label>
+            </div>
+
+            <div class="form-floating">
+              <input type="tel" class="form-control" id="regContact" placeholder=" " required
+                     pattern="^(09|\+639)\d{9}$" maxlength="13" inputmode="numeric"
+                     title="Enter a valid PH mobile number (e.g., 09123456789)"
+                     autocomplete="tel">
+              <label for="regContact"><i data-lucide="phone" style="width:14px;height:14px;"></i> Contact Number</label>
+            </div>
+
+            <div class="terms-check">
+              <input type="checkbox" id="regTerms" required>
+              <label for="regTerms" style="cursor:pointer;margin:0;">
+                I agree to the <a href="#" onclick="event.preventDefault(); showTermsModal();">Terms of Service</a>
+                and <a href="#" onclick="event.preventDefault(); showPrivacyModal();">Privacy Policy</a>.
+                I consent to receiving emergency notifications from Barangay Culiat.
+              </label>
+            </div>
+
+            <button type="submit" class="btn-civic btn-primary btn-lg w-100 mt-3" id="registerBtn">
+              <i data-lucide="user-plus"></i> Create Secure Account
+            </button>
+
+            <div class="text-center mt-3">
+              <small class="text-muted-civic">Already have an account?
+                <a href="#" class="text-primary-civic fw-bold text-decoration-none" onclick="event.preventDefault(); switchToLogin();">Login</a>
+              </small>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= OTP VERIFICATION MODAL ================= -->
+  <div class="modal fade auth-modal otp-modal" id="otpModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="otp-header">
+          <div class="otp-shield-icon">
+            <i data-lucide="shield-check" style="width:34px;height:34px;"></i>
+          </div>
+          <h4 class="otp-title">Verify Your Identity</h4>
+          <p class="otp-subtitle">
+            We sent a 6-digit code to<br><strong id="otpEmailDisplay">your email</strong>
+          </p>
+        </div>
+        <div class="modal-body otp-body">
+          <div class="otp-error-msg" id="otpErrorMsg"></div>
+
+          <form id="otpForm" onsubmit="handleOTPSubmit(event)" autocomplete="off">
+            <div class="otp-input-group" id="otpInputGroup">
+              <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" data-index="0" autocomplete="one-time-code" aria-label="Digit 1">
+              <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" data-index="1" aria-label="Digit 2">
+              <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" data-index="2" aria-label="Digit 3">
+              <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" data-index="3" aria-label="Digit 4">
+              <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" data-index="4" aria-label="Digit 5">
+              <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" data-index="5" aria-label="Digit 6">
+            </div>
+
+            <div class="otp-timer-row">
+              <span><i data-lucide="clock" style="width:14px;height:14px;"></i> Code expires in</span>
+              <span class="timer-value" id="otpTimer">10:00</span>
+            </div>
+
+            <div class="otp-actions">
+              <button type="submit" class="btn-civic btn-primary otp-verify-btn" id="otpVerifyBtn">
+                <i data-lucide="check-circle"></i> Verify & Sign In
+              </button>
+              <div class="otp-resend-row">
+                <span>Didn't receive the code?</span>
+                <button type="button" class="otp-resend-btn" id="otpResendBtn" onclick="handleOTPResend()">Resend Code</button>
+              </div>
+              <div class="otp-resend-row">
+                <button type="button" class="otp-resend-btn" onclick="cancelOTPAndLogout()" style="color:var(--muted-foreground);">
+                  <i data-lucide="arrow-left" style="width:12px;height:12px;"></i> Cancel & Back to Login
+                </button>
+              </div>
+            </div>
+          </form>
+
+          <div class="otp-security-note">
+            <i data-lucide="lock" style="width:14px;height:14px;"></i>
+            Secured with end-to-end encryption · Never share this code
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- ================= SCRIPTS ================= -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="design.js"></script>
+  <script src="js/auth-security.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+  <script>
+    /* ============================================================
+       CONFIG
+       ============================================================ */
+    const MAX_LOGIN_ATTEMPTS = 5;
+    const LOCKOUT_DURATION_MS = 5 * 60 * 1000;
+    const ATTEMPT_KEY = 'culiat_login_attempts';
+    const LOCKOUT_KEY = 'culiat_login_lockout';
+    const RESET_REDIRECT_URL = 'https://ecs.culiatpublicsafety.com/reset-password.html';
+
+    /* PASSWORD TOGGLE */
+    function togglePassword(inputId, buttonElement) {
+      const input = document.getElementById(inputId);
+      if (input.type === 'password') {
+        input.type = 'text';
+        buttonElement.innerHTML = '<i data-lucide="eye-off" style="width:18px;height:18px;"></i>';
+      } else {
+        input.type = 'password';
+        buttonElement.innerHTML = '<i data-lucide="eye" style="width:18px;height:18px;"></i>';
       }
-      const mins = Math.floor(remaining / 60000);
-      const secs = Math.floor((remaining % 60000) / 1000);
-      const timerEl = document.getElementById('lockoutTimer');
-      if (timerEl) timerEl.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-      requestAnimationFrame(() => setTimeout(updateTimer, 1000));
-    };
-    updateTimer();
-  }
-
-  function closeLockoutAndShowForm() {
-    const until = getLockoutUntil();
-    if (until && until > Date.now()) {
-      showToast('Please wait for the lockout to expire before retrying.', 'warning', 4000);
-      return;
+      if (window.lucide) window.lucide.createIcons();
     }
-    const overlay = document.getElementById('lockoutOverlay');
-    const form = document.getElementById('loginForm');
-    if (overlay) overlay.classList.remove('show');
-    if (form) form.style.display = '';
-    resetLoginAttempts();
-    localStorage.removeItem(LOCKOUT_KEY);
-    showToast('You can try again now.', 'info', 3000);
-  }
-  window.closeLockoutAndShowForm = closeLockoutAndShowForm;
 
-  function updateAttemptWarning(remaining) {
-    const warning = document.getElementById('loginAttemptWarning');
-    const text = document.getElementById('loginAttemptWarningText');
-    if (!warning || !text) return;
-    if (remaining <= 0) { warning.classList.remove('show'); return; }
-    warning.classList.add('show');
-    if (remaining <= 2) {
-      warning.classList.add('danger');
-      text.innerHTML = `Incorrect password. <strong>${remaining}</strong> attempt${remaining !== 1 ? 's' : ''} remaining before lockout.`;
-    } else {
-      warning.classList.remove('danger');
-      text.innerHTML = `Incorrect password. <strong>${remaining}</strong> attempt${remaining !== 1 ? 's' : ''} remaining.`;
+    /* TOAST */
+    function showToast(message, type = 'info', duration = 5000) {
+      const container = document.getElementById('toastContainer');
+      const colors = { success: 'bg-success text-white', danger: 'bg-danger text-white', warning: 'bg-warning text-dark', info: 'bg-info text-white' };
+      const icons  = { success: 'check-circle-2', danger: 'x-circle', warning: 'alert-triangle', info: 'info' };
+      const toast = document.createElement('div');
+      toast.className = `toast align-items-center ${colors[type] || colors.info} border-0`;
+      toast.role = 'alert';
+      toast.innerHTML = `<div class="d-flex"><div class="toast-body"><i data-lucide="${icons[type] || icons.info}" style="width:16px;height:16px;"></i> ${message}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
+      container.appendChild(toast);
+      if (window.lucide) window.lucide.createIcons();
+      const bsToast = new bootstrap.Toast(toast, { autohide: true, delay: duration });
+      bsToast.show();
+      setTimeout(() => toast.remove(), duration + 500);
     }
-  }
 
-  // ============================================================
-  // MODAL MANAGEMENT
-  // ============================================================
-  let loginModal = null, registerModal = null, forgotModal = null;
-
-  function openLoginModal() {
-    if (!loginModal) loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
-    const form = document.getElementById('loginForm');
-    const overlay = document.getElementById('lockoutOverlay');
-    const warning = document.getElementById('loginAttemptWarning');
-    if (form) form.style.display = '';
-    if (overlay) overlay.classList.remove('show');
-    if (warning) warning.classList.remove('show');
-    loginModal.show();
-    setTimeout(checkLockout, 300);
-  }
-
-  function openRegisterModal() {
-    if (!registerModal) registerModal = new bootstrap.Modal(document.getElementById('registerModal'));
-    registerModal.show();
-    document.getElementById('rateLimitWarning').style.display = 'none';
-  }
-
-  function openForgotPasswordModal() {
-    if (loginModal) loginModal.hide();
-    setTimeout(() => {
-      if (!forgotModal) forgotModal = new bootstrap.Modal(document.getElementById('forgotPasswordModal'));
-      document.getElementById('forgotEmail').value = '';
-      forgotModal.show();
-    }, 300);
-  }
-
-  function backToLoginFromForgot() {
-    if (forgotModal) forgotModal.hide();
-    setTimeout(openLoginModal, 300);
-  }
-  window.backToLoginFromForgot = backToLoginFromForgot;
-
-  function switchToRegister() {
-    if (loginModal) loginModal.hide();
-    setTimeout(openRegisterModal, 300);
-  }
-  function switchToLogin() {
-    if (registerModal) registerModal.hide();
-    setTimeout(openLoginModal, 300);
-  }
-
-  window.openLoginModal = openLoginModal;
-  window.openRegisterModal = openRegisterModal;
-  window.switchToRegister = switchToRegister;
-  window.switchToLogin = switchToLogin;
-  window.openForgotPasswordModal = openForgotPasswordModal;
-
-  // ============================================================
-  // ADMIN MODE
-  // ============================================================
-  let isAdminMode = false;
-  function toggleAdminMode() {
-    isAdminMode = !isAdminMode;
-    const section = document.getElementById('adminCreateSection');
-    if (isAdminMode) {
-      section.style.display = 'block';
-      document.querySelector('#registerModal .modal-title').innerHTML = '<i class="fas fa-shield-alt text-warning me-2"></i>Admin: Create Account (Auto-Confirm)';
-      showToast('🔐 Admin Mode: Email will be auto-confirmed', 'warning', 3000);
-    } else {
-      section.style.display = 'none';
-      document.querySelector('#registerModal .modal-title').innerHTML = '<i class="fas fa-user-plus text-danger me-2"></i>Create Account';
-      showToast('👤 Normal Mode: Email confirmation required', 'info', 3000);
+    /* ATTEMPT TRACKING */
+    function getLoginAttempts() {
+      try { const raw = localStorage.getItem(ATTEMPT_KEY); return raw ? JSON.parse(raw) : { count: 0, firstAttempt: null, email: null }; }
+      catch { return { count: 0, firstAttempt: null, email: null }; }
     }
-  }
-  window.toggleAdminMode = toggleAdminMode;
+    function saveLoginAttempts(data) { localStorage.setItem(ATTEMPT_KEY, JSON.stringify(data)); }
+    function resetLoginAttempts() { localStorage.removeItem(ATTEMPT_KEY); }
+    function getLockoutUntil() {
+      try {
+        const raw = localStorage.getItem(LOCKOUT_KEY);
+        if (!raw) return null;
+        const ts = parseInt(raw, 10);
+        if (Date.now() >= ts) { localStorage.removeItem(LOCKOUT_KEY); return null; }
+        return ts;
+      } catch { return null; }
+    }
+    function setLockoutUntil(ts) { localStorage.setItem(LOCKOUT_KEY, String(ts)); }
+    function checkLockout() { const until = getLockoutUntil(); if (until) { showLockoutUI(until); return true; } return false; }
 
-  // ============================================================
-  // REGISTER
-  // ============================================================
-  async function handleRegister(event) {
-    event.preventDefault();
-    const fullName = document.getElementById('regFullName').value.trim();
-    const email = document.getElementById('regEmail').value.trim();
-    const password = document.getElementById('regPassword').value;
-    const barangay = document.getElementById('regBarangay').value.trim();
-    const contact = document.getElementById('regContact').value.trim();
-    document.getElementById('rateLimitWarning').style.display = 'none';
-    if (!fullName || !email || !password || !barangay || !contact) { showToast('Please fill in all fields', 'warning'); return; }
-    if (password.length < 6) { showToast('Password must be at least 6 characters', 'warning'); return; }
-    const submitBtn = document.getElementById('registerBtn');
-    const originalText = submitBtn.innerHTML;
-    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creating...';
-    submitBtn.disabled = true;
-    try {
+    function showLockoutUI(until) {
+      const overlay = document.getElementById('lockoutOverlay');
+      const form = document.getElementById('loginForm');
+      const warning = document.getElementById('loginAttemptWarning');
+      if (!overlay) return;
+      overlay.classList.add('show');
+      if (form) form.style.display = 'none';
+      if (warning) warning.classList.remove('show');
+      const updateTimer = () => {
+        const remaining = until - Date.now();
+        if (remaining <= 0) {
+          overlay.classList.remove('show');
+          if (form) form.style.display = '';
+          resetLoginAttempts();
+          localStorage.removeItem(LOCKOUT_KEY);
+          showToast('Lockout expired. You may try again.', 'success');
+          return;
+        }
+        const mins = Math.floor(remaining / 60000);
+        const secs = Math.floor((remaining % 60000) / 1000);
+        const timerEl = document.getElementById('lockoutTimer');
+        if (timerEl) timerEl.textContent = `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+        requestAnimationFrame(() => setTimeout(updateTimer, 1000));
+      };
+      updateTimer();
+    }
+
+    function closeLockoutAndShowForm() {
+      const until = getLockoutUntil();
+      if (until && until > Date.now()) { showToast('Please wait for the lockout to expire before retrying.', 'warning', 4000); return; }
+      const overlay = document.getElementById('lockoutOverlay');
+      const form = document.getElementById('loginForm');
+      if (overlay) overlay.classList.remove('show');
+      if (form) form.style.display = '';
+      resetLoginAttempts();
+      localStorage.removeItem(LOCKOUT_KEY);
+      showToast('You can try again now.', 'info', 3000);
+    }
+    window.closeLockoutAndShowForm = closeLockoutAndShowForm;
+
+    function updateAttemptWarning(remaining) {
+      const warning = document.getElementById('loginAttemptWarning');
+      const text = document.getElementById('loginAttemptWarningText');
+      if (!warning || !text) return;
+      if (remaining <= 0) { warning.classList.remove('show'); return; }
+      warning.classList.add('show');
+      if (remaining <= 2) {
+        warning.classList.add('danger');
+        text.innerHTML = `Incorrect password. <strong>${remaining}</strong> attempt${remaining !== 1 ? 's' : ''} remaining before lockout.`;
+      } else {
+        warning.classList.remove('danger');
+        text.innerHTML = `Incorrect password. <strong>${remaining}</strong> attempt${remaining !== 1 ? 's' : ''} remaining.`;
+      }
+    }
+
+    /* MODALS */
+    let loginModal = null, registerModal = null, forgotModal = null;
+    function openLoginModal() {
+      if (!loginModal) loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
+      const form = document.getElementById('loginForm');
+      const overlay = document.getElementById('lockoutOverlay');
+      const warning = document.getElementById('loginAttemptWarning');
+      if (form) form.style.display = '';
+      if (overlay) overlay.classList.remove('show');
+      if (warning) warning.classList.remove('show');
+      loginModal.show();
+      setTimeout(checkLockout, 300);
+    }
+    function openRegisterModal() {
+      if (!registerModal) registerModal = new bootstrap.Modal(document.getElementById('registerModal'));
+      registerModal.show();
+      document.getElementById('rateLimitWarning').classList.remove('show');
+    }
+    function openForgotPasswordModal() {
+      if (loginModal) loginModal.hide();
+      setTimeout(() => {
+        if (!forgotModal) forgotModal = new bootstrap.Modal(document.getElementById('forgotPasswordModal'));
+        document.getElementById('forgotEmail').value = '';
+        forgotModal.show();
+      }, 300);
+    }
+    function backToLoginFromForgot() { if (forgotModal) forgotModal.hide(); setTimeout(openLoginModal, 300); }
+    window.backToLoginFromForgot = backToLoginFromForgot;
+    function switchToRegister() { if (loginModal) loginModal.hide(); setTimeout(openRegisterModal, 300); }
+    function switchToLogin() { if (registerModal) registerModal.hide(); setTimeout(openLoginModal, 300); }
+    window.openLoginModal = openLoginModal;
+    window.openRegisterModal = openRegisterModal;
+    window.switchToRegister = switchToRegister;
+    window.switchToLogin = switchToLogin;
+    window.openForgotPasswordModal = openForgotPasswordModal;
+
+    /* ADMIN MODE */
+    let isAdminMode = false;
+    function toggleAdminMode() {
+      isAdminMode = !isAdminMode;
+      const section = document.getElementById('adminCreateSection');
       if (isAdminMode) {
-        const { data, error } = await supabaseAdmin.auth.admin.createUser({
+        section.style.display = 'block';
+        document.querySelector('#registerModal .modal-title').innerHTML = '<i data-lucide="shield"></i> Admin: Create Account (Auto-Confirm)';
+        showToast('Admin Mode: Email will be auto-confirmed', 'warning', 3000);
+      } else {
+        section.style.display = 'none';
+        document.querySelector('#registerModal .modal-title').innerHTML = '<i data-lucide="user-plus"></i> Create Your Account';
+        showToast('Normal Mode: Email confirmation required', 'info', 3000);
+      }
+      if (window.lucide) window.lucide.createIcons();
+    }
+    window.toggleAdminMode = toggleAdminMode;
+
+    /* ============================================================
+       REGISTER (enhanced)
+       ============================================================ */
+    window.handleRegister = async function (event) {
+      event.preventDefault();
+
+      const fullName = document.getElementById('regFullName').value.trim();
+      const email = document.getElementById('regEmail').value.trim().toLowerCase();
+      const password = document.getElementById('regPassword').value;
+      const passwordConfirm = document.getElementById('regPasswordConfirm').value;
+      const barangay = document.getElementById('regBarangay').value.trim();
+      const contact = document.getElementById('regContact').value.trim();
+      const terms = document.getElementById('regTerms').checked;
+
+      document.getElementById('rateLimitWarning').classList.remove('show');
+
+      if (!fullName || !email || !password || !passwordConfirm || !barangay || !contact) {
+        showToast('Please fill in all fields', 'warning'); return;
+      }
+      if (fullName.length < 2) { showToast('Please enter your full name', 'warning'); return; }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast('Please enter a valid email address', 'warning'); return; }
+      if (password !== passwordConfirm) { showToast('Passwords do not match', 'warning'); return; }
+      if (password.length < 8) { showToast('Password must be at least 8 characters', 'warning'); return; }
+
+      const strength = window.CuliatAuthSecurity
+        ? window.CuliatAuthSecurity.scorePassword(password)
+        : { score: 3 };
+      if (strength.score < 3) {
+        showToast('Password is too weak. Add uppercase, numbers, or symbols.', 'warning', 6000); return;
+      }
+      if (!/^(09|\+639)\d{9}$/.test(contact.replace(/\s+/g, ''))) {
+        showToast('Please enter a valid PH mobile number (e.g., 09123456789)', 'warning', 6000); return;
+      }
+      if (!terms) { showToast('Please accept the Terms of Service and Privacy Policy', 'warning'); return; }
+
+      const submitBtn = document.getElementById('registerBtn');
+      const originalText = submitBtn.innerHTML;
+      submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creating account...';
+      submitBtn.disabled = true;
+
+      try {
+        if (isAdminMode) {
+          const { data, error } = await supabaseAdmin.auth.admin.createUser({
+            email, password,
+            user_metadata: { full_name: fullName, barangay, contact_number: contact, role: 'resident' },
+            email_confirm: true
+          });
+          if (error) {
+            if (error.message.includes('duplicate') || error.message.includes('already registered')) {
+              showToast('This email is already registered. Please login.', 'warning');
+              if (registerModal) registerModal.hide();
+              setTimeout(openLoginModal, 500);
+              submitBtn.innerHTML = originalText; submitBtn.disabled = false; return;
+            }
+            throw error;
+          }
+          if (data.user) {
+            await supabaseAdmin.from('profiles').insert([{ id: data.user.id, full_name: fullName, email, barangay, contact_number: contact, role: 'resident' }]);
+            showToast('Account created! (Auto-confirmed)', 'success', 5000);
+            if (registerModal) registerModal.hide();
+            document.getElementById('registerForm').reset();
+            setTimeout(openLoginModal, 1500);
+            submitBtn.innerHTML = originalText; submitBtn.disabled = false; return;
+          }
+        }
+
+        const { data, error } = await supabaseClient.auth.signUp({
           email, password,
-          user_metadata: { full_name: fullName, barangay, contact_number: contact, role: 'resident' },
-          email_confirm: true
+          options: { data: { full_name: fullName, barangay, contact_number: contact, role: 'resident' } }
         });
         if (error) {
-          if (error.message.includes('duplicate') || error.message.includes('already registered')) {
+          if (error.message.includes('rate limit') || error.message.includes('too many')) {
+            document.getElementById('rateLimitWarning').classList.add('show');
+            showToast('Too many attempts. Please wait or use Admin Mode.', 'warning', 8000);
+            submitBtn.innerHTML = originalText; submitBtn.disabled = false; return;
+          }
+          if (error.message.includes('User already registered')) {
             showToast('This email is already registered. Please login.', 'warning');
             if (registerModal) registerModal.hide();
             setTimeout(openLoginModal, 500);
@@ -1046,297 +1251,474 @@
           throw error;
         }
         if (data.user) {
-          await supabaseAdmin.from('profiles').insert([{ id: data.user.id, full_name: fullName, email, barangay, contact_number: contact, role: 'resident' }]);
-          showToast('✅ Account created! (Auto-confirmed)', 'success', 5000);
+          showToast('Account created! Please check your email to confirm.', 'success', 6000);
           if (registerModal) registerModal.hide();
           document.getElementById('registerForm').reset();
-          setTimeout(openLoginModal, 1500);
-          submitBtn.innerHTML = originalText; submitBtn.disabled = false; return;
+          const meter = document.getElementById('passwordStrengthMeter');
+          if (meter) meter.style.display = 'none';
+          document.querySelectorAll('.password-req-item').forEach(el => el.classList.remove('met'));
         }
-      }
-      const { data, error } = await supabaseClient.auth.signUp({
-        email, password,
-        options: { data: { full_name: fullName, barangay, contact_number: contact, role: 'resident' } }
-      });
-      if (error) {
-        if (error.message.includes('rate limit') || error.message.includes('too many')) {
-          document.getElementById('rateLimitWarning').style.display = 'block';
-          showToast('Too many attempts. Please wait or use Admin Mode.', 'warning', 8000);
-          submitBtn.innerHTML = originalText; submitBtn.disabled = false; return;
-        }
-        if (error.message.includes('User already registered')) {
-          showToast('This email is already registered. Please login.', 'warning');
-          if (registerModal) registerModal.hide();
-          setTimeout(openLoginModal, 500);
-          submitBtn.innerHTML = originalText; submitBtn.disabled = false; return;
-        }
-        throw error;
-      }
-      if (data.user) {
-        showToast('Account created! Please check your email to confirm.', 'success', 6000);
-        if (registerModal) registerModal.hide();
-        document.getElementById('registerForm').reset();
-      }
-    } catch (error) {
-      console.error('Registration error:', error);
-      if (error.message && (error.message.includes('rate limit') || error.message.includes('too many'))) {
-        document.getElementById('rateLimitWarning').style.display = 'block';
-        showToast('Too many attempts. Please wait a few minutes.', 'warning', 8000);
-      } else {
-        showToast('Registration failed: ' + error.message, 'danger');
-      }
-    } finally {
-      submitBtn.innerHTML = originalText; submitBtn.disabled = false;
-    }
-  }
-
-  // ============================================================
-  // LOGIN WITH RATE LIMITING + ROLE CHECK
-  // ============================================================
-  async function handleLogin(event) {
-    event.preventDefault();
-    if (checkLockout()) return;
-
-    const email = document.getElementById('loginEmail').value.trim().toLowerCase();
-    const password = document.getElementById('loginPassword').value;
-    const btn = document.getElementById('loginBtn');
-
-    if (!email || !password) { showToast('Please fill in all fields', 'warning'); return; }
-
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Signing in...';
-
-    try {
-      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-
-      if (error) {
-        let attempts = getLoginAttempts();
-        if (attempts.email !== email) attempts = { count: 0, firstAttempt: Date.now(), email };
-        attempts.count += 1;
-        attempts.email = email;
-        saveLoginAttempts(attempts);
-
-        const remaining = MAX_LOGIN_ATTEMPTS - attempts.count;
-
-        if (attempts.count >= MAX_LOGIN_ATTEMPTS) {
-          const until = Date.now() + LOCKOUT_DURATION_MS;
-          setLockoutUntil(until);
-          resetLoginAttempts();
-          showLockoutUI(until);
-          showToast('🚫 Too many failed attempts. Account locked for 5 minutes.', 'danger', 8000);
+      } catch (err) {
+        console.error('Registration error:', err);
+        if (err.message && (err.message.includes('rate limit') || err.message.includes('too many'))) {
+          document.getElementById('rateLimitWarning').classList.add('show');
+          showToast('Too many attempts. Please wait a few minutes.', 'warning', 8000);
         } else {
-          updateAttemptWarning(remaining);
-          showToast(
-            error.message.includes('Invalid login')
-              ? `Incorrect email or password. ${remaining} attempt${remaining !== 1 ? 's' : ''} remaining.`
-              : error.message,
-            'danger'
-          );
+          showToast('Registration failed: ' + err.message, 'danger');
         }
-
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Login';
-        return;
+      } finally {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+        if (window.lucide) window.lucide.createIcons();
       }
+    };
 
-      if (!data.user) {
-        showToast('User not found', 'danger');
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Login';
-        return;
-      }
+    /* ============================================================
+       LOGIN (enhanced — triggers OTP after password check)
+       ============================================================ */
+    let otpModal = null;
+    let otpEmail = null;
+    let otpFullName = null;
+    let otpCountdownInterval = null;
 
-      const { data: profile, error: profileError } = await supabaseClient
-        .from('profiles').select('role, full_name').eq('id', data.user.id).maybeSingle();
+    function getOtpInputs() { return Array.from(document.querySelectorAll('#otpInputGroup .otp-digit')); }
+    function getOtpValue() { return getOtpInputs().map(i => i.value).join(''); }
+    function clearOtpInputs() { getOtpInputs().forEach(i => { i.value = ''; i.classList.remove('filled', 'error'); }); }
 
-      if (profileError) console.error('Profile error:', profileError);
-      const role = profile?.role || 'resident';
-
-      // Block admins/responders from resident login
-      if (role === 'admin' || role === 'responder') {
-        await supabaseClient.auth.signOut();
-        showToast('🚫 Access denied.', 'danger', 7000);
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Login';
-        return;
-      }
-
-      resetLoginAttempts();
-      localStorage.removeItem(LOCKOUT_KEY);
-      showToast(`✅ Welcome back, ${profile?.full_name || 'Resident'}!`, 'success');
-
-      if (loginModal) loginModal.hide();
-      setTimeout(() => { window.location.href = 'resident/dashboard.html'; }, 1000);
-
-    } catch (error) {
-      console.error('Login error:', error);
-      showToast('Login failed: ' + (error.message || 'Unknown error'), 'danger');
-      btn.disabled = false;
-      btn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Login';
-    }
-  }
-
-  // ============================================================
-  // SEND PASSWORD RESET EMAIL — Supabase Built-in
-  // ============================================================
-  async function sendPasswordReset() {
-    const email = document.getElementById('forgotEmail').value.trim().toLowerCase();
-
-    if (!email) {
-      showToast('Please enter your email address', 'warning');
-      return;
+    function setOtpError(message) {
+      const msg = document.getElementById('otpErrorMsg');
+      if (!msg) return;
+      if (message) { msg.textContent = message; msg.classList.add('show'); }
+      else { msg.textContent = ''; msg.classList.remove('show'); }
     }
 
-    const btn = document.getElementById('sendResetBtn');
-    const originalText = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Sending...';
+    function bindOtpInputs() {
+      const inputs = getOtpInputs();
+      inputs.forEach(function (input, idx) {
+        if (input.dataset.bound) return;
+        input.dataset.bound = '1';
 
-    try {
-      // Check if email exists & is a resident (don't reveal to user)
-      const { data: profile } = await supabaseClient
-        .from('profiles')
-        .select('id, role')
-        .eq('email', email)
-        .maybeSingle();
-
-      // Block admin/responder accounts (they use login.html)
-      if (profile && (profile.role === 'admin' || profile.role === 'responder')) {
-        showToast('Admin/Responder accounts must use the dedicated login page.', 'warning', 6000);
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-        return;
-      }
-
-      const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-        redirectTo: RESET_REDIRECT_URL
-      });
-
-      if (error) {
-        console.error('Reset email error:', error);
-        if (error.message && (error.message.includes('rate limit') || error.message.includes('too many'))) {
-          showToast('Too many reset attempts. Please wait a few minutes.', 'warning', 8000);
-        } else {
-          throw error;
-        }
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-        return;
-      }
-
-      showToast('📧 If this email is registered, a reset link has been sent. Check your inbox and spam folder.', 'success', 8000);
-
-      setTimeout(() => {
-        if (forgotModal) forgotModal.hide();
-      }, 2500);
-
-    } catch (error) {
-      console.error('Send reset error:', error);
-      showToast('Could not send reset email. Please try again.', 'danger');
-    } finally {
-      btn.disabled = false;
-      btn.innerHTML = originalText;
-    }
-  }
-
-  // ============================================================
-  // QUICK REPORT
-  // ============================================================
-  function quickReport() {
-    supabaseClient.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        supabaseClient.from('profiles').select('role').eq('id', session.user.id).maybeSingle().then(({ data: profile }) => {
-          const role = profile?.role || 'resident';
-          if (role === 'admin' || role === 'responder') {
-            window.location.href = 'responder/dashboard.html';
-          } else {
-            window.location.href = 'resident/dashboard.html#report';
+        input.addEventListener('input', function () {
+          let v = this.value.replace(/\D/g, '');
+          if (v.length > 1) v = v.charAt(v.length - 1);
+          this.value = v;
+          this.classList.toggle('filled', !!v);
+          this.classList.remove('error');
+          setOtpError('');
+          if (v && idx < inputs.length - 1) inputs[idx + 1].focus();
+          if (getOtpValue().length === inputs.length) {
+            setTimeout(() => document.getElementById('otpForm').requestSubmit(), 200);
           }
         });
-      } else {
-        showToast('Please login to report an emergency', 'warning');
-        openLoginModal();
-      }
-    }).catch(() => { showToast('Please login to report an emergency', 'warning'); openLoginModal(); });
-  }
 
-  // ============================================================
-  // EXPOSE
-  // ============================================================
-  window.handleLogin = handleLogin;
-  window.handleRegister = handleRegister;
-  window.quickReport = quickReport;
-  window.togglePassword = togglePassword;
-  window.sendPasswordReset = sendPasswordReset;
-
-  // ============================================================
-  // INIT
-  // ============================================================
-  document.addEventListener('DOMContentLoaded', function() {
-    const nav = document.getElementById('mainNav');
-    window.addEventListener('scroll', function() {
-      if (window.scrollY > 60) nav.classList.add('scrolled');
-      else nav.classList.remove('scrolled');
-    });
-
-    document.querySelectorAll('#navbarNav .nav-link').forEach(link => {
-      link.addEventListener('click', () => {
-        const collapse = document.getElementById('navbarNav');
-        if (collapse.classList.contains('show')) {
-          const bsCollapse = bootstrap.Collapse.getInstance(collapse) || new bootstrap.Collapse(collapse, { toggle: false });
-          bsCollapse.hide();
-        }
-      });
-    });
-
-    const reveals = document.querySelectorAll('.reveal');
-    const revealObserver = new IntersectionObserver((entries) => {
-      entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('visible'); });
-    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
-    reveals.forEach(el => revealObserver.observe(el));
-
-    const counters = document.querySelectorAll('.count-number');
-    const counterObserver = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          const el = entry.target;
-          const target = parseInt(el.getAttribute('data-target'), 10);
-          if (!el.dataset.animated) {
-            el.dataset.animated = 'true';
-            let current = 0;
-            const step = Math.max(1, Math.floor(target / 50));
-            const interval = setInterval(() => {
-              current += step;
-              if (current >= target) { current = target; clearInterval(interval); }
-              el.textContent = current.toLocaleString();
-            }, 25);
+        input.addEventListener('keydown', function (e) {
+          if (e.key === 'Backspace' && !this.value && idx > 0) {
+            inputs[idx - 1].focus();
+            inputs[idx - 1].value = '';
+            inputs[idx - 1].classList.remove('filled');
           }
-        }
-      });
-    }, { threshold: 0.4 });
-    counters.forEach(el => counterObserver.observe(el));
+          if (e.key === 'ArrowLeft' && idx > 0) inputs[idx - 1].focus();
+          if (e.key === 'ArrowRight' && idx < inputs.length - 1) inputs[idx + 1].focus();
+        });
 
-    // Handle email confirmation redirect (access_token in URL)
-    const hash = window.location.hash;
-    if (hash && hash.includes('access_token')) {
-      supabaseClient.auth.getSession().then(({ data: { session }, error }) => {
-        if (error) return;
+        input.addEventListener('paste', function (e) {
+          e.preventDefault();
+          const paste = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, inputs.length);
+          if (!paste) return;
+          inputs.forEach((inp, i) => { inp.value = paste[i] || ''; inp.classList.toggle('filled', !!inp.value); });
+          inputs[Math.min(paste.length, inputs.length - 1)].focus();
+          if (getOtpValue().length === inputs.length) {
+            setTimeout(() => document.getElementById('otpForm').requestSubmit(), 200);
+          }
+        });
+      });
+    }
+
+    function startOtpCountdown(expiresAt) {
+      if (otpCountdownInterval) clearInterval(otpCountdownInterval);
+      const timerEl = document.getElementById('otpTimer');
+      function tick() {
+        const remaining = Math.max(0, expiresAt - Date.now());
+        const m = Math.floor(remaining / 60000);
+        const s = Math.floor((remaining % 60000) / 1000);
+        if (timerEl) timerEl.textContent = String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+        if (remaining <= 0) { clearInterval(otpCountdownInterval); if (timerEl) timerEl.textContent = '00:00'; }
+      }
+      tick();
+      otpCountdownInterval = setInterval(tick, 1000);
+    }
+
+    function startResendCooldown(seconds) {
+      const btn = document.getElementById('otpResendBtn');
+      if (!btn) return;
+      let remaining = seconds;
+      btn.disabled = true;
+      btn.textContent = 'Resend in ' + remaining + 's';
+      const id = setInterval(function () {
+        remaining -= 1;
+        if (remaining <= 0) {
+          clearInterval(id);
+          btn.disabled = false;
+          btn.textContent = 'Resend Code';
+        } else {
+          btn.textContent = 'Resend in ' + remaining + 's';
+        }
+      }, 1000);
+    }
+
+    async function openOtpModal(email, fullName) {
+      otpEmail = email;
+      otpFullName = fullName || 'Resident';
+      const emailDisplay = document.getElementById('otpEmailDisplay');
+      if (emailDisplay) emailDisplay.textContent = email;
+
+      const otp = window.CuliatAuthSecurity.createOTP(email);
+      const result = await window.CuliatAuthSecurity.sendOTPEmail(email, otp, otpFullName);
+
+      if (!result.success) {
+        showToast('Failed to send OTP: ' + (result.error || 'Unknown error'), 'danger', 7000);
+        console.warn('⚠️ OTP (dev fallback):', otp);
+      } else {
+        showToast('Verification code sent to ' + email, 'success', 5000);
+        window.CuliatAuthSecurity.markOTPResent(email);
+      }
+
+      clearOtpInputs();
+      setOtpError('');
+      if (!otpModal) otpModal = new bootstrap.Modal(document.getElementById('otpModal'));
+      otpModal.show();
+      bindOtpInputs();
+
+      setTimeout(() => {
+        const first = document.querySelector('#otpInputGroup .otp-digit');
+        if (first) first.focus();
+      }, 400);
+
+      startOtpCountdown(Date.now() + window.CuliatAuthSecurity.CONFIG.OTP_EXPIRY_MS);
+      startResendCooldown(60);
+    }
+
+    window.handleOTPSubmit = async function (event) {
+      event.preventDefault();
+      const otp = getOtpValue();
+      if (otp.length !== 6) { setOtpError('Please enter all 6 digits.'); return; }
+
+      const btn = document.getElementById('otpVerifyBtn');
+      const originalHtml = btn ? btn.innerHTML : '';
+      if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Verifying...'; }
+
+      const result = window.CuliatAuthSecurity.validateOTP(otpEmail, otp);
+
+      if (!result.valid) {
+        setOtpError(result.message);
+        getOtpInputs().forEach(i => i.classList.add('error'));
+        setTimeout(() => getOtpInputs().forEach(i => i.classList.remove('error')), 500);
+        if (btn) { btn.disabled = false; btn.innerHTML = originalHtml; if (window.lucide) window.lucide.createIcons(); }
+        return;
+      }
+
+      window.CuliatAuthSecurity.markOtpVerified(otpEmail);
+      if (otpCountdownInterval) clearInterval(otpCountdownInterval);
+      if (otpModal) otpModal.hide();
+      showToast('✅ Identity verified! Signing you in...', 'success', 4000);
+
+      setTimeout(() => { window.location.href = 'resident/dashboard.html'; }, 900);
+    };
+
+    window.handleOTPResend = async function () {
+      const btn = document.getElementById('otpResendBtn');
+      if (btn && btn.disabled) return;
+      const check = window.CuliatAuthSecurity.canResendOTP(otpEmail);
+      if (!check.allowed) {
+        const secs = Math.ceil(check.waitMs / 1000);
+        showToast('Please wait ' + secs + 's before requesting a new code.', 'warning', 4000);
+        return;
+      }
+      const otp = window.CuliatAuthSecurity.createOTP(otpEmail);
+      const result = await window.CuliatAuthSecurity.sendOTPEmail(otpEmail, otp, otpFullName);
+      if (result.success) {
+        window.CuliatAuthSecurity.markOTPResent(otpEmail);
+        showToast('New code sent to ' + otpEmail, 'success', 5000);
+        clearOtpInputs();
+        setOtpError('');
+        const first = document.querySelector('#otpInputGroup .otp-digit');
+        if (first) first.focus();
+        startOtpCountdown(Date.now() + window.CuliatAuthSecurity.CONFIG.OTP_EXPIRY_MS);
+        startResendCooldown(60);
+      } else {
+        showToast('Failed to resend: ' + (result.error || 'Unknown error'), 'danger', 6000);
+        console.warn('⚠️ Resent OTP (dev fallback):', otp);
+      }
+    };
+
+    window.cancelOTPAndLogout = async function () {
+      try { if (window.supabaseClient) await window.supabaseClient.auth.signOut(); } catch (e) {}
+      window.CuliatAuthSecurity.clearOtpVerification();
+      if (otpCountdownInterval) clearInterval(otpCountdownInterval);
+      if (otpModal) otpModal.hide();
+      if (window.lucide) window.lucide.createIcons();
+      setTimeout(() => openLoginModal(), 400);
+    };
+
+    window.handleLogin = async function (event) {
+      event.preventDefault();
+      if (checkLockout()) return;
+
+      const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+      const password = document.getElementById('loginPassword').value;
+      const btn = document.getElementById('loginBtn');
+      if (!email || !password) { showToast('Please fill in all fields', 'warning'); return; }
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Signing in...';
+
+      try {
+        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+        if (error) {
+          let attempts = getLoginAttempts();
+          if (attempts.email !== email) attempts = { count: 0, firstAttempt: Date.now(), email };
+          attempts.count += 1; attempts.email = email;
+          saveLoginAttempts(attempts);
+          const remaining = MAX_LOGIN_ATTEMPTS - attempts.count;
+          if (attempts.count >= MAX_LOGIN_ATTEMPTS) {
+            const until = Date.now() + LOCKOUT_DURATION_MS;
+            setLockoutUntil(until); resetLoginAttempts(); showLockoutUI(until);
+            showToast('Too many failed attempts. Account locked for 5 minutes.', 'danger', 8000);
+          } else {
+            updateAttemptWarning(remaining);
+            showToast(
+              error.message.includes('Invalid login')
+                ? `Incorrect email or password. ${remaining} attempt${remaining !== 1 ? 's' : ''} remaining.`
+                : error.message, 'danger');
+          }
+          btn.disabled = false;
+          btn.innerHTML = '<i data-lucide="log-in"></i> Login';
+          if (window.lucide) window.lucide.createIcons();
+          return;
+        }
+
+        if (!data.user) {
+          showToast('User not found', 'danger');
+          btn.disabled = false; btn.innerHTML = '<i data-lucide="log-in"></i> Login';
+          if (window.lucide) window.lucide.createIcons();
+          return;
+        }
+
+        const { data: profile, error: profileError } = await supabaseClient
+          .from('profiles').select('role, full_name, email').eq('id', data.user.id).maybeSingle();
+        if (profileError) console.error('Profile error:', profileError);
+
+        const role = profile?.role || 'resident';
+        if (role === 'admin' || role === 'responder') {
+          await supabaseClient.auth.signOut();
+          showToast('Access denied. Please use the dedicated responder portal.', 'danger', 7000);
+          btn.disabled = false;
+          btn.innerHTML = '<i data-lucide="log-in"></i> Login';
+          if (window.lucide) window.lucide.createIcons();
+          return;
+        }
+
+        resetLoginAttempts();
+        localStorage.removeItem(LOCKOUT_KEY);
+        if (loginModal) loginModal.hide();
+
+        const realEmail = profile?.email || data.user.email || email;
+        const fullName = profile?.full_name || 'Resident';
+        setTimeout(() => openOtpModal(realEmail, fullName), 350);
+
+      } catch (err) {
+        console.error('Login error:', err);
+        showToast('Login failed: ' + (err.message || 'Unknown error'), 'danger');
+        btn.disabled = false;
+        btn.innerHTML = '<i data-lucide="log-in"></i> Login';
+        if (window.lucide) window.lucide.createIcons();
+      }
+    };
+
+    /* SEND PASSWORD RESET */
+    async function sendPasswordReset() {
+      const email = document.getElementById('forgotEmail').value.trim().toLowerCase();
+      if (!email) { showToast('Please enter your email address', 'warning'); return; }
+      const btn = document.getElementById('sendResetBtn');
+      const originalText = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Sending...';
+      try {
+        const { data: profile } = await supabaseClient.from('profiles').select('id, role').eq('email', email).maybeSingle();
+        if (profile && (profile.role === 'admin' || profile.role === 'responder')) {
+          showToast('Admin/Responder accounts must use the dedicated login page.', 'warning', 6000);
+          btn.disabled = false; btn.innerHTML = originalText;
+          if (window.lucide) window.lucide.createIcons();
+          return;
+        }
+        const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: RESET_REDIRECT_URL });
+        if (error) {
+          console.error('Reset email error:', error);
+          if (error.message && (error.message.includes('rate limit') || error.message.includes('too many'))) {
+            showToast('Too many reset attempts. Please wait a few minutes.', 'warning', 8000);
+          } else { throw error; }
+          btn.disabled = false; btn.innerHTML = originalText;
+          if (window.lucide) window.lucide.createIcons();
+          return;
+        }
+        showToast('If this email is registered, a reset link has been sent. Check your inbox and spam folder.', 'success', 8000);
+        setTimeout(() => { if (forgotModal) forgotModal.hide(); }, 2500);
+      } catch (error) {
+        console.error('Send reset error:', error);
+        showToast('Could not send reset email. Please try again.', 'danger');
+      } finally {
+        btn.disabled = false; btn.innerHTML = originalText;
+        if (window.lucide) window.lucide.createIcons();
+      }
+    }
+
+    /* QUICK REPORT */
+    function quickReport() {
+      supabaseClient.auth.getSession().then(({ data: { session } }) => {
         if (session) {
           supabaseClient.from('profiles').select('role').eq('id', session.user.id).maybeSingle().then(({ data: profile }) => {
             const role = profile?.role || 'resident';
-            if (role === 'admin' || role === 'responder') {
-              showToast('Admin/Responder detected. Redirecting...', 'info', 3000);
-              setTimeout(() => { window.location.href = 'responder/dashboard.html'; }, 1200);
-            } else {
-              showToast('✅ Email confirmed successfully!', 'success', 3000);
-              setTimeout(() => { window.location.href = 'resident/dashboard.html'; }, 1500);
-            }
+            if (role === 'admin' || role === 'responder') window.location.href = 'responder/dashboard.html';
+            else window.location.href = 'resident/dashboard.html#report';
           });
+        } else {
+          showToast('Please login to report an emergency', 'warning');
+          openLoginModal();
         }
-        window.history.replaceState({}, document.title, window.location.pathname);
-      });
+      }).catch(() => { showToast('Please login to report an emergency', 'warning'); openLoginModal(); });
     }
-  });
-</script>
+
+    window.handleLogin = window.handleLogin;
+    window.handleRegister = window.handleRegister;
+    window.quickReport = quickReport;
+    window.togglePassword = togglePassword;
+    window.sendPasswordReset = sendPasswordReset;
+
+    /* TERMS / PRIVACY */
+    function showTermsModal() {
+      showToast('Terms of Service: By using this system you agree to report emergencies truthfully. Abuse may result in account suspension.', 'info', 9000);
+    }
+    function showPrivacyModal() {
+      showToast('Privacy Policy: Your data is encrypted and used only for emergency response coordination. We never share your information with third parties.', 'info', 9000);
+    }
+    window.showTermsModal = showTermsModal;
+    window.showPrivacyModal = showPrivacyModal;
+
+    /* PASSWORD STRENGTH METER */
+    (function bindPasswordStrength() {
+      const pwd = document.getElementById('regPassword');
+      const meter = document.getElementById('passwordStrengthMeter');
+      const fill = document.getElementById('passwordStrengthFill');
+      const label = document.getElementById('passwordStrengthLabel');
+      const hint = document.getElementById('passwordStrengthHint');
+      if (!pwd || !meter || !fill) return;
+
+      const hints = {
+        0: 'Add more characters',
+        1: 'Add uppercase, number, or symbol',
+        2: 'Add uppercase, number, or symbol',
+        3: 'Add a symbol or make it longer',
+        4: 'Almost there — add a symbol',
+        5: 'Great password!',
+        6: 'Excellent — very secure'
+      };
+
+      pwd.addEventListener('input', function () {
+        const val = this.value;
+        if (!val) { meter.style.display = 'none'; return; }
+        meter.style.display = 'block';
+        const result = window.CuliatAuthSecurity.scorePassword(val);
+        const pct = Math.round((result.score / 6) * 100);
+        fill.style.width = pct + '%';
+        fill.style.backgroundColor = result.color;
+        label.textContent = result.label;
+        label.style.color = result.color;
+        hint.textContent = hints[result.score] || '';
+        document.querySelectorAll('.password-req-item').forEach(function (item) {
+          const key = item.getAttribute('data-req');
+          const met = result.checks[key];
+          item.classList.toggle('met', !!met);
+          const icon = item.querySelector('.req-icon');
+          if (icon) icon.setAttribute('data-lucide', met ? 'check-circle' : 'circle');
+        });
+        if (window.lucide) window.lucide.createIcons();
+      });
+    })();
+
+    /* PASSWORD MATCH */
+    (function bindPasswordMatch() {
+      const p1 = document.getElementById('regPassword');
+      const p2 = document.getElementById('regPasswordConfirm');
+      const msg = document.getElementById('passwordMismatchMsg');
+      if (!p1 || !p2 || !msg) return;
+      function check() {
+        if (!p2.value) { msg.classList.remove('show'); return; }
+        if (p1.value !== p2.value) { msg.classList.add('show'); }
+        else { msg.classList.remove('show'); }
+      }
+      p1.addEventListener('input', check);
+      p2.addEventListener('input', check);
+    })();
+
+    /* INIT */
+    document.addEventListener('DOMContentLoaded', function() {
+      const nav = document.getElementById('mainNav');
+      window.addEventListener('scroll', function() {
+        if (window.scrollY > 40) nav.classList.add('scrolled');
+        else nav.classList.remove('scrolled');
+      });
+
+      const counters = document.querySelectorAll('.count-number');
+      const counterObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const el = entry.target;
+            const target = parseInt(el.getAttribute('data-target'), 10);
+            if (!el.dataset.animated) {
+              el.dataset.animated = 'true';
+              let current = 0;
+              const step = Math.max(1, Math.floor(target / 50));
+              const interval = setInterval(() => {
+                current += step;
+                if (current >= target) { current = target; clearInterval(interval); }
+                el.textContent = current.toLocaleString();
+              }, 25);
+            }
+          }
+        });
+      }, { threshold: 0.4 });
+      counters.forEach(el => counterObserver.observe(el));
+
+      const hash = window.location.hash;
+      if (hash && hash.includes('access_token')) {
+        supabaseClient.auth.getSession().then(({ data: { session }, error }) => {
+          if (error) return;
+          if (session) {
+            supabaseClient.from('profiles').select('role').eq('id', session.user.id).maybeSingle().then(({ data: profile }) => {
+              const role = profile?.role || 'resident';
+              if (role === 'admin' || role === 'responder') {
+                showToast('Admin/Responder detected. Redirecting...', 'info', 3000);
+                setTimeout(() => { window.location.href = 'responder/dashboard.html'; }, 1200);
+              } else {
+                showToast('Email confirmed successfully!', 'success', 3000);
+                setTimeout(() => { window.location.href = 'resident/dashboard.html'; }, 1500);
+              }
+            });
+          }
+          window.history.replaceState({}, document.title, window.location.pathname);
+        });
+      }
+
+      const otpEl = document.getElementById('otpModal');
+      if (otpEl) {
+        otpEl.addEventListener('shown.bs.modal', function () {
+          bindOtpInputs();
+        });
+      }
+
+      if (window.lucide) window.lucide.createIcons();
+    });
+  </script>
 </body>
 </html>
