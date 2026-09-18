@@ -188,7 +188,7 @@
         TEMPLATE_ID: 'template_ysihytb',
         OTP_TEMPLATE_ID: 'template_ysihytb',
         PUBLIC_KEY: 'nd2Bv29k1zeDlfZID',
-        SENDER_EMAIL: 'brgy.culiat.ers@gmail.com'
+        SENDER_EMAIL: 'brgy.culiat.ecs@gmail.com'
       };
 
       const templateId = cfg.OTP_TEMPLATE_ID || cfg.TEMPLATE_ID;
