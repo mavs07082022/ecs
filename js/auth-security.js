@@ -39,8 +39,6 @@
   }
 
   function hashOTP(otp, salt) {
-    // Simple hash for storage (not cryptographic-strength, but
-    // prevents casual plaintext reading from localStorage)
     let hash = 0;
     const str = otp + ':' + salt;
     for (let i = 0; i < str.length; i++) {
@@ -52,7 +50,6 @@
   }
 
   function getSessionId() {
-    // Generate a stable per-browser-tab session id
     let sid = sessionStorage.getItem('culiat_session_id');
     if (!sid) {
       sid = 'sess_' + Date.now() + '_' + Math.random().toString(36).substring(2, 10);
@@ -120,7 +117,6 @@
       return { valid: false, reason: 'expired', message: 'OTP has expired. Please request a new one.' };
     }
 
-    // Attempt tracking
     const attemptsKey = OTP_ATTEMPT_PREFIX + email.toLowerCase();
     let attempts = parseInt(localStorage.getItem(attemptsKey) || '0', 10);
     if (attempts >= SECURITY_CONFIG.OTP_MAX_ATTEMPTS) {
@@ -142,7 +138,6 @@
       };
     }
 
-    // Success — clean up
     localStorage.removeItem(key);
     localStorage.removeItem(attemptsKey);
     return { valid: true };
@@ -166,10 +161,21 @@
   }
 
   // ============================================
-  // SEND OTP EMAIL (via EmailJS)
+  // SEND OTP EMAIL (via EmailJS — dedicated OTP template)
+  // Prefers window.sendOTPEmailJS() from email-service.js.
+  // Falls back to a direct EmailJS call if the helper isn't loaded yet.
   // ============================================
   async function sendOTPEmail(email, otp, fullName) {
     try {
+      // Preferred path: delegate to email-service.js helper
+      if (typeof window.sendOTPEmailJS === 'function') {
+        console.log('📧 Delegating OTP send to email-service.js');
+        return await window.sendOTPEmailJS(email, otp, fullName);
+      }
+
+      // Fallback: send directly via EmailJS using OTP_TEMPLATE_ID
+      console.warn('⚠️ email-service.js not loaded — using fallback OTP sender');
+
       if (typeof emailjs === 'undefined') {
         await loadEmailJS();
       }
@@ -177,33 +183,39 @@
         throw new Error('EmailJS not available');
       }
 
-      // Reuse the existing EMAIL_CONFIG from email-service.js
       const cfg = window.EMAIL_CONFIG || {
         SERVICE_ID: 'service_yeeadci',
         TEMPLATE_ID: 'template_ysihytb',
+        OTP_TEMPLATE_ID: 'template_ysihytb',
         PUBLIC_KEY: 'nd2Bv29k1zeDlfZID',
         SENDER_EMAIL: 'brgy.culiat.ers@gmail.com'
       };
+
+      const templateId = cfg.OTP_TEMPLATE_ID || cfg.TEMPLATE_ID;
 
       emailjs.init(cfg.PUBLIC_KEY);
 
       const params = {
         to_email: email,
+        to_name: fullName || 'Resident',
         bcc_email: '',
         subject: 'Your Barangay Culiat Login Verification Code',
+        otp_code: otp,
         priority: 'SECURITY',
         status: 'OTP',
         type: 'Login Verification',
         location: 'Barangay Culiat ECS',
         time: new Date().toLocaleString(),
         barangay: '',
-        description: `Your one-time login code is: ${otp}. This code expires in 10 minutes. Do not share it with anyone.`,
-        advice: `Hello ${fullName || 'Resident'}, use the code above to complete your login. If you did not request this, please ignore this email and consider changing your password.`,
-        year: new Date().getFullYear(),
-        otp_code: otp
+        description: `Your one-time login code is: ${otp}. This code expires in 10 minutes.`,
+        advice: `Hello ${fullName || 'Resident'}, use the code above to complete your login.`,
+        year: new Date().getFullYear()
       };
 
-      const response = await emailjs.send(cfg.SERVICE_ID, cfg.TEMPLATE_ID, params);
+      console.log('📧 Sending OTP (fallback) to:', email);
+      console.log('📧 Using template:', templateId);
+
+      const response = await emailjs.send(cfg.SERVICE_ID, templateId, params);
       return { success: true, response: response };
     } catch (error) {
       console.error('OTP email send failed:', error);
@@ -277,7 +289,6 @@
     }
     overlay.classList.add('show');
 
-    // Countdown
     let remaining = Math.floor(SECURITY_CONFIG.INACTIVITY_WARNING_MS / 1000);
     const countdownEl = document.getElementById('inactivityCountdown');
     if (countdownEl) countdownEl.textContent = remaining;
@@ -328,7 +339,6 @@
       showToast('You have been logged out due to inactivity.', 'warning', 5000);
     }
 
-    // Determine redirect path
     const path = window.location.pathname;
     let redirect = '../index.html';
     if (path.indexOf('/resident/') !== -1 || path.indexOf('/responder/') !== -1) {
@@ -350,7 +360,7 @@
       throttleTimer = setTimeout(function () {
         throttleTimer = null;
         resetInactivityTimer();
-      }, 5000); // throttle to every 5s
+      }, 5000);
     }
     events.forEach(function (evt) {
       document.addEventListener(evt, handler, { passive: true });
