@@ -6,7 +6,7 @@
 // ============================================
 
 const EMAIL_CONFIG = {
-    SENDER_EMAIL: 'brgy.culiat.ers@gmail.com',
+    SENDER_EMAIL: 'brgy.culiat.ecs@gmail.com',
     SERVICE_ID: 'service_yeeadci',
     TEMPLATE_ID: 'template_ysihytb',        // emergency broadcasts template
     OTP_TEMPLATE_ID: 'template_dud688h',    // ← PASTE YOUR NEW OTP TEMPLATE ID HERE (looks like: template_abc1234)
