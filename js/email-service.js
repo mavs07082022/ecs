@@ -1,12 +1,15 @@
 // ============================================
 // EMAIL SERVICE - EmailJS Configuration
-// Sends to ALL registered users
+// Handles BOTH:
+//   - Emergency broadcasts (BCC to all residents)
+//   - OTP verification codes (direct to one resident)
 // ============================================
 
 const EMAIL_CONFIG = {
     SENDER_EMAIL: 'brgy.culiat.ers@gmail.com',
     SERVICE_ID: 'service_yeeadci',
-    TEMPLATE_ID: 'template_ysihytb', // ← Replace with your ID
+    TEMPLATE_ID: 'template_ysihytb',        // emergency broadcasts template
+    OTP_TEMPLATE_ID: 'template_dud688h',    // ← PASTE YOUR NEW OTP TEMPLATE ID HERE (looks like: template_abc1234)
     PUBLIC_KEY: 'nd2Bv29k1zeDlfZID',
 };
 
@@ -38,7 +41,7 @@ function generateAdvice(type, priority) {
 }
 
 // ============================================
-// PREPARE EMAIL PARAMETERS
+// PREPARE EMAIL PARAMETERS (emergency only)
 // ============================================
 function prepareEmailParams(incident, isAcknowledged) {
     var priority = (incident.priority || 'medium').toUpperCase();
@@ -72,7 +75,7 @@ function prepareEmailParams(incident, isAcknowledged) {
 }
 
 // ============================================
-// SEND EMAIL TO MULTIPLE RECIPIENTS VIA BCC
+// SEND EMERGENCY EMAIL (BCC bulk to residents)
 // ============================================
 async function sendEmailEmailJS(to, params) {
     try {
@@ -87,7 +90,7 @@ async function sendEmailEmailJS(to, params) {
         
         var templateParams = {
             to_email: EMAIL_CONFIG.SENDER_EMAIL, // Send to yourself (or a dummy)
-            bcc_email: toEmails, // BCC all recipients
+            bcc_email: toEmails,                 // BCC all recipients
             subject: params.subject || 'Emergency Alert',
             priority: params.priority || 'MEDIUM',
             status: params.status || 'NEW',
@@ -100,7 +103,7 @@ async function sendEmailEmailJS(to, params) {
             year: params.year || new Date().getFullYear()
         };
         
-        console.log('Sending to ' + (Array.isArray(to) ? to.length : 1) + ' recipients');
+        console.log('Sending emergency email to ' + (Array.isArray(to) ? to.length : 1) + ' recipients');
         console.log('Recipients:', toEmails);
         
         var response = await emailjs.send(
@@ -119,7 +122,60 @@ async function sendEmailEmailJS(to, params) {
 }
 
 // ============================================
-// LOAD EMAILJS
+// SEND OTP EMAIL (direct to ONE resident)
+// Uses the dedicated OTP template
+// ============================================
+async function sendOTPEmailJS(email, otp, fullName) {
+    try {
+        if (typeof emailjs === 'undefined') {
+            await loadEmailJSLibrary();
+        }
+        if (typeof emailjs === 'undefined') {
+            throw new Error('EmailJS not available');
+        }
+
+        // Use OTP_TEMPLATE_ID when configured, fall back to TEMPLATE_ID
+        var templateId = EMAIL_CONFIG.OTP_TEMPLATE_ID || EMAIL_CONFIG.TEMPLATE_ID;
+
+        emailjs.init(EMAIL_CONFIG.PUBLIC_KEY);
+
+        var templateParams = {
+            to_email: email,                          // ✅ resident is the real recipient
+            to_name: fullName || 'Resident',
+            bcc_email: '',                            // ✅ no Bcc — direct send
+            subject: 'Your Barangay Culiat Login Verification Code',
+            otp_code: otp,                            // matches {{otp_code}} in template
+            priority: 'SECURITY',
+            status: 'OTP',
+            type: 'Login Verification',
+            location: 'Barangay Culiat ECS',
+            time: new Date().toLocaleString(),
+            barangay: '',
+            description: 'Your one-time login code is: ' + otp + '. This code expires in 10 minutes. Do not share it with anyone.',
+            advice: 'Hello ' + (fullName || 'Resident') + ', use the code above to complete your login. If you did not request this, please ignore this email and consider changing your password.',
+            year: new Date().getFullYear()
+        };
+
+        console.log('📧 Sending OTP to:', email);
+        console.log('📧 Using OTP template:', templateId);
+
+        var response = await emailjs.send(
+            EMAIL_CONFIG.SERVICE_ID,
+            templateId,
+            templateParams
+        );
+
+        console.log('📧 OTP email sent:', response.status);
+        return { success: true, response: response };
+
+    } catch (error) {
+        console.error('OTP email send failed:', error);
+        return { success: false, error: error.message || 'Failed to send OTP email' };
+    }
+}
+
+// ============================================
+// LOAD EMAILJS LIBRARY
 // ============================================
 function loadEmailJSLibrary() {
     return new Promise(function(resolve, reject) {
@@ -287,10 +343,13 @@ async function testEmail() {
 // ============================================
 window.sendEmergencyEmailNotification = sendEmergencyEmailNotification;
 window.sendEmailEmailJS = sendEmailEmailJS;
+window.sendOTPEmailJS = sendOTPEmailJS;         // ← new, exposed for auth-security.js
 window.testEmail = testEmail;
 window.getAllUserEmails = getAllUserEmails;
 window.EMAIL_CONFIG = EMAIL_CONFIG;
 
 console.log('Email service initialized');
-console.log('Sender: ' + EMAIL_CONFIG.SENDER_EMAIL);
+console.log('Sender:', EMAIL_CONFIG.SENDER_EMAIL);
+console.log('Emergency template:', EMAIL_CONFIG.TEMPLATE_ID);
+console.log('OTP template:', EMAIL_CONFIG.OTP_TEMPLATE_ID);
 console.log('Test with: testEmail()');
