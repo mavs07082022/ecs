@@ -12,6 +12,7 @@
   <meta name="theme-color" content="#0A2342">
 
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="design.css" />
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js" defer></script>
   <script>
@@ -695,7 +696,6 @@
       color: var(--primary-foreground);
     }
 
-    /* Typing indicator */
     .chat-typing {
       display: flex;
       gap: 0.6rem;
@@ -725,7 +725,6 @@
       30% { transform: translateY(-5px); opacity: 1; }
     }
 
-    /* Quick replies */
     .chat-quick-replies {
       display: flex;
       flex-wrap: wrap;
@@ -751,7 +750,6 @@
       transform: translateY(-1px);
     }
 
-    /* Chat input */
     .chatbot-input-wrap {
       padding: 0.85rem 1.1rem;
       background: color-mix(in oklab, var(--muted) 55%, var(--card));
@@ -813,6 +811,372 @@
       margin-top: 0.5rem;
       font-weight: 600;
     }
+
+    /* ============================================================
+       TICKER TRACK — SLIDING NEWS / INFO
+       ============================================================ */
+    .ticker-track {
+      position: relative;
+      width: 100%;
+      overflow: hidden;
+      background: var(--brand-surface);
+      color: var(--brand-surface-foreground);
+      padding: 0.75rem 0;
+      border-top: 1px solid color-mix(in oklab, var(--border) 60%, transparent);
+      border-bottom: 1px solid color-mix(in oklab, var(--border) 60%, transparent);
+    }
+    .ticker-track-inner {
+      display: flex;
+      align-items: center;
+      width: max-content;
+      animation: ticker-scroll 38s linear infinite;
+    }
+    .ticker-track-inner:hover {
+      animation-play-state: paused;
+    }
+    .ticker-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0 2.5rem;
+      font-family: "Manrope", sans-serif;
+      font-size: 0.88rem;
+      font-weight: 700;
+      white-space: nowrap;
+      letter-spacing: 0.01em;
+      color: var(--brand-surface-foreground);
+    }
+    .ticker-item i, .ticker-item .lucide {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      color: var(--brand-surface-muted);
+    }
+    .ticker-sep {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: color-mix(in oklab, var(--brand-surface-foreground) 45%, transparent);
+      margin: 0 1.5rem;
+      flex-shrink: 0;
+    }
+    @keyframes ticker-scroll {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+    @media (max-width: 640px) {
+      .ticker-item { font-size: 0.78rem; padding: 0 1.5rem; }
+      .ticker-track-inner { animation-duration: 28s; }
+    }
+
+    /* ============================================================
+       HOTLINES SECTION
+       ============================================================ */
+    .hotlines-section {
+      background: var(--card);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .hotline-card {
+      background: color-mix(in oklab, var(--muted) 55%, var(--card));
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) + 4px);
+      padding: 1.5rem 1.35rem;
+      transition: all 350ms var(--ease-civic);
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 0.5rem;
+    }
+    .hotline-card:hover {
+      transform: translateY(-6px);
+      border-color: color-mix(in oklab, var(--primary) 45%, transparent);
+      box-shadow: 0 24px 50px -24px color-mix(in oklab, var(--primary) 40%, transparent);
+    }
+    .hotline-icon {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: color-mix(in oklab, var(--destructive) 16%, var(--card));
+      color: var(--destructive);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      flex-shrink: 0;
+      border: 1.5px solid color-mix(in oklab, var(--destructive) 28%, transparent);
+    }
+    .hotline-icon svg { width: 28px; height: 28px; }
+    .hotline-icon.primary {
+      background: color-mix(in oklab, var(--primary) 14%, var(--card));
+      color: var(--primary);
+      border-color: color-mix(in oklab, var(--primary) 28%, transparent);
+    }
+    .hotline-icon.accent {
+      background: color-mix(in oklab, var(--pri-low) 14%, var(--card));
+      color: var(--pri-low);
+      border-color: color-mix(in oklab, var(--pri-low) 28%, transparent);
+    }
+    .hotline-number {
+      font-family: "Sora", sans-serif;
+      font-weight: 900;
+      font-size: 1.35rem;
+      color: var(--card-foreground);
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+    }
+    .hotline-number a {
+      color: inherit;
+      text-decoration: none;
+    }
+    .hotline-number a:hover { color: var(--primary); }
+    .hotline-label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted-foreground);
+    }
+
+    /* Facebook card */
+    .fb-card {
+      background: linear-gradient(135deg, #1877F2 0%, #0d5bbf 100%);
+      color: #fff;
+      border-radius: calc(var(--radius) + 8px);
+      padding: 1.75rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 0.75rem;
+      height: 100%;
+      transition: all 350ms var(--ease-civic);
+      border: 1px solid rgba(255,255,255,0.15);
+      box-shadow: 0 10px 30px -12px rgba(24, 119, 242, 0.5);
+    }
+    .fb-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 28px 60px -24px rgba(24, 119, 242, 0.7);
+    }
+    .fb-card .fb-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.18);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1.5px solid rgba(255,255,255,0.3);
+    }
+    .fb-card .fb-icon svg { width: 28px; height: 28px; color: #fff; }
+    .fb-card .fb-title {
+      font-family: "Sora", sans-serif;
+      font-weight: 800;
+      font-size: 1.1rem;
+      color: #fff;
+      letter-spacing: -0.01em;
+    }
+    .fb-card .fb-sub {
+      font-size: 0.85rem;
+      opacity: 0.92;
+      line-height: 1.5;
+      color: rgba(255,255,255,0.92);
+    }
+    .fb-card .btn-fb {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: #fff;
+      color: #1877F2;
+      font-weight: 800;
+      font-size: 0.9rem;
+      padding: 0.7rem 1.5rem;
+      border-radius: 9999px;
+      text-decoration: none;
+      transition: all 0.25s ease;
+      border: none;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+    }
+    .fb-card .btn-fb:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 22px rgba(0,0,0,0.3);
+      background: #f0f5ff;
+      color: #0d5bbf;
+    }
+    .fb-card .btn-fb svg { width: 18px; height: 18px; }
+
+    /* Section label override for band */
+    .band-primary .section-label {
+      color: var(--brand-surface-muted) !important;
+    }
+    .hotlines-section .section-label {
+      color: var(--primary);
+    }
+
+    /* ============================================================
+       LANDING PAGE MAP SECTION
+       ============================================================ */
+    .landing-map-section {
+      background: color-mix(in oklab, var(--muted) 45%, var(--background));
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .landing-map-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) + 8px);
+      overflow: hidden;
+      box-shadow: 0 20px 50px -24px rgb(0 0 0 / 0.25);
+    }
+    .landing-map-header {
+      padding: 1rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      border-bottom: 1px solid var(--border);
+      background: color-mix(in oklab, var(--muted) 55%, var(--card));
+      flex-wrap: wrap;
+    }
+    .landing-map-header h3 {
+      margin: 0;
+      font-family: "Sora", sans-serif;
+      font-weight: 800;
+      font-size: 1.05rem;
+      color: var(--foreground);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      letter-spacing: -0.01em;
+    }
+    .landing-map-header h3 i { color: var(--primary); }
+    .landing-map-body { position: relative; }
+    #landingMap {
+      height: 480px;
+      width: 100%;
+      z-index: 1;
+      background: var(--muted);
+    }
+    @media (max-width: 768px) {
+      #landingMap { height: 340px; }
+    }
+
+    .landing-map-legend {
+      position: absolute;
+      bottom: 14px;
+      left: 14px;
+      z-index: 500;
+      background: color-mix(in oklab, var(--card) 94%, transparent);
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) + 2px);
+      padding: 0.7rem 0.85rem;
+      box-shadow: 0 10px 28px -10px rgb(0 0 0 / 0.28);
+      backdrop-filter: blur(8px);
+      max-width: 220px;
+      font-size: 0.75rem;
+    }
+    .landing-map-legend-title {
+      font-family: "Sora", sans-serif;
+      font-weight: 800;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted-foreground);
+      margin-bottom: 0.45rem;
+      display: block;
+    }
+    .landing-map-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.15rem 0;
+      font-weight: 600;
+      color: var(--card-foreground);
+    }
+    .landing-map-legend-marker {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 2px solid #fff;
+      flex-shrink: 0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+    .landing-map-legend-marker.fire { background: #dc3545; }
+    .landing-map-legend-marker.medical { background: #0d6efd; }
+    .landing-map-legend-marker.accident { background: #fd7e14; }
+    .landing-map-legend-marker.flood { background: #0dcaf0; }
+    .landing-map-legend-marker.crime { background: #8b5cf6; }
+    .landing-map-legend-marker.other { background: #6c757d; }
+
+    .landing-map-status-bar {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      z-index: 500;
+      background: color-mix(in oklab, var(--card) 94%, transparent);
+      border: 1px solid var(--border);
+      border-radius: 9999px;
+      padding: 0.4rem 0.95rem;
+      box-shadow: 0 10px 28px -10px rgb(0 0 0 / 0.28);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--card-foreground);
+    }
+    .landing-map-live-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--primary);
+      animation: pulse-dot 1.6s infinite;
+    }
+
+    .landing-custom-marker {
+      background: transparent !important;
+      border: none !important;
+    }
+    .landing-marker-pin {
+      width: 28px;
+      height: 28px;
+      border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid #fff;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.35);
+      position: relative;
+    }
+    .landing-marker-pin i {
+      transform: rotate(45deg);
+      color: #fff;
+      font-size: 0.68rem;
+    }
+    .landing-marker-pin.fire { background: #dc3545; }
+    .landing-marker-pin.medical { background: #0d6efd; }
+    .landing-marker-pin.accident { background: #fd7e14; }
+    .landing-marker-pin.flood { background: #0dcaf0; }
+    .landing-marker-pin.crime { background: #8b5cf6; }
+    .landing-marker-pin.other { background: #6c757d; }
+    .landing-marker-pin.resolved { opacity: 0.55; filter: grayscale(40%); }
+
+    .leaflet-popup-content-wrapper {
+      background: var(--card) !important;
+      color: var(--card-foreground) !important;
+      border-radius: calc(var(--radius) + 2px) !important;
+      border: 1px solid var(--border) !important;
+      box-shadow: 0 12px 32px -8px rgba(0,0,0,0.3) !important;
+    }
+    .leaflet-popup-tip {
+      background: var(--card) !important;
+      border: 1px solid var(--border) !important;
+    }
   </style>
 </head>
 <body>
@@ -832,6 +1196,8 @@
         <a href="#home" class="nav-link-civic">Home</a>
         <a href="#features" class="nav-link-civic">Features</a>
         <a href="#how-it-works" class="nav-link-civic">How It Works</a>
+        <a href="#live-map" class="nav-link-civic">Live Map</a>
+        <a href="#hotlines" class="nav-link-civic">Hotlines</a>
         <a href="#about" class="nav-link-civic">About</a>
         <a href="#quick-actions" class="nav-link-civic">Quick Actions</a>
         <a href="#" class="nav-link-civic" onclick="event.preventDefault(); openChatbot();">
@@ -861,6 +1227,8 @@
         <a href="#home" class="nav-link-civic">Home</a>
         <a href="#features" class="nav-link-civic">Features</a>
         <a href="#how-it-works" class="nav-link-civic">How It Works</a>
+        <a href="#live-map" class="nav-link-civic">Live Map</a>
+        <a href="#hotlines" class="nav-link-civic">Hotlines</a>
         <a href="#about" class="nav-link-civic">About</a>
         <a href="#quick-actions" class="nav-link-civic">Quick Actions</a>
         <a href="#" class="nav-link-civic" onclick="event.preventDefault(); openChatbot();">
@@ -900,8 +1268,8 @@
             <button class="btn-civic btn-primary btn-lg" onclick="openRegisterModal()">
               <i data-lucide="rocket"></i> Get Started
             </button>
-            <a href="#features" class="btn-civic btn-outline btn-lg">
-              <i data-lucide="info"></i> Learn More
+            <a href="#live-map" class="btn-civic btn-outline btn-lg">
+              <i data-lucide="map-pin"></i> View Live Map
             </a>
           </div>
           <div class="hero-stats">
@@ -928,6 +1296,73 @@
       </div>
     </div>
   </section>
+
+  <!-- ================= TICKER TRACK ================= -->
+  <div class="ticker-track" aria-label="Emergency announcements ticker">
+    <div class="ticker-track-inner" id="tickerTrackInner">
+      <span class="ticker-item">
+        <i data-lucide="alert-triangle"></i>
+        In case of emergency, dial 911 immediately
+      </span>
+      <span class="ticker-sep"></span>
+      <span class="ticker-item">
+        <i data-lucide="phone"></i>
+        Barangay Culiat Hotline: 0962-582-1531 · 856-722-60
+      </span>
+      <span class="ticker-sep"></span>
+      <span class="ticker-item">
+        <i data-lucide="shield"></i>
+        Report incidents via the ECS portal for faster response
+      </span>
+      <span class="ticker-sep"></span>
+      <span class="ticker-item">
+        <i data-lucide="heart-pulse"></i>
+        Report Emergency/Incidents through FaceBook Page for easier and much convenient way
+      </span>
+      <span class="ticker-sep"></span>
+      <span class="ticker-item">
+        <i data-lucide="flame"></i>
+        Fire emergencies: Stay calm, evacuate, and call for help
+      </span>
+      <span class="ticker-sep"></span>
+      <span class="ticker-item">
+        <i data-lucide="cloud-rain"></i>
+        Flood-prone areas: Monitor water levels during heavy rains
+      </span>
+      <span class="ticker-sep"></span>
+      <!-- Duplicate for seamless loop -->
+      <span class="ticker-item">
+        <i data-lucide="alert-triangle"></i>
+        In case of emergency, dial 911 immediately
+      </span>
+      <span class="ticker-sep"></span>
+      <span class="ticker-item">
+        <i data-lucide="phone"></i>
+        Barangay Culiat Hotline: 0962-582-1531 · 856-722-60
+      </span>
+      <span class="ticker-sep"></span>
+      <span class="ticker-item">
+        <i data-lucide="shield"></i>
+        Report incidents via the ECS portal for faster response
+      </span>
+      <span class="ticker-sep"></span>
+      <span class="ticker-item">
+        <i data-lucide="heart-pulse"></i>
+        Report Emergency/Incidents through FaceBook Page for easier and much convenient way
+      </span>
+      <span class="ticker-sep"></span>
+      <span class="ticker-item">
+        <i data-lucide="flame"></i>
+        Fire emergencies: Stay calm, evacuate, and call for help
+      </span>
+      <span class="ticker-sep"></span>
+      <span class="ticker-item">
+        <i data-lucide="cloud-rain"></i>
+        Flood-prone areas: Monitor water levels during heavy rains
+      </span>
+      <span class="ticker-sep"></span>
+    </div>
+  </div>
 
   <!-- ================= FEATURES ================= -->
   <section id="features" class="section-pad section-pad-alt" style="scroll-margin-top:6rem;">
@@ -1005,6 +1440,103 @@
             <div style="width:60px;height:60px;border-radius:50%;background:var(--primary);color:var(--primary-foreground);display:flex;align-items:center;justify-content:center;font-family:'Sora',sans-serif;font-weight:900;font-size:1.4rem;margin:0 auto;">4</div>
             <h5 style="margin-top:1rem;">Resolve</h5>
             <p>Responders update status; residents track progress in real-time.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= LIVE BARANGAY MAP ================= -->
+  <section id="live-map" class="section-pad landing-map-section" style="scroll-margin-top:6rem;">
+    <div class="max-civic">
+      <div class="text-center mb-5" data-reveal style="max-width:640px;margin-inline:auto;">
+        <span class="section-label">Live Activity</span>
+        <h2 class="font-display fw-black mt-2" style="font-size:clamp(1.8rem,4vw,3rem);letter-spacing:-0.03em;">What's Happening in Barangay Culiat</h2>
+        <p class="text-muted-civic mt-2">Real-time view of incidents reported in the last 30 days — from residents and our Facebook page.</p>
+      </div>
+      <div class="landing-map-card" data-reveal>
+        <div class="landing-map-header">
+          <h3><i data-lucide="map-marked-alt"></i> Live Barangay Map</h3>
+          <span class="text-muted-civic small"><i data-lucide="radio" style="width:14px;height:14px;"></i> Real-time updates</span>
+        </div>
+        <div class="landing-map-body">
+          <div id="landingMap"></div>
+          <div class="landing-map-legend">
+            <span class="landing-map-legend-title">Incident Legend</span>
+            <div class="landing-map-legend-item"><span class="landing-map-legend-marker fire"></span> Fire</div>
+            <div class="landing-map-legend-item"><span class="landing-map-legend-marker medical"></span> Medical</div>
+            <div class="landing-map-legend-item"><span class="landing-map-legend-marker accident"></span> Accident</div>
+            <div class="landing-map-legend-item"><span class="landing-map-legend-marker flood"></span> Flood</div>
+            <div class="landing-map-legend-item"><span class="landing-map-legend-marker crime"></span> Crime</div>
+            <div class="landing-map-legend-item"><span class="landing-map-legend-marker other"></span> Other</div>
+          </div>
+          <div class="landing-map-status-bar" id="landingMapStatusBar">
+            <span class="landing-map-live-dot"></span>Loading…
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= HOTLINES & FACEBOOK ================= -->
+  <section id="hotlines" class="section-pad hotlines-section" style="scroll-margin-top:6rem;">
+    <div class="max-civic">
+      <div class="text-center mb-5" data-reveal style="max-width:640px;margin-inline:auto;">
+        <span class="section-label">Emergency Hotlines</span>
+        <h2 class="font-display fw-black mt-2" style="font-size:clamp(1.8rem,4vw,3rem);letter-spacing:-0.03em;">Quick Access to Help</h2>
+        <p class="text-muted-civic mt-2">Save these numbers and reach out immediately during emergencies.</p>
+      </div>
+      <div class="row g-4">
+        <div class="col-md-6 col-xl-3" data-reveal>
+          <div class="hotline-card">
+            <div class="hotline-icon">
+              <i data-lucide="shield"></i>
+            </div>
+            <div class="hotline-number"><a href="tel:911">911</a></div>
+            <div class="hotline-label">National Emergency</div>
+          </div>
+        </div>
+        <div class="col-md-6 col-xl-3" data-reveal>
+          <div class="hotline-card">
+            <div class="hotline-icon primary">
+              <i data-lucide="phone"></i>
+            </div>
+            <div class="hotline-number"><a href="tel:09625821531">0962-582-1531</a></div>
+            <div class="hotline-label">Barangay Hotline</div>
+          </div>
+        </div>
+        <div class="col-md-6 col-xl-3" data-reveal>
+          <div class="hotline-card">
+            <div class="hotline-icon accent">
+              <i data-lucide="phone-call"></i>
+            </div>
+            <div class="hotline-number"><a href="tel:85672260">856-722-60</a></div>
+            <div class="hotline-label">Barangay Landline</div>
+          </div>
+        </div>
+        <div class="col-md-6 col-xl-3" data-reveal>
+          <div class="hotline-card">
+            <div class="hotline-icon" style="background: color-mix(in oklab, var(--pri-low) 16%, var(--card)); color: var(--pri-low); border-color: color-mix(in oklab, var(--pri-low) 28%, transparent);">
+              <i data-lucide="heart-pulse"></i>
+            </div>
+            <div class="hotline-number"><a href="tel:1555">1555</a></div>
+            <div class="hotline-label">Medical / Ambulance</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-4 mt-4">
+        <div class="col-lg-12" data-reveal>
+          <div class="fb-card">
+            <div class="fb-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="28" height="28"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+            </div>
+            <div class="fb-title">Barangay Culiat Facebook Page</div>
+            <div class="fb-sub">Follow us for real-time updates, announcements, and community advisories.</div>
+            <a href="https://www.facebook.com/share/19funkiViF/" target="_blank" rel="noopener noreferrer" class="btn-fb">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+              Visit Facebook Page
+            </a>
           </div>
         </div>
       </div>
@@ -1105,6 +1637,8 @@
           <ul class="list-unstyled mb-0">
             <li class="mb-2"><a href="#features" style="font-size:0.9rem;">Features</a></li>
             <li class="mb-2"><a href="#how-it-works" style="font-size:0.9rem;">How It Works</a></li>
+            <li class="mb-2"><a href="#live-map" style="font-size:0.9rem;">Live Map</a></li>
+            <li class="mb-2"><a href="#hotlines" style="font-size:0.9rem;">Hotlines</a></li>
             <li class="mb-2"><a href="#" onclick="event.preventDefault();openLoginModal();" style="font-size:0.9rem;">Login</a></li>
             <li class="mb-2"><a href="#" onclick="event.preventDefault();openRegisterModal();" style="font-size:0.9rem;">Register</a></li>
             <li class="mb-2"><a href="#" onclick="event.preventDefault();openChatbot();" style="font-size:0.9rem;">Ask AI Assistant</a></li>
@@ -1124,6 +1658,10 @@
             <li class="mb-2 d-flex align-items-center gap-2">
               <i data-lucide="mail" style="width:16px;height:16px;color:var(--footer-accent);"></i>
               <span>brgy.culiat@yahoo.com</span>
+            </li>
+            <li class="mb-2 d-flex align-items-center gap-2">
+              <i data-lucide="facebook" style="width:16px;height:16px;color:var(--footer-accent);"></i>
+              <a href="https://www.facebook.com/BarangayCuliatOfficial" target="_blank" rel="noopener noreferrer" style="color:var(--footer-muted);">Barangay Culiat FB</a>
             </li>
           </ul>
         </div>
@@ -1479,10 +2017,12 @@
   <!-- ================= SCRIPTS ================= -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="js/supabase.js"></script>
   <script src="design.js"></script>
   <script src="js/auth-security.js"></script>
   <script src="js/chatbot.js"></script>
+  <script src="js/landing-map.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
   <script>
     /* ============================================================
