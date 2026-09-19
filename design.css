@@ -3086,3 +3086,263 @@ body.mobile-drawer-open { overflow: hidden; }
     width: 100%;
   }
 }
+/* ============================================================
+   FIX: Responders List — Dark Mode Text Readability
+   ============================================================ */
+.dashboard-content .table-responsive table td,
+.dashboard-content .table-responsive table th {
+  color: var(--card-foreground) !important;
+}
+
+.dashboard-content .table-responsive table tbody tr td,
+.dashboard-content .table-responsive table tbody tr td * {
+  color: var(--card-foreground) !important;
+}
+
+/* Ensure badge text stays readable inside table */
+.dashboard-content .table-responsive table tbody tr td .badge {
+  color: #fff !important;
+}
+.dashboard-content .table-responsive table tbody tr td .badge.bg-warning {
+  color: #212529 !important;
+}
+
+/* Hover state — keep text visible */
+.dashboard-content .table-responsive table tbody tr:hover td,
+.dashboard-content .table-responsive table tbody tr:hover td * {
+  color: var(--card-foreground) !important;
+}
+
+/* ============================================================
+   LOGIN PAGE ENHANCEMENT — branded background
+   ============================================================ */
+body.login-page {
+  background:
+    radial-gradient(circle at 15% 15%,
+      color-mix(in oklab, var(--primary) 12%, transparent) 0%,
+      transparent 55%),
+    radial-gradient(circle at 85% 85%,
+      color-mix(in oklab, var(--primary) 8%, transparent) 0%,
+      transparent 50%),
+    var(--background);
+}
+
+/* Subtle grid overlay */
+body.login-page::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    linear-gradient(to right, color-mix(in oklab, var(--primary) 6%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklab, var(--primary) 6%, transparent) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse at center, black 0%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse at center, black 0%, transparent 75%);
+}
+
+.dark body.login-page::before {
+  background-image:
+    linear-gradient(to right, color-mix(in oklab, var(--primary) 10%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklab, var(--primary) 10%, transparent) 1px, transparent 1px);
+}
+
+/* Large watermark seal behind the card */
+.login-watermark {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(80vmin, 720px);
+  height: min(80vmin, 720px);
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.06;
+  user-select: none;
+  filter: saturate(0.9);
+}
+.dark .login-watermark {
+  opacity: 0.1;
+  filter: brightness(1.4) saturate(1.1);
+}
+
+@media (max-width: 900px) {
+  .login-watermark {
+    width: 90vmin;
+    height: 90vmin;
+    opacity: 0.05;
+  }
+  .dark .login-watermark {
+    opacity: 0.08;
+  }
+}
+
+/* Decorative top accent bar on the login card */
+.login-card .card-accent-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 5px;
+  border-radius: calc(var(--radius) + 8px) calc(var(--radius) + 8px) 0 0;
+  background: linear-gradient(90deg,
+    var(--primary) 0%,
+    color-mix(in oklab, var(--primary) 65%, #d4af37) 50%,
+    var(--primary) 100%);
+}
+
+/* Login card slight glassy upgrade */
+.login-card {
+  position: relative;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* Pulse ring around the login logo */
+.login-card .logo .logo-wrapper {
+  position: relative;
+}
+.login-card .logo .logo-wrapper::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in oklab, var(--primary) 45%, transparent);
+  animation: login-logo-pulse 3s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes login-logo-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.08); opacity: 0.2; }
+}
+
+/* ============================================================
+   LOGIN PAGE (index.html main login) ENHANCEMENT — same theme
+   ============================================================ */
+body.home-auth-bg {
+  position: relative;
+}
+
+/* Add to modal windows a subtle branded halo (doesn't affect anything else) */
+.auth-modal .modal-content {
+  position: relative;
+}
+.auth-modal .modal-header {
+  position: relative;
+  overflow: hidden;
+}
+.auth-modal .modal-header::after {
+  content: '';
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  width: 160px;
+  height: 160px;
+  background: radial-gradient(circle, rgba(255,255,255,0.16) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+/* ============================================================
+   FINAL FIX: Responders table — force readable in dark mode
+   Overrides Bootstrap's --bs-table-color variable which was
+   winning the specificity war.
+   ============================================================ */
+.dashboard-content .table-responsive .table,
+.dashboard-content .table-responsive table {
+  --bs-table-color: var(--card-foreground) !important;
+  --bs-table-bg: transparent !important;
+  --bs-table-border-color: var(--border) !important;
+  --bs-table-striped-color: var(--card-foreground) !important;
+  --bs-table-striped-bg: transparent !important;
+  --bs-table-hover-color: var(--card-foreground) !important;
+  --bs-table-hover-bg: color-mix(in oklab, var(--accent) 55%, var(--card)) !important;
+  color: var(--card-foreground) !important;
+}
+
+.dashboard-content .table-responsive .table > :not(caption) > * > *,
+.dashboard-content .table-responsive table > :not(caption) > * > * {
+  color: var(--card-foreground) !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.dashboard-content .table-responsive .table > thead > tr > th,
+.dashboard-content .table-responsive table > thead > tr > th {
+  color: var(--card-foreground) !important;
+  background-color: color-mix(in oklab, var(--muted) 60%, var(--card)) !important;
+  border-color: var(--border) !important;
+}
+
+.dashboard-content .table-responsive .table > tbody > tr > td,
+.dashboard-content .table-responsive table > tbody > tr > td {
+  color: var(--card-foreground) !important;
+  border-color: var(--border) !important;
+}
+
+.dashboard-content .table-responsive .table > tbody > tr:hover > td,
+.dashboard-content .table-responsive table > tbody > tr:hover > td {
+  color: var(--card-foreground) !important;
+  background-color: color-mix(in oklab, var(--accent) 55%, var(--card)) !important;
+}
+
+/* Semantic spans inside responder rows */
+.dashboard-content .table-responsive .responder-name {
+  color: var(--card-foreground) !important;
+  font-weight: 700;
+}
+.dashboard-content .table-responsive .responder-email {
+  color: var(--muted-foreground) !important;
+  font-weight: 500;
+  font-size: 0.88rem;
+}
+
+/* Dark-mode explicit safety net (in case the CSS variables fail to inherit) */
+.dark .dashboard-content .table-responsive .table,
+.dark .dashboard-content .table-responsive table,
+.dark .dashboard-content .table-responsive .table > thead > tr > th,
+.dark .dashboard-content .table-responsive table > thead > tr > th,
+.dark .dashboard-content .table-responsive .table > tbody > tr > td,
+.dark .dashboard-content .table-responsive table > tbody > tr > td,
+.dark .dashboard-content .table-responsive .table > tbody > tr:hover > td,
+.dark .dashboard-content .table-responsive table > tbody > tr:hover > td {
+  color: #f5f7fa !important;
+}
+
+.dark .dashboard-content .table-responsive .responder-email {
+  color: #c8d0d9 !important;
+}
+
+/* Make sure badges stay readable */
+.dashboard-content .table-responsive .badge {
+  color: #fff !important;
+}
+.dashboard-content .table-responsive .badge.bg-warning {
+  color: #212529 !important;
+}
+
+/* ============================================================
+   FINAL FIX: Login watermark — MORE visible
+   ============================================================ */
+body.login-page .login-watermark,
+.login-watermark {
+  opacity: 0.32 !important;
+  filter: saturate(1.05) contrast(1.05) !important;
+}
+
+.dark body.login-page .login-watermark,
+.dark .login-watermark {
+  opacity: 0.42 !important;
+  filter: brightness(1.5) saturate(1.2) contrast(1.1) !important;
+}
+
+@media (max-width: 576px) {
+  body.login-page .login-watermark,
+  .login-watermark {
+    opacity: 0.24 !important;
+  }
+  .dark body.login-page .login-watermark,
+  .dark .login-watermark {
+    opacity: 0.3 !important;
+  }
+}
