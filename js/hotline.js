@@ -1,6 +1,6 @@
 /* ============================================================
    Culiat Public Safety — Emergency Hotline Management Module
-   v3 — Matches real schema: hotline_calls + emergencies
+   v7 — Fixed FB icon rendering + type icons always visible
    ============================================================ */
 
 let currentUser = null;
@@ -47,9 +47,11 @@ async function initHotlineDashboard() {
 
         document.querySelectorAll('.dashboard-sidebar .nav-link').forEach(link => {
             link.addEventListener('click', function (e) {
-                if (this.getAttribute('href') && this.getAttribute('href') !== '#') return;
+                const href = this.getAttribute('href');
+                if (href && href !== '#') return;
                 e.preventDefault();
                 const page = this.dataset.page;
+                if (!page) return;
                 document.querySelectorAll('.dashboard-sidebar .nav-link').forEach(l => l.classList.remove('active'));
                 this.classList.add('active');
                 loadHotlinePage(page);
@@ -102,6 +104,61 @@ function loadHotlinePage(page) {
 }
 
 // ============================================
+// TYPE HELPERS — identical to responder.js
+// ============================================
+function getTypeIcon(type) {
+    const map = {
+        fire: 'fa-fire',
+        medical: 'fa-heart-pulse',
+        accident: 'fa-car-burst',
+        flood: 'fa-water',
+        crime: 'fa-shield-halved',
+        armed_conflict: 'fa-shield-halved',
+        natural_disaster: 'fa-water',
+        other: 'fa-circle-exclamation'
+    };
+    return map[type] || 'fa-circle-exclamation';
+}
+
+function getTypeClass(type) {
+    const map = {
+        fire: 'fire',
+        medical: 'medical',
+        accident: 'accident',
+        flood: 'flood',
+        crime: 'crime',
+        armed_conflict: 'crime',
+        natural_disaster: 'flood',
+        other: 'other'
+    };
+    return map[type] || 'other';
+}
+
+function getTypeLabel(type) {
+    const map = {
+        fire: 'Fire',
+        medical: 'Medical',
+        accident: 'Accident',
+        flood: 'Flood',
+        crime: 'Crime',
+        armed_conflict: 'Armed Conflict',
+        natural_disaster: 'Natural Disaster',
+        other: 'Other'
+    };
+    return map[type] || 'Other';
+}
+
+function getPriorityPulseClasses(priority) {
+    if (priority === 'critical') return { card: 'pulse-critical', icon: 'pulse-icon-critical' };
+    if (priority === 'high') return { card: 'pulse-high', icon: '' };
+    return { card: '', icon: '' };
+}
+
+function isFacebookCall(call) {
+    return (call.caller_number || '').startsWith('FB:') || call.call_type === 'facebook';
+}
+
+// ============================================
 // DASHBOARD
 // ============================================
 async function loadHotlineDashboard() {
@@ -110,10 +167,7 @@ async function loadHotlineDashboard() {
 
     try {
         const { data: calls, error } = await supabaseClient
-            .from('hotline_calls')
-            .select('*')
-            .order('created_at', { ascending: false });
-
+            .from('hotline_calls').select('*').order('created_at', { ascending: false });
         if (error) throw error;
         allCalls = calls || [];
 
@@ -143,10 +197,7 @@ async function loadHotlineDashboard() {
                 <div class="col-md-3">
                     <div class="stat-card" style="border-left:4px solid var(--primary);">
                         <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <div class="number">${todayCalls.length}</div>
-                                <div class="text-muted small">Today's Calls</div>
-                            </div>
+                            <div><div class="number">${todayCalls.length}</div><div class="text-muted small">Today's Calls</div></div>
                             <div class="text-primary"><i class="fas fa-phone fa-2x"></i></div>
                         </div>
                     </div>
@@ -154,10 +205,7 @@ async function loadHotlineDashboard() {
                 <div class="col-md-3">
                     <div class="stat-card" style="border-left:4px solid #fd7e14;">
                         <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <div class="number text-warning">${active.length}</div>
-                                <div class="text-muted small">Active</div>
-                            </div>
+                            <div><div class="number text-warning">${active.length}</div><div class="text-muted small">Active</div></div>
                             <div class="text-warning"><i class="fas fa-hourglass-half fa-2x"></i></div>
                         </div>
                     </div>
@@ -165,10 +213,7 @@ async function loadHotlineDashboard() {
                 <div class="col-md-3">
                     <div class="stat-card" style="border-left:4px solid #dc3545;">
                         <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <div class="number text-danger">${critical.length}</div>
-                                <div class="text-muted small">Critical</div>
-                            </div>
+                            <div><div class="number text-danger">${critical.length}</div><div class="text-muted small">Critical</div></div>
                             <div class="text-danger"><i class="fas fa-exclamation-triangle fa-2x"></i></div>
                         </div>
                     </div>
@@ -176,10 +221,7 @@ async function loadHotlineDashboard() {
                 <div class="col-md-3">
                     <div class="stat-card" style="border-left:4px solid #28a745;">
                         <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <div class="number text-success">${resolvedToday.length}</div>
-                                <div class="text-muted small">Resolved Today</div>
-                            </div>
+                            <div><div class="number text-success">${resolvedToday.length}</div><div class="text-muted small">Resolved Today</div></div>
                             <div class="text-success"><i class="fas fa-check-circle fa-2x"></i></div>
                         </div>
                     </div>
@@ -211,42 +253,43 @@ async function loadHotlineDashboard() {
 }
 
 // ============================================
-// RENDER CALL ROW
+// RENDER CALL ROW — FIXED: type icon always, FB badge in corner
 // ============================================
 function renderCallRow(call) {
     const priority = call.priority || 'medium';
     const status = call.status || 'pending';
-    const typeIcons = {
-        fire: 'fa-fire', medical: 'fa-heart-pulse', accident: 'fa-car-burst',
-        flood: 'fa-water', crime: 'fa-shield-halved', other: 'fa-circle-exclamation'
-    };
-    const icon = typeIcons[call.emergency_type] || 'fa-circle-exclamation';
+    const typeClass = getTypeClass(call.emergency_type);
+    const typeIcon = getTypeIcon(call.emergency_type);
     const timeAgo = getTimeAgo(call.created_at);
-    const isFB = (call.caller_number || '').startsWith('FB:') || call.call_type === 'facebook';
+    const isFB = isFacebookCall(call);
+    const pulse = getPriorityPulseClasses(priority);
 
     return `
-        <div class="list-group-item d-flex align-items-center gap-3" style="cursor:pointer;" onclick="openCallDetail('${call.id}')">
-            <span class="priority-badge priority-${priority}">${priority}</span>
-            <div style="width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--muted);flex-shrink:0;">
-                ${isFB
-                    ? '<i class="fab fa-facebook-messenger" style="color:#0084FF;"></i>'
-                    : `<i class="fas ${icon}" style="color:var(--primary);"></i>`}
-            </div>
-            <div class="flex-grow-1" style="min-width:0;">
-                <div class="fw-semibold text-truncate">
-                    ${escapeHtml(call.caller_name || 'Unknown')}
-                    ${isFB ? '<span class="source-badge-fb ms-1">FB</span>' : ''}
+        <div class="list-group-item hotline-row priority-${priority} ${pulse.card}"
+             style="cursor:pointer;" onclick="openCallDetail('${call.id}')">
+            <div class="d-flex align-items-center gap-3">
+                <span class="badge priority-${priority}">${priority}</span>
+                <div class="incident-type-icon ${typeClass} ${pulse.icon}" style="position:relative;">
+                    <i class="fas ${typeIcon}"></i>
+                    ${isFB ? '<span class="fb-corner-badge"><i class="fab fa-facebook-messenger"></i></span>' : ''}
                 </div>
-                <div class="small text-muted text-truncate">
-                    <i class="fas fa-map-marker-alt me-1"></i>${escapeHtml(call.incident_location || 'Location not set')}
-                    <span class="mx-2">•</span>
-                    <i class="fas fa-clock me-1"></i>${timeAgo}
+                <div class="flex-grow-1" style="min-width:0;">
+                    <div class="fw-semibold text-truncate d-flex align-items-center gap-2 flex-wrap">
+                        <span>${escapeHtml(call.caller_name || 'Unknown')}</span>
+                    </div>
+                    <div class="small text-muted text-truncate">
+                        <i class="fas ${typeIcon} me-1"></i>${escapeHtml(call.emergency_type || 'unknown')}
+                        <span class="mx-2">•</span>
+                        <i class="fas fa-map-marker-alt me-1"></i>${escapeHtml(call.incident_location || 'Location not set')}
+                        <span class="mx-2">•</span>
+                        <i class="fas fa-clock me-1"></i>${timeAgo}
+                    </div>
                 </div>
+                <span class="status-badge status-${status}">${status.replace('_', ' ')}</span>
+                <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation();openCallDetail('${call.id}')">
+                    <i class="fas fa-eye"></i>
+                </button>
             </div>
-            <span class="status-badge status-${status}">${status.replace('_', ' ')}</span>
-            <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation();openCallDetail('${call.id}')">
-                <i class="fas fa-eye"></i>
-            </button>
         </div>
     `;
 }
@@ -298,7 +341,6 @@ async function submitNewCall() {
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Logging...';
 
     try {
-        // Step 1: If priority is critical/high, create an emergency record first
         let emergencyId = null;
         if (priority === 'critical' || priority === 'high') {
             const { data: emergency, error: emErr } = await supabaseClient
@@ -322,7 +364,6 @@ async function submitNewCall() {
             else emergencyId = emergency.id;
         }
 
-        // Step 2: Create the hotline call record
         const { data, error } = await supabaseClient
             .from('hotline_calls')
             .insert([{
@@ -344,7 +385,6 @@ async function submitNewCall() {
 
         if (error) throw error;
 
-        // Step 3: Log the action
         await supabaseClient.from('hotline_communication_log').insert([{
             hotline_call_id: data.id,
             action: 'call_received',
@@ -387,32 +427,36 @@ async function openCallDetail(callId) {
         const bodyEl = document.getElementById('callDetailBody');
         const footerEl = document.getElementById('callDetailFooter');
 
-        if (titleEl) titleEl.innerHTML = `<i class="fas fa-phone"></i> Call #${call.id.substring(0, 8)}`;
+        const typeClass = getTypeClass(call.emergency_type);
+        const typeIcon = getTypeIcon(call.emergency_type);
+        const typeLabel = getTypeLabel(call.emergency_type);
+        const isFB = isFacebookCall(call);
+        const pulse = getPriorityPulseClasses(call.priority);
 
-        const isFB = (call.caller_number || '').startsWith('FB:') || call.call_type === 'facebook';
+        if (titleEl) titleEl.innerHTML = `<i class="fas ${typeIcon}"></i> Call #${call.id.substring(0, 8)}`;
 
         bodyEl.innerHTML = `
-            <div class="d-flex gap-2 mb-3 flex-wrap">
-                <span class="priority-badge priority-${call.priority}">${call.priority} priority</span>
+            <div class="d-flex gap-2 mb-3 flex-wrap align-items-center">
+                <span class="badge priority-${call.priority}">${call.priority} priority</span>
                 <span class="status-badge status-${call.status}">${call.status.replace('_', ' ')}</span>
+                <span class="hotline-type-chip ${typeClass}"><i class="fas ${typeIcon}"></i> ${typeLabel}</span>
                 <span class="badge ${isFB ? 'bg-primary' : 'bg-secondary'}">
-                    <i class="fas ${isFB ? 'fa-facebook-messenger' : 'fa-phone'} me-1"></i>${call.call_type || 'incoming'}
+                    <i class="${isFB ? 'fab fa-facebook-messenger' : 'fas fa-phone'} me-1"></i>${call.call_type || 'incoming'}
                 </span>
             </div>
 
+            <div class="d-flex align-items-center gap-3 mb-3">
+                <div class="incident-type-icon ${typeClass} ${pulse.icon}" style="width:56px;height:56px;font-size:1.4rem;position:relative;">
+                    <i class="fas ${typeIcon}"></i>
+                    ${isFB ? '<span class="fb-corner-badge" style="width:20px;height:20px;font-size:0.7rem;"><i class="fab fa-facebook-messenger"></i></span>' : ''}
+                </div>
+                <div>
+                    <div class="fw-bold" style="font-family:'Sora',sans-serif;">${escapeHtml(call.caller_name || 'Unknown')}</div>
+                    <div class="small text-muted">${escapeHtml(call.caller_number || 'N/A')}</div>
+                </div>
+            </div>
+
             <div class="row g-3 mb-3">
-                <div class="col-md-6">
-                    <div class="detail-meta-item">
-                        <div class="lbl"><i class="fas fa-user me-1"></i>Caller</div>
-                        <div class="val">${escapeHtml(call.caller_name || 'Unknown')}</div>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="detail-meta-item">
-                        <div class="lbl"><i class="fas fa-phone me-1"></i>Contact</div>
-                        <div class="val">${escapeHtml(call.caller_number || 'N/A')}</div>
-                    </div>
-                </div>
                 ${call.caller_address ? `
                 <div class="col-md-6">
                     <div class="detail-meta-item">
@@ -607,32 +651,33 @@ async function loadAllCalls() {
     }
 }
 
+// ============================================
+// RENDER CALL CARD — FIXED
+// ============================================
 function renderCallCard(call) {
     const priority = call.priority || 'medium';
     const status = call.status || 'pending';
-    const isFB = (call.caller_number || '').startsWith('FB:') || call.call_type === 'facebook';
-    const typeIcons = {
-        fire: 'fa-fire', medical: 'fa-heart-pulse', accident: 'fa-car-burst',
-        flood: 'fa-water', crime: 'fa-shield-halved', other: 'fa-circle-exclamation'
-    };
-    const icon = typeIcons[call.emergency_type] || 'fa-circle-exclamation';
+    const isFB = isFacebookCall(call);
+    const typeClass = getTypeClass(call.emergency_type);
+    const typeIcon = getTypeIcon(call.emergency_type);
+    const pulse = getPriorityPulseClasses(priority);
 
     return `
-        <div class="incident-card priority-${priority}"
+        <div class="incident-card priority-${priority} ${pulse.card}"
              data-search="${((call.caller_name || '') + ' ' + (call.incident_location || '') + ' ' + (call.emergency_type || '')).toLowerCase()}"
              data-status="${status}" data-priority="${priority}">
             <div class="incident-card-header">
                 <div class="d-flex align-items-start gap-3 flex-grow-1" style="min-width:0;">
-                    <div class="incident-type-icon other" style="background:var(--muted);">
-                        ${isFB ? '<i class="fab fa-facebook-messenger" style="color:#0084FF;"></i>' : `<i class="fas ${icon}"></i>`}
+                    <div class="incident-type-icon ${typeClass} ${pulse.icon}" style="position:relative;">
+                        <i class="fas ${typeIcon}"></i>
+                        ${isFB ? '<span class="fb-corner-badge"><i class="fab fa-facebook-messenger"></i></span>' : ''}
                     </div>
                     <div style="min-width:0;flex:1;">
                         <div class="incident-card-title">
                             <span>${escapeHtml(call.caller_name || 'Unknown')}</span>
-                            <span class="badge ${isFB ? 'bg-primary' : 'bg-secondary'}" style="font-size:0.65rem;">${call.call_type || 'incoming'}</span>
                         </div>
                         <div class="incident-card-meta">
-                            <span><i class="fas fa-tag"></i>${escapeHtml(call.emergency_type || 'N/A')}</span>
+                            <span><i class="fas ${typeIcon}"></i>${escapeHtml(call.emergency_type || 'unknown')}</span>
                             <span><i class="fas fa-map-marker-alt"></i>${escapeHtml(call.incident_location || 'N/A')}</span>
                             <span><i class="fas fa-clock"></i>${new Date(call.created_at).toLocaleString()}</span>
                         </div>
