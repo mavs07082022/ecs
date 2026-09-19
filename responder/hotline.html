@@ -5,10 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
   <title>Emergency Hotline Management</title>
   <link rel="icon" href="../favicon.ico" sizes="any">
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+  <link rel="icon" type="image/png" sizes="96x96" href="../favicon-96x96.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
+  <link rel="manifest" href="../site.webmanifest">
+  <meta name="theme-color" content="#0A2342">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="../design.css" />
   <link rel="stylesheet" href="../css/style.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js" defer></script>
   <script>
     (function () {
@@ -22,6 +27,7 @@
   </script>
   <style>
     body { background: var(--content-bg); color: var(--foreground); }
+
     .hotline-timer {
       display: inline-flex; align-items: center; gap: 0.5rem;
       background: var(--muted); padding: 0.5rem 1rem;
@@ -29,9 +35,247 @@
       font-weight: 800; color: var(--primary);
       font-variant-numeric: tabular-nums;
     }
-    .source-badge-fb {
-      background: #0084FF !important; color: #fff !important;
-      font-size: 0.65rem; padding: 2px 8px; border-radius: 9999px; font-weight: 700;
+
+    /* ========================================================
+       ICON FIX — force proper Font Awesome rendering
+       Free-solid icons use "Font Awesome 6 Free"
+       Brand icons (facebook-messenger) use "Font Awesome 6 Brands"
+       ======================================================== */
+    .incident-type-icon,
+    .hotline-type-icon,
+    .inc-icon {
+      width: 44px;
+      height: 44px;
+      min-width: 44px;
+      border-radius: calc(var(--radius) + 2px);
+      display: flex !important;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.15rem;
+      flex-shrink: 0;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+      position: relative;
+    }
+
+    /* Free-solid glyphs (fa-fire, fa-heart-pulse, fa-car-burst, ...) */
+    .incident-type-icon i.fas,
+    .hotline-type-icon i.fas,
+    .inc-icon i.fas,
+    .incident-type-icon i.fa-solid,
+    .hotline-type-icon i.fa-solid,
+    .inc-icon i.fa-solid {
+      display: inline-block !important;
+      font-family: "Font Awesome 6 Free" !important;
+      font-weight: 900 !important;
+      font-style: normal !important;
+      line-height: 1 !important;
+      font-size: 1.15rem !important;
+      color: inherit !important;
+    }
+
+    /* Brand glyphs (fa-facebook-messenger, fa-facebook) */
+    .incident-type-icon i.fab,
+    .hotline-type-icon i.fab,
+    .inc-icon i.fab,
+    .incident-type-icon i.fa-brands,
+    .hotline-type-icon i.fa-brands,
+    .inc-icon i.fa-brands {
+      display: inline-block !important;
+      font-family: "Font Awesome 6 Brands" !important;
+      font-weight: 400 !important;
+      font-style: normal !important;
+      line-height: 1 !important;
+      font-size: 1.15rem !important;
+      color: inherit !important;
+    }
+
+    /* FB corner badge (small overlay on type icon) */
+    .fb-corner-badge {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #0084FF;
+      color: #fff !important;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid var(--card);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      z-index: 5;
+    }
+    .fb-corner-badge i {
+      font-size: 0.55rem !important;
+      color: #fff !important;
+      font-family: "Font Awesome 6 Brands" !important;
+      font-weight: 400 !important;
+    }
+
+    /* Type color schemes — identical to responder dashboard */
+    .incident-type-icon.fire, .inc-icon.fire, .hotline-type-icon.fire {
+      background: color-mix(in oklab, var(--destructive) 20%, transparent) !important;
+      color: var(--destructive) !important;
+    }
+    .incident-type-icon.medical, .inc-icon.medical, .hotline-type-icon.medical {
+      background: color-mix(in oklab, var(--pri-low) 20%, transparent) !important;
+      color: var(--pri-low) !important;
+    }
+    .incident-type-icon.accident, .inc-icon.accident, .hotline-type-icon.accident {
+      background: color-mix(in oklab, var(--pri-high) 24%, transparent) !important;
+      color: oklch(0.42 0.14 55) !important;
+    }
+    .dark .incident-type-icon.accident, .dark .inc-icon.accident, .dark .hotline-type-icon.accident { color: var(--pri-high) !important; }
+    .incident-type-icon.flood, .inc-icon.flood, .hotline-type-icon.flood {
+      background: color-mix(in oklab, oklch(0.6 0.13 195) 22%, transparent) !important;
+      color: oklch(0.42 0.14 195) !important;
+    }
+    .dark .incident-type-icon.flood, .dark .inc-icon.flood, .dark .hotline-type-icon.flood { color: oklch(0.82 0.12 195) !important; }
+    .incident-type-icon.crime, .inc-icon.crime, .hotline-type-icon.crime {
+      background: color-mix(in oklab, oklch(0.5 0.18 290) 20%, transparent) !important;
+      color: oklch(0.42 0.18 290) !important;
+    }
+    .dark .incident-type-icon.crime, .dark .inc-icon.crime, .dark .hotline-type-icon.crime { color: oklch(0.82 0.15 290) !important; }
+    .incident-type-icon.other, .inc-icon.other, .hotline-type-icon.other {
+      background: var(--muted) !important;
+      color: var(--muted-foreground) !important;
+    }
+
+    /* Hotline type label chips */
+    .hotline-type-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.62rem;
+      font-weight: 800;
+      padding: 2px 9px;
+      border-radius: 9999px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+    .hotline-type-chip i { color: inherit !important; }
+    .hotline-type-chip.fire { background: color-mix(in oklab, var(--destructive) 15%, transparent); color: var(--destructive); border: 1px solid color-mix(in oklab, var(--destructive) 30%, transparent); }
+    .hotline-type-chip.medical { background: color-mix(in oklab, var(--pri-low) 15%, transparent); color: var(--pri-low); border: 1px solid color-mix(in oklab, var(--pri-low) 30%, transparent); }
+    .hotline-type-chip.accident { background: color-mix(in oklab, var(--pri-high) 18%, transparent); color: oklch(0.42 0.14 55); border: 1px solid color-mix(in oklab, var(--pri-high) 35%, transparent); }
+    .dark .hotline-type-chip.accident { color: var(--pri-high); }
+    .hotline-type-chip.flood { background: color-mix(in oklab, oklch(0.6 0.13 195) 18%, transparent); color: oklch(0.42 0.14 195); border: 1px solid color-mix(in oklab, oklch(0.6 0.13 195) 35%, transparent); }
+    .dark .hotline-type-chip.flood { color: oklch(0.82 0.12 195); }
+    .hotline-type-chip.crime { background: color-mix(in oklab, oklch(0.5 0.18 290) 15%, transparent); color: oklch(0.42 0.18 290); border: 1px solid color-mix(in oklab, oklch(0.5 0.18 290) 30%, transparent); }
+    .dark .hotline-type-chip.crime { color: oklch(0.82 0.15 290); }
+    .hotline-type-chip.other { background: var(--muted); color: var(--muted-foreground); border: 1px solid var(--border); }
+
+    /* Hotline row hover */
+    .hotline-row {
+      transition: background 0.18s ease, transform 0.18s ease;
+      position: relative;
+    }
+    .hotline-row:hover { transform: translateX(3px); }
+    .hotline-row:hover .incident-type-icon { transform: rotate(6deg) scale(1.08); }
+
+    /* PULSE ANIMATIONS */
+    @keyframes pulse-critical-glow {
+      0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--destructive) 55%, transparent), 0 6px 20px -8px color-mix(in oklab, var(--destructive) 30%, transparent); }
+      50% { box-shadow: 0 0 0 10px color-mix(in oklab, var(--destructive) 0%, transparent), 0 6px 24px -6px color-mix(in oklab, var(--destructive) 50%, transparent); }
+    }
+    @keyframes pulse-high-glow {
+      0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--pri-high) 50%, transparent), 0 6px 20px -8px color-mix(in oklab, var(--pri-high) 25%, transparent); }
+      50% { box-shadow: 0 0 0 8px color-mix(in oklab, var(--pri-high) 0%, transparent), 0 6px 22px -6px color-mix(in oklab, var(--pri-high) 45%, transparent); }
+    }
+    .incident-card.pulse-critical,
+    .hotline-row.pulse-critical,
+    .list-group-item.pulse-critical {
+      animation: pulse-critical-glow 2.2s ease-in-out infinite;
+      border-color: color-mix(in oklab, var(--destructive) 40%, transparent) !important;
+    }
+    .incident-card.pulse-high,
+    .hotline-row.pulse-high,
+    .list-group-item.pulse-high {
+      animation: pulse-high-glow 2.6s ease-in-out infinite;
+      border-color: color-mix(in oklab, var(--pri-high) 35%, transparent) !important;
+    }
+    @keyframes pulse-icon-critical-ring {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.12); }
+    }
+    .incident-type-icon.pulse-icon-critical,
+    .hotline-type-icon.pulse-icon-critical,
+    .inc-icon.pulse-icon-critical {
+      animation: pulse-icon-critical-ring 1.4s ease-in-out infinite;
+    }
+    .incident-type-icon.pulse-icon-critical::after,
+    .hotline-type-icon.pulse-icon-critical::after,
+    .inc-icon.pulse-icon-critical::after {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border-radius: inherit;
+      border: 2px solid color-mix(in oklab, var(--destructive) 60%, transparent);
+      animation: marker-pulse 1.8s ease-in-out infinite;
+      pointer-events: none;
+    }
+    @keyframes marker-pulse {
+      0% { transform: scale(0.7); opacity: 0.8; }
+      100% { transform: scale(1.6); opacity: 0; }
+    }
+    @keyframes fire-flicker {
+      0%, 100% { transform: rotate(0deg) scale(1); filter: brightness(1); }
+      25% { transform: rotate(-3deg) scale(1.05); filter: brightness(1.15); }
+      50% { transform: rotate(2deg) scale(1.08); filter: brightness(1.1); }
+      75% { transform: rotate(-2deg) scale(1.03); filter: brightness(1.12); }
+    }
+    .incident-type-icon.fire:not(.pulse-icon-critical) i,
+    .inc-icon.fire:not(.pulse-icon-critical) i {
+      animation: fire-flicker 2s ease-in-out infinite;
+    }
+    @keyframes medical-beat {
+      0%, 100% { transform: scale(1); }
+      15% { transform: scale(1.12); }
+      30% { transform: scale(1); }
+      45% { transform: scale(1.08); }
+      60% { transform: scale(1); }
+    }
+    .incident-type-icon.medical:not(.pulse-icon-critical) i,
+    .inc-icon.medical:not(.pulse-icon-critical) i {
+      animation: medical-beat 1.8s ease-in-out infinite;
+    }
+    @keyframes accident-shake {
+      0%, 100% { transform: translateX(0) rotate(0); }
+      20% { transform: translateX(-2px) rotate(-4deg); }
+      40% { transform: translateX(2px) rotate(4deg); }
+      60% { transform: translateX(-1px) rotate(-2deg); }
+      80% { transform: translateX(1px) rotate(2deg); }
+    }
+    .incident-type-icon.accident:not(.pulse-icon-critical) i,
+    .inc-icon.accident:not(.pulse-icon-critical) i {
+      animation: accident-shake 2.5s ease-in-out infinite;
+    }
+    @keyframes flood-wave {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-3px); }
+    }
+    .incident-type-icon.flood:not(.pulse-icon-critical) i,
+    .inc-icon.flood:not(.pulse-icon-critical) i {
+      animation: flood-wave 2s ease-in-out infinite;
+    }
+    @keyframes crime-glow {
+      0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklab, oklch(0.5 0.18 290) 40%, transparent); }
+      50% { box-shadow: 0 0 0 6px color-mix(in oklab, oklch(0.5 0.18 290) 0%, transparent); }
+    }
+    .incident-type-icon.crime:not(.pulse-icon-critical),
+    .inc-icon.crime:not(.pulse-icon-critical) {
+      animation: crime-glow 2.4s ease-in-out infinite;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .incident-card.pulse-critical, .incident-card.pulse-high,
+      .hotline-row.pulse-critical, .hotline-row.pulse-high,
+      .list-group-item.pulse-critical, .list-group-item.pulse-high,
+      .incident-type-icon, .hotline-type-icon, .inc-icon,
+      .incident-type-icon i, .hotline-type-icon i, .inc-icon i {
+        animation: none !important;
+      }
     }
   </style>
 </head>
@@ -71,7 +315,7 @@
           <a class="nav-link" href="#" data-page="all-calls"><i data-lucide="list"></i>All Calls</a>
           <a class="nav-link" href="#" data-page="history"><i data-lucide="history"></i>Call History</a>
           <a class="nav-link" href="#" data-page="operators"><i data-lucide="headset"></i>Operators</a>
-          <a class="nav-link" href="dashboard.html"><i data-lucide="layout-dashboard"></i>Responder Dashboard</a>
+          <a class="nav-link nav-link-external" href="./dashboard.html" id="responderNavLink"><i data-lucide="layout-dashboard"></i>Responder Dashboard</a>
           <a class="nav-link" href="#" data-page="profile"><i data-lucide="user"></i>Profile</a>
         </nav>
         <div class="sidebar-footer">
@@ -97,7 +341,7 @@
         </div>
         <div class="modal-body">
           <div class="d-flex justify-content-between align-items-center mb-3">
-            <span class="text-muted small"><i class="fas fa-info-circle me-1"></i>Fill in caller & incident details</span>
+            <span class="text-muted small"><i class="fas fa-info-circle me-1"></i>Fill in caller &amp; incident details</span>
             <span class="hotline-timer"><i class="fas fa-clock"></i><span id="callDurationDisplay">00:00</span></span>
           </div>
           <form id="newCallForm">
@@ -127,12 +371,12 @@
               <div class="col-md-6">
                 <label class="form-label">Emergency Type <span style="color:var(--destructive)">*</span></label>
                 <select class="form-select" id="callEmergencyType" required>
-                  <option value="fire">Fire</option>
-                  <option value="medical">Medical Emergency</option>
-                  <option value="accident">Accident</option>
-                  <option value="flood">Flood</option>
-                  <option value="crime">Crime / Security</option>
-                  <option value="other">Other</option>
+                  <option value="fire">🔥 Fire</option>
+                  <option value="medical">🚑 Medical Emergency</option>
+                  <option value="accident">🚗 Accident</option>
+                  <option value="flood">🌊 Flood</option>
+                  <option value="crime">🚨 Crime / Security</option>
+                  <option value="other">⚠️ Other</option>
                 </select>
               </div>
               <div class="col-12">
@@ -194,6 +438,18 @@
   <script src="../js/hotline.js"></script>
 
   <script>
+    // Force-navigate to dashboard.html
+    (function () {
+      document.addEventListener('click', function (e) {
+        var a = e.target.closest && e.target.closest('a[href*="dashboard.html"]');
+        if (a) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          window.location.href = a.getAttribute('href') || './dashboard.html';
+        }
+      }, true);
+    })();
+
     (function() {
       var menuBtn = document.getElementById('mobileMenuBtn');
       var sidebar = document.getElementById('hotlineSidebar');
@@ -215,6 +471,8 @@
           if (window.innerWidth <= 991.98) closeDrawer();
         });
       });
+      window.addEventListener('resize', function() { if (window.innerWidth > 991.98) closeDrawer(); });
+      document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeDrawer(); });
     })();
   </script>
 </body>
