@@ -1,3 +1,8 @@
+/* ============================================================
+   Culiat Public Safety — Resident Dashboard (v5)
+   + Enhanced type icons & pulse animations
+   ============================================================ */
+
 let currentUser = null;
 let currentProfile = null;
 let reportModal = null;
@@ -211,6 +216,27 @@ function getTypeClass(type) {
         natural_disaster: 'flood', other: 'other'
     };
     return map[type] || 'other';
+}
+
+function getTypeColor(type) {
+    var map = {
+        fire: '#dc3545',
+        medical: '#0d6efd',
+        accident: '#fd7e14',
+        flood: '#0dcaf0',
+        crime: '#8b5cf6',
+        armed_conflict: '#8b5cf6',
+        natural_disaster: '#0dcaf0',
+        other: '#6c757d'
+    };
+    return map[type] || map.other;
+}
+
+// Returns pulse classes for a given priority
+function getPriorityPulseClasses(priority) {
+    if (priority === 'critical') return { card: 'pulse-critical', icon: 'pulse-icon-critical' };
+    if (priority === 'high') return { card: 'pulse-high', icon: '' };
+    return { card: '', icon: '' };
 }
 
 // ============================================
@@ -428,7 +454,6 @@ function initBarangayMap() {
 
 // ============================================
 // LOAD INCIDENTS FROM MULTIPLE SOURCES
-// resident reports (incident_reports) + FB reports (emergencies)
 // ============================================
 async function loadBarangayIncidentsOnMap() {
     if (!barangayMap) return;
@@ -438,7 +463,6 @@ async function loadBarangayIncidentsOnMap() {
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
         const sinceIso = thirtyDaysAgo.toISOString();
 
-        // ---- 1. Get resident reports from incident_reports ----
         const { data: incidentReports, error: err1 } = await supabaseClient
             .from('incident_reports')
             .select('*')
@@ -448,7 +472,6 @@ async function loadBarangayIncidentsOnMap() {
 
         if (err1) console.warn('incident_reports fetch error:', err1);
 
-        // ---- 2. Get FB reports from emergencies ----
         const { data: emergencyReports, error: err2 } = await supabaseClient
             .from('emergencies')
             .select('*')
@@ -458,11 +481,9 @@ async function loadBarangayIncidentsOnMap() {
 
         if (err2) console.warn('emergencies fetch error:', err2);
 
-        // ---- 3. Normalize both into a common shape ----
         const fromResidents = (incidentReports || []).map(r => normalizeIncidentRow(r, 'resident'));
         const fromFacebook = (emergencyReports || []).map(r => normalizeIncidentRow(r, 'facebook'));
 
-        // ---- 4. Merge + dedupe by address+title+time (in case they're the same record) ----
         const combined = [...fromResidents, ...fromFacebook];
         const seen = new Set();
         const deduped = [];
@@ -473,7 +494,6 @@ async function loadBarangayIncidentsOnMap() {
             deduped.push(inc);
         }
 
-        // ---- 5. Sort newest first ----
         deduped.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
         barangayIncidents = deduped;
@@ -488,7 +508,6 @@ async function loadBarangayIncidentsOnMap() {
 function normalizeIncidentRow(row, source) {
     let coords = extractCoordinates(row.location);
 
-    // emergencies has lat/lng columns directly (computed)
     if (!coords && row.latitude != null && row.longitude != null) {
         coords = { lat: parseFloat(row.latitude), lng: parseFloat(row.longitude) };
     }
@@ -509,7 +528,7 @@ function normalizeIncidentRow(row, source) {
         contact_number: row.contact_number || row.reporter_phone || null,
         reporter_name: row.reporter_name || null,
         ai_analysis: row.ai_analysis || row.ai_classification || null,
-        source: source,  // 'resident' or 'facebook'
+        source: source,
         _lat: coords ? coords.lat : null,
         _lng: coords ? coords.lng : null
     };
@@ -535,7 +554,6 @@ function renderBarangayMarkers(incidents) {
         const isResolved = status === 'resolved' || status === 'closed';
         const isFacebook = incident.source === 'facebook';
 
-        // Facebook reports get a small badge
         const badgeHTML = isFacebook
             ? `<span style="position:absolute;top:-2px;right:-2px;background:#0084FF;color:#fff;width:14px;height:14px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;border:1.5px solid #fff;font-weight:900;">f</span>`
             : '';
@@ -661,22 +679,7 @@ function extractCoordinates(location) {
     return null;
 }
 
-function getTypeColor(type) {
-    var map = {
-        fire: '#dc3545',
-        medical: '#0d6efd',
-        accident: '#fd7e14',
-        flood: '#0dcaf0',
-        crime: '#8b5cf6',
-        armed_conflict: '#8b5cf6',
-        natural_disaster: '#0dcaf0',
-        other: '#6c757d'
-    };
-    return map[type] || map.other;
-}
-
 function setupBarangayRealtime() {
-    // Cleanup any previous channels
     if (barangayRealtimeChannel) {
         try { supabaseClient.removeChannel(barangayRealtimeChannel); } catch (e) {}
     }
@@ -684,7 +687,6 @@ function setupBarangayRealtime() {
         try { supabaseClient.removeChannel(barangayRealtimeChannel2); } catch (e) {}
     }
 
-    // ---- Channel 1: resident reports (incident_reports) ----
     barangayRealtimeChannel = supabaseClient
         .channel('barangay-map-live-residents')
         .on('postgres_changes', {
@@ -705,7 +707,6 @@ function setupBarangayRealtime() {
         })
         .subscribe();
 
-    // ---- Channel 2: Facebook reports (emergencies) ----
     barangayRealtimeChannel2 = supabaseClient
         .channel('barangay-map-live-facebook')
         .on('postgres_changes', {
@@ -736,7 +737,6 @@ function handleNewMapIncident(newRow, source) {
     if (!coords) return;
     if (!isInsideBarangay(coords.lat, coords.lng)) return;
 
-    // Skip if we've already got it
     const exists = barangayIncidents.find(function(i) { return i.id === normalized.id; });
     if (exists) return;
 
@@ -756,7 +756,6 @@ function handleUpdateMapIncident(newRow, source) {
     const idx = barangayIncidents.findIndex(function(i) { return i.id === newRow.id; });
     if (idx >= 0) {
         const normalized = normalizeIncidentRow(newRow, source);
-        // Keep existing _lat/_lng if new one doesn't have coordinates
         if (normalized._lat == null) {
             normalized._lat = barangayIncidents[idx]._lat;
             normalized._lng = barangayIncidents[idx]._lng;
@@ -765,7 +764,6 @@ function handleUpdateMapIncident(newRow, source) {
         renderBarangayMarkers(barangayIncidents);
         updateMapStatusBar(barangayIncidents);
     } else {
-        // It's an update for something we don't have — try adding it
         handleNewMapIncident(newRow, source);
     }
 }
@@ -1356,7 +1354,7 @@ async function loadDashboard() {
 }
 
 // ============================================
-// RENDER INCIDENT ROW
+// RENDER INCIDENT ROW — with type icon + pulse animation
 // ============================================
 function renderIncidentRow(incident, isOwnReport) {
     const type = incident.type || 'other';
@@ -1371,9 +1369,12 @@ function renderIncidentRow(incident, isOwnReport) {
         : '—';
     const mediaCount = getMediaUrls(incident).length;
 
+    const pulse = getPriorityPulseClasses(priority);
+
     return `
-        <div class="incident-row priority-${priority} bg-transparent" onclick="viewResidentIncidentDetail('${incident.id}', 'resident')">
-            <div class="inc-icon ${typeClass}">
+        <div class="incident-row priority-${priority} bg-transparent ${pulse.card}"
+             onclick="viewResidentIncidentDetail('${incident.id}', 'resident')">
+            <div class="inc-icon ${typeClass} ${pulse.icon}">
                 <i class="fas ${typeIcon}"></i>
             </div>
             <div class="inc-body">
@@ -1402,7 +1403,6 @@ function renderIncidentRow(incident, isOwnReport) {
 
 // ============================================
 // VIEW RESIDENT INCIDENT DETAIL MODAL
-// Supports both 'resident' (incident_reports) and 'facebook' (emergencies)
 // ============================================
 async function viewResidentIncidentDetail(incidentId, source) {
     let incident = null;
