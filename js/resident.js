@@ -16,6 +16,7 @@ let barangayMap = null;
 let barangayMarkers = [];
 let barangayIncidents = [];
 let barangayRealtimeChannel = null;
+let barangayRealtimeChannel2 = null;
 let barangayBoundaryLayer = null;
 
 // Gemini state
@@ -29,14 +30,12 @@ const aiCache = new Map();
 // ============================================
 const BARANGAY_SCOPE = {
   name: 'Barangay Culiat',
-  // Bounding box covering the three specified areas
   bounds: {
     north: 14.7000,
     south: 14.6400,
     east: 121.0400,
     west: 120.9700
   },
-  // Approximate polygon covering Tandang Sora Ave, Quezon Ave, Congressional Ave Ext
   polygon: [
     [14.6990, 121.0150],
     [14.7020, 121.0280],
@@ -198,6 +197,8 @@ function getTypeIcon(type) {
         accident: 'fa-car-burst',
         flood: 'fa-water',
         crime: 'fa-shield-halved',
+        armed_conflict: 'fa-shield-halved',
+        natural_disaster: 'fa-water',
         other: 'fa-circle-exclamation'
     };
     return map[type] || 'fa-circle-exclamation';
@@ -206,7 +207,8 @@ function getTypeIcon(type) {
 function getTypeClass(type) {
     var map = {
         fire: 'fire', medical: 'medical', accident: 'accident',
-        flood: 'flood', crime: 'crime', other: 'other'
+        flood: 'flood', crime: 'crime', armed_conflict: 'crime',
+        natural_disaster: 'flood', other: 'other'
     };
     return map[type] || 'other';
 }
@@ -316,11 +318,10 @@ function initMap() {
     const mapContainer = document.getElementById('incidentMap');
     if (!mapContainer) return;
 
-    const defaultLat = 14.6760, defaultLng = 121.0150; // Tandang Sora area
+    const defaultLat = 14.6760, defaultLng = 121.0150;
     mapInstance = L.map('incidentMap').setView([defaultLat, defaultLng], 14);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(mapInstance);
 
-    // Add barangay boundary overlay
     L.polygon(BARANGAY_SCOPE.polygon, {
         color: '#2e7d32',
         weight: 2,
@@ -351,7 +352,6 @@ async function searchLocation(query) {
     spinner.classList.add('show');
 
     try {
-        // Bias search to barangay scope
         const viewbox = `${BARANGAY_SCOPE.bounds.west},${BARANGAY_SCOPE.bounds.north},${BARANGAY_SCOPE.bounds.east},${BARANGAY_SCOPE.bounds.south}`;
         const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&countrycodes=ph&viewbox=${viewbox}&bounded=1`;
         const response = await fetch(url, { headers: { 'Accept': 'application/json', 'User-Agent': 'BarangayEMS/1.0' } });
@@ -384,7 +384,7 @@ async function reverseGeocode(lat, lng) {
 }
 
 // ============================================
-// BARANGAY LIVE MAP (NEW — shows what's happening in barangay)
+// BARANGAY LIVE MAP — Shows resident + FB reports
 // ============================================
 function initBarangayMap() {
     const mapEl = document.getElementById('barangayMap');
@@ -400,7 +400,6 @@ function initBarangayMap() {
         maxZoom: 19
     }).addTo(barangayMap);
 
-    // Draw barangay boundary
     barangayBoundaryLayer = L.polygon(BARANGAY_SCOPE.polygon, {
         color: '#2e7d32',
         weight: 2.5,
@@ -417,13 +416,9 @@ function initBarangayMap() {
         className: 'barangay-tooltip'
     });
 
-    // Fit to boundary
     barangayMap.fitBounds(barangayBoundaryLayer.getBounds(), { padding: [20, 20] });
 
-    // Load and render incidents
     loadBarangayIncidentsOnMap();
-
-    // Realtime updates
     setupBarangayRealtime();
 
     setTimeout(function() {
@@ -431,24 +426,57 @@ function initBarangayMap() {
     }, 300);
 }
 
+// ============================================
+// LOAD INCIDENTS FROM MULTIPLE SOURCES
+// resident reports (incident_reports) + FB reports (emergencies)
+// ============================================
 async function loadBarangayIncidentsOnMap() {
     if (!barangayMap) return;
 
     try {
-        // Fetch recent incidents (last 30 days) in barangay
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const sinceIso = thirtyDaysAgo.toISOString();
 
-        const { data: incidents, error } = await supabaseClient
+        // ---- 1. Get resident reports from incident_reports ----
+        const { data: incidentReports, error: err1 } = await supabaseClient
             .from('incident_reports')
             .select('*')
-            .gte('created_at', thirtyDaysAgo.toISOString())
+            .gte('created_at', sinceIso)
             .order('created_at', { ascending: false })
             .limit(100);
 
-        if (error) throw error;
+        if (err1) console.warn('incident_reports fetch error:', err1);
 
-        barangayIncidents = incidents || [];
+        // ---- 2. Get FB reports from emergencies ----
+        const { data: emergencyReports, error: err2 } = await supabaseClient
+            .from('emergencies')
+            .select('*')
+            .gte('created_at', sinceIso)
+            .order('created_at', { ascending: false })
+            .limit(100);
+
+        if (err2) console.warn('emergencies fetch error:', err2);
+
+        // ---- 3. Normalize both into a common shape ----
+        const fromResidents = (incidentReports || []).map(r => normalizeIncidentRow(r, 'resident'));
+        const fromFacebook = (emergencyReports || []).map(r => normalizeIncidentRow(r, 'facebook'));
+
+        // ---- 4. Merge + dedupe by address+title+time (in case they're the same record) ----
+        const combined = [...fromResidents, ...fromFacebook];
+        const seen = new Set();
+        const deduped = [];
+        for (const inc of combined) {
+            const key = `${inc.type}|${inc.title}|${inc.created_at}|${inc._lat}|${inc._lng}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            deduped.push(inc);
+        }
+
+        // ---- 5. Sort newest first ----
+        deduped.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+        barangayIncidents = deduped;
         renderBarangayMarkers(barangayIncidents);
         updateMapStatusBar(barangayIncidents);
     } catch (err) {
@@ -456,32 +484,71 @@ async function loadBarangayIncidentsOnMap() {
     }
 }
 
+// Normalize any row (from incident_reports OR emergencies) into one shape
+function normalizeIncidentRow(row, source) {
+    let coords = extractCoordinates(row.location);
+
+    // emergencies has lat/lng columns directly (computed)
+    if (!coords && row.latitude != null && row.longitude != null) {
+        coords = { lat: parseFloat(row.latitude), lng: parseFloat(row.longitude) };
+    }
+    if (!coords && row.lat != null && row.lng != null) {
+        coords = { lat: parseFloat(row.lat), lng: parseFloat(row.lng) };
+    }
+
+    return {
+        id: row.id,
+        type: row.type || 'other',
+        title: row.title || 'Untitled Incident',
+        description: row.description || '',
+        location: row.location,
+        priority: row.priority || 'medium',
+        status: row.status || 'reported',
+        created_at: row.created_at,
+        barangay: row.barangay || null,
+        contact_number: row.contact_number || row.reporter_phone || null,
+        reporter_name: row.reporter_name || null,
+        ai_analysis: row.ai_analysis || row.ai_classification || null,
+        source: source,  // 'resident' or 'facebook'
+        _lat: coords ? coords.lat : null,
+        _lng: coords ? coords.lng : null
+    };
+}
+
 function renderBarangayMarkers(incidents) {
     if (!barangayMap) return;
 
-    // Clear existing markers
     barangayMarkers.forEach(function(m) { try { barangayMap.removeLayer(m); } catch(e) {} });
     barangayMarkers = [];
 
     incidents.forEach(function(incident) {
-        var coords = extractCoordinates(incident.location);
+        const coords = (incident._lat != null && incident._lng != null)
+            ? { lat: incident._lat, lng: incident._lng }
+            : extractCoordinates(incident.location);
         if (!coords) return;
 
-        var type = incident.type || 'other';
-        var typeIcon = getTypeIcon(type);
-        var typeClass = getTypeClass(type);
-        var priority = incident.priority || 'medium';
-        var status = incident.status || 'reported';
-        var isResolved = status === 'resolved' || status === 'closed';
+        const type = incident.type || 'other';
+        const typeIcon = getTypeIcon(type);
+        const typeClass = getTypeClass(type);
+        const priority = incident.priority || 'medium';
+        const status = incident.status || 'reported';
+        const isResolved = status === 'resolved' || status === 'closed';
+        const isFacebook = incident.source === 'facebook';
 
-        var iconHtml = `
-            <div class="marker-pin ${typeClass} ${priority} ${isResolved ? 'resolved' : ''}">
+        // Facebook reports get a small badge
+        const badgeHTML = isFacebook
+            ? `<span style="position:absolute;top:-2px;right:-2px;background:#0084FF;color:#fff;width:14px;height:14px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;border:1.5px solid #fff;font-weight:900;">f</span>`
+            : '';
+
+        const iconHtml = `
+            <div class="marker-pin ${typeClass} ${priority} ${isResolved ? 'resolved' : ''}" style="position:relative;">
                 <div class="marker-pulse-ring"></div>
                 <i class="fas ${typeIcon}"></i>
+                ${badgeHTML}
             </div>
         `;
 
-        var customIcon = L.divIcon({
+        const customIcon = L.divIcon({
             html: iconHtml,
             className: 'custom-incident-marker',
             iconSize: [30, 30],
@@ -489,25 +556,30 @@ function renderBarangayMarkers(incidents) {
             popupAnchor: [0, -30]
         });
 
-        var marker = L.marker([coords.lat, coords.lng], { icon: customIcon }).addTo(barangayMap);
+        const marker = L.marker([coords.lat, coords.lng], { icon: customIcon }).addTo(barangayMap);
 
-        var createdDate = incident.created_at
+        const createdDate = incident.created_at
             ? new Date(incident.created_at).toLocaleString('en-US', {
                 month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
             })
             : 'Unknown';
 
-        var shortDesc = incident.description
+        const shortDesc = incident.description
             ? String(incident.description).substring(0, 100) + (String(incident.description).length > 100 ? '…' : '')
             : 'No description';
 
-        var popupHtml = `
+        const sourceBadge = isFacebook
+            ? `<span style="background:#0084FF;color:#fff;font-size:0.6rem;padding:2px 8px;border-radius:9999px;font-weight:800;display:inline-flex;align-items:center;gap:3px;"><i class="fab fa-facebook-messenger"></i>FB</span>`
+            : `<span style="background:var(--muted);color:var(--muted-foreground);font-size:0.6rem;padding:2px 8px;border-radius:9999px;font-weight:800;">Resident</span>`;
+
+        const popupHtml = `
             <div class="map-popup-content">
                 <div class="map-popup-title">
                     <i class="fas ${typeIcon}" style="color:${getTypeColor(type)};"></i>
                     ${escapeHtml(incident.title || 'Untitled')}
                 </div>
                 <div class="map-popup-badges">
+                    ${sourceBadge}
                     <span class="badge priority-${priority}" style="font-size:0.62rem;padding:3px 10px;border-radius:50px;text-transform:uppercase;">${priority}</span>
                     <span class="status-badge status-${status}" style="font-size:0.62rem;padding:3px 10px;">${status}</span>
                 </div>
@@ -516,7 +588,7 @@ function renderBarangayMarkers(incidents) {
                     <span><i class="fas fa-clock"></i> ${createdDate}</span>
                     <span><i class="fas fa-align-left"></i> ${escapeHtml(shortDesc)}</span>
                 </div>
-                <button class="map-popup-btn" onclick="viewResidentIncidentDetail('${incident.id}')">
+                <button class="map-popup-btn" onclick="viewResidentIncidentDetail('${incident.id}', '${incident.source}')">
                     <i class="fas fa-eye"></i> View Details
                 </button>
             </div>
@@ -539,11 +611,15 @@ function updateMapStatusBar(incidents) {
     if (!bar) return;
 
     var activeCount = incidents.filter(function(i) {
-        return !['resolved', 'closed'].includes(i.status);
+        return !['resolved', 'closed', 'processed'].includes(i.status);
     }).length;
 
     var criticalCount = incidents.filter(function(i) {
-        return i.priority === 'critical' && !['resolved', 'closed'].includes(i.status);
+        return i.priority === 'critical' && !['resolved', 'closed', 'processed'].includes(i.status);
+    }).length;
+
+    var fbCount = incidents.filter(function(i) {
+        return i.source === 'facebook' && !['resolved', 'closed', 'processed'].includes(i.status);
     }).length;
 
     var text = activeCount === 0
@@ -552,6 +628,8 @@ function updateMapStatusBar(incidents) {
 
     if (criticalCount > 0) {
         text = '🚨 ' + criticalCount + ' CRITICAL incident' + (criticalCount > 1 ? 's' : '') + ' in your barangay';
+    } else if (fbCount > 0) {
+        text += ' · 📘 ' + fbCount + ' from Facebook';
     }
 
     bar.innerHTML = '<span class="map-live-dot"></span>' + escapeHtml(text);
@@ -560,7 +638,6 @@ function updateMapStatusBar(incidents) {
 function extractCoordinates(location) {
     if (!location) return null;
 
-    // Try JSON format: {"address":"...","latitude":14.6,"longitude":121.0}
     if (typeof location === 'string' && location.trim().startsWith('{')) {
         try {
             var obj = JSON.parse(location);
@@ -570,12 +647,10 @@ function extractCoordinates(location) {
         } catch (e) {}
     }
 
-    // Try JSON object passed directly
     if (typeof location === 'object' && location.latitude != null && location.longitude != null) {
         return { lat: parseFloat(location.latitude), lng: parseFloat(location.longitude) };
     }
 
-    // Try regex for lat/lng in text
     if (typeof location === 'string') {
         var match = location.match(/(-?\d+\.\d+)[,\s]+(-?\d+\.\d+)/);
         if (match) {
@@ -593,45 +668,32 @@ function getTypeColor(type) {
         accident: '#fd7e14',
         flood: '#0dcaf0',
         crime: '#8b5cf6',
+        armed_conflict: '#8b5cf6',
+        natural_disaster: '#0dcaf0',
         other: '#6c757d'
     };
     return map[type] || map.other;
 }
 
 function setupBarangayRealtime() {
+    // Cleanup any previous channels
     if (barangayRealtimeChannel) {
         try { supabaseClient.removeChannel(barangayRealtimeChannel); } catch (e) {}
     }
+    if (barangayRealtimeChannel2) {
+        try { supabaseClient.removeChannel(barangayRealtimeChannel2); } catch (e) {}
+    }
 
+    // ---- Channel 1: resident reports (incident_reports) ----
     barangayRealtimeChannel = supabaseClient
-        .channel('barangay-map-live')
+        .channel('barangay-map-live-residents')
         .on('postgres_changes', {
             event: 'INSERT',
             schema: 'public',
             table: 'incident_reports'
         }, function(payload) {
             if (!payload.new) return;
-            var newIncident = payload.new;
-
-            // Only add if inside barangay scope
-            var coords = extractCoordinates(newIncident.location);
-            if (!coords) return;
-            if (!isInsideBarangay(coords.lat, coords.lng)) return;
-
-            // Add to list
-            var exists = barangayIncidents.find(function(i) { return i.id === newIncident.id; });
-            if (!exists) {
-                barangayIncidents.unshift(newIncident);
-                addSingleMarker(newIncident);
-
-                if (newIncident.priority === 'critical') {
-                    showToast('🚨 CRITICAL incident reported in your barangay: ' + (newIncident.title || ''), 'emergency', 8000);
-                } else {
-                    showToast('🚨 New incident in your barangay: ' + (newIncident.title || ''), 'warning', 6000);
-                }
-
-                updateMapStatusBar(barangayIncidents);
-            }
+            handleNewMapIncident(payload.new, 'resident');
         })
         .on('postgres_changes', {
             event: 'UPDATE',
@@ -639,20 +701,76 @@ function setupBarangayRealtime() {
             table: 'incident_reports'
         }, function(payload) {
             if (!payload.new) return;
+            handleUpdateMapIncident(payload.new, 'resident');
+        })
+        .subscribe();
 
-            var idx = barangayIncidents.findIndex(function(i) { return i.id === payload.new.id; });
-            if (idx >= 0) {
-                barangayIncidents[idx] = Object.assign({}, barangayIncidents[idx], payload.new);
-                // Re-render all markers to update styling
-                renderBarangayMarkers(barangayIncidents);
-                updateMapStatusBar(barangayIncidents);
-            }
+    // ---- Channel 2: Facebook reports (emergencies) ----
+    barangayRealtimeChannel2 = supabaseClient
+        .channel('barangay-map-live-facebook')
+        .on('postgres_changes', {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'emergencies'
+        }, function(payload) {
+            if (!payload.new) return;
+            handleNewMapIncident(payload.new, 'facebook');
+        })
+        .on('postgres_changes', {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'emergencies'
+        }, function(payload) {
+            if (!payload.new) return;
+            handleUpdateMapIncident(payload.new, 'facebook');
         })
         .subscribe();
 }
 
+function handleNewMapIncident(newRow, source) {
+    const normalized = normalizeIncidentRow(newRow, source);
+
+    const coords = normalized._lat != null && normalized._lng != null
+        ? { lat: normalized._lat, lng: normalized._lng }
+        : extractCoordinates(normalized.location);
+    if (!coords) return;
+    if (!isInsideBarangay(coords.lat, coords.lng)) return;
+
+    // Skip if we've already got it
+    const exists = barangayIncidents.find(function(i) { return i.id === normalized.id; });
+    if (exists) return;
+
+    barangayIncidents.unshift(normalized);
+    renderBarangayMarkers(barangayIncidents);
+    updateMapStatusBar(barangayIncidents);
+
+    const label = source === 'facebook' ? 'Facebook report' : 'New incident';
+    if (normalized.priority === 'critical') {
+        showToast('🚨 CRITICAL ' + label + ' in your barangay: ' + (normalized.title || ''), 'emergency', 8000);
+    } else {
+        showToast('📢 ' + label + ': ' + (normalized.title || ''), 'warning', 6000);
+    }
+}
+
+function handleUpdateMapIncident(newRow, source) {
+    const idx = barangayIncidents.findIndex(function(i) { return i.id === newRow.id; });
+    if (idx >= 0) {
+        const normalized = normalizeIncidentRow(newRow, source);
+        // Keep existing _lat/_lng if new one doesn't have coordinates
+        if (normalized._lat == null) {
+            normalized._lat = barangayIncidents[idx]._lat;
+            normalized._lng = barangayIncidents[idx]._lng;
+        }
+        barangayIncidents[idx] = Object.assign({}, barangayIncidents[idx], normalized);
+        renderBarangayMarkers(barangayIncidents);
+        updateMapStatusBar(barangayIncidents);
+    } else {
+        // It's an update for something we don't have — try adding it
+        handleNewMapIncident(newRow, source);
+    }
+}
+
 function addSingleMarker(incident) {
-    // Just re-render all markers (simpler and consistent)
     renderBarangayMarkers(barangayIncidents);
 }
 
@@ -683,7 +801,7 @@ function initGemini() {
 
         geminiClient = new window.GoogleGenerativeAI(window.GEMINI_CONFIG.API_KEY);
         geminiModel = geminiClient.getGenerativeModel({
-            model: window.GEMINI_CONFIG.MODEL || 'gemini-2.0-flash',
+            model: window.GEMINI_CONFIG.MODEL || 'gemini-3.6-flash',
             generationConfig: {
                 temperature: 0.2,
                 maxOutputTokens: 500,
@@ -1057,7 +1175,6 @@ async function analyzeWithGeminiFallback(type, title, desc, loc) {
 // PAGE LOADING
 // ============================================
 function loadPage(page) {
-    // Destroy barangay map when leaving dashboard
     if (page !== 'dashboard' && barangayMap) {
         try { barangayMap.remove(); } catch (e) {}
         barangayMap = null;
@@ -1065,6 +1182,10 @@ function loadPage(page) {
         if (barangayRealtimeChannel) {
             try { supabaseClient.removeChannel(barangayRealtimeChannel); } catch (e) {}
             barangayRealtimeChannel = null;
+        }
+        if (barangayRealtimeChannel2) {
+            try { supabaseClient.removeChannel(barangayRealtimeChannel2); } catch (e) {}
+            barangayRealtimeChannel2 = null;
         }
     }
 
@@ -1148,11 +1269,10 @@ async function loadDashboard() {
                 </div>
             </div>
 
-            <!-- LIVE BARANGAY MAP (NEW) -->
             <div class="resident-map-card">
                 <div class="resident-map-header">
                     <h6><i class="fas fa-map-marked-alt"></i> Live Barangay Map</h6>
-                    <span class="text-muted small"><i class="fas fa-circle" style="color:var(--primary);font-size:0.5rem;animation:pulse-dot 1.6s infinite;"></i> Real-time updates</span>
+                    <span class="text-muted small"><i class="fas fa-circle" style="color:var(--primary);font-size:0.5rem;animation:pulse-dot 1.6s infinite;"></i> Real-time · incl. Facebook reports</span>
                 </div>
                 <div class="resident-map-body">
                     <div id="barangayMap"></div>
@@ -1222,7 +1342,6 @@ async function loadDashboard() {
             </div>
         `;
 
-        // Initialize barangay map AFTER DOM is rendered
         setTimeout(initBarangayMap, 200);
 
         if (window.CuliatDesign) {
@@ -1253,7 +1372,7 @@ function renderIncidentRow(incident, isOwnReport) {
     const mediaCount = getMediaUrls(incident).length;
 
     return `
-        <div class="incident-row priority-${priority} bg-transparent" onclick="viewResidentIncidentDetail('${incident.id}')">
+        <div class="incident-row priority-${priority} bg-transparent" onclick="viewResidentIncidentDetail('${incident.id}', 'resident')">
             <div class="inc-icon ${typeClass}">
                 <i class="fas ${typeIcon}"></i>
             </div>
@@ -1283,17 +1402,29 @@ function renderIncidentRow(incident, isOwnReport) {
 
 // ============================================
 // VIEW RESIDENT INCIDENT DETAIL MODAL
+// Supports both 'resident' (incident_reports) and 'facebook' (emergencies)
 // ============================================
-async function viewResidentIncidentDetail(incidentId) {
+async function viewResidentIncidentDetail(incidentId, source) {
     let incident = null;
+    source = source || 'resident';
+
     try {
-        const { data } = await supabaseClient
-            .from('incident_reports')
-            .select('*')
-            .eq('id', incidentId)
-            .maybeSingle();
-        if (data) incident = data;
-    } catch (e) {}
+        if (source === 'facebook') {
+            const { data } = await supabaseClient
+                .from('emergencies')
+                .select('*')
+                .eq('id', incidentId)
+                .maybeSingle();
+            if (data) incident = data;
+        } else {
+            const { data } = await supabaseClient
+                .from('incident_reports')
+                .select('*')
+                .eq('id', incidentId)
+                .maybeSingle();
+            if (data) incident = data;
+        }
+    } catch (e) { console.warn('Detail fetch failed:', e); }
 
     if (!incident) {
         incident = allReports.find(r => r.id === incidentId);
@@ -1322,13 +1453,20 @@ async function viewResidentIncidentDetail(incidentId) {
 
     const rawDescription = (incident.description == null) ? '' : String(incident.description).trim();
     const escapedDescription = escapeHtml(rawDescription);
-    const fullLocation = escapeHtml(String(incident.location || 'Unknown location'));
+    const fullLocation = escapeHtml(typeof incident.location === 'string'
+        ? incident.location
+        : JSON.stringify(incident.location || 'Unknown location'));
+
+    const sourceBadge = source === 'facebook'
+        ? `<span class="badge" style="background:#0084FF;color:#fff;"><i class="fab fa-facebook-messenger me-1"></i>Facebook Report</span>`
+        : `<span class="badge bg-secondary"><i class="fas fa-user me-1"></i>Resident Report</span>`;
 
     document.getElementById('residentDetailTitle').innerHTML =
         `<i class="fas ${typeIcon}"></i>${escapeHtml(incident.title || 'Incident Details')}`;
 
     document.getElementById('residentDetailBody').innerHTML = `
         <div class="d-flex gap-2 mb-3 flex-wrap">
+            ${sourceBadge}
             <span class="badge-priority-sm priority-${priority}" style="font-size:0.72rem;padding:6px 16px;">
                 <i class="fas fa-exclamation-triangle me-1"></i>${priority} priority
             </span>
@@ -1360,15 +1498,20 @@ async function viewResidentIncidentDetail(incidentId) {
                 <div class="lbl"><i class="fas fa-hashtag me-1"></i>Report ID</div>
                 <div class="val" style="font-size:0.78rem;font-family:monospace;">${incident.id.substring(0, 12)}…</div>
             </div>
-            ${incident.contact_number ? `
+            ${incident.contact_number || incident.reporter_phone ? `
             <div class="detail-meta-item">
                 <div class="lbl"><i class="fas fa-phone me-1"></i>Contact</div>
-                <div class="val">${escapeHtml(incident.contact_number)}</div>
+                <div class="val">${escapeHtml(incident.contact_number || incident.reporter_phone)}</div>
             </div>` : ''}
             ${incident.barangay ? `
             <div class="detail-meta-item">
                 <div class="lbl"><i class="fas fa-building me-1"></i>Barangay</div>
                 <div class="val">${escapeHtml(incident.barangay)}</div>
+            </div>` : ''}
+            ${incident.reporter_name ? `
+            <div class="detail-meta-item">
+                <div class="lbl"><i class="fas fa-user me-1"></i>Reporter</div>
+                <div class="val">${escapeHtml(incident.reporter_name)}</div>
             </div>` : ''}
         </div>
 
@@ -1595,7 +1738,6 @@ async function submitReport() {
     if (!title || !description || !location || !contact) { showToast('Please fill in all fields', 'warning'); return; }
     if (!lat || !lng) { showToast('Please select a location on the map or search for a place', 'warning'); return; }
 
-    // Enforce barangay scope
     if (!isInsideBarangay(parseFloat(lat), parseFloat(lng))) {
         showToast('⚠️ Location must be within Barangay Culiat (Tandang Sora, Quezon Ave, Congressional Ave Ext)', 'warning', 7000);
         return;
@@ -1756,6 +1898,7 @@ async function logout() {
     try {
         if (barangayMap) { try { barangayMap.remove(); } catch(e) {} }
         if (barangayRealtimeChannel) { try { await supabaseClient.removeChannel(barangayRealtimeChannel); } catch(e) {} }
+        if (barangayRealtimeChannel2) { try { await supabaseClient.removeChannel(barangayRealtimeChannel2); } catch(e) {} }
         if (window.CuliatAuthSecurity) {
             window.CuliatAuthSecurity.stopInactivityWatch();
             window.CuliatAuthSecurity.clearOtpVerification();
