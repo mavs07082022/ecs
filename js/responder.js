@@ -1,6 +1,10 @@
 /* ============================================================
-   Culiat Public Safety — Responder Dashboard (v5)
+   Culiat Public Safety — Responder Dashboard (v8)
    Realtime Siren + Emergency Popup + Barangay Map
+   + Enhanced type icons & pulse animations
+   + Fixed external link navigation
+   + Admin-only: Responders + Alerts sidebar
+   + Send Alert modal = full incident-style form
    ============================================================ */
 
 let currentUser = null;
@@ -38,6 +42,23 @@ let responderMapData = [];
 let responderMapRealtime1 = null;
 let responderMapRealtime2 = null;
 let responderBoundaryLayer = null;
+
+// Alert modal map state
+let alertMap = null;
+let alertMapMarker = null;
+let alertMapInitialized = false;
+let alertGeocodeTimeout = null;
+let isAlertGeocoding = false;
+
+// Alert media state
+let selectedAlertMediaFiles = [];
+let alertMediaPreviewUrls = [];
+
+// Gemini state (for alert AI analysis)
+let geminiClient = null;
+let geminiModel = null;
+let geminiReady = false;
+const aiCache = new Map();
 
 // Geocode cache
 const geocodeCache = new Map();
@@ -277,6 +298,21 @@ function getTypeColor(type) {
         natural_disaster: '#0dcaf0', other: '#6c757d'
     };
     return map[type] || map.other;
+}
+
+function getTypeLabel(type) {
+    var map = {
+        fire: 'Fire', medical: 'Medical', accident: 'Accident',
+        flood: 'Flood', crime: 'Crime', armed_conflict: 'Armed Conflict',
+        natural_disaster: 'Natural Disaster', other: 'Other'
+    };
+    return map[type] || 'Other';
+}
+
+function getPriorityPulseClasses(priority) {
+    if (priority === 'critical') return { card: 'pulse-critical', icon: 'pulse-icon-critical' };
+    if (priority === 'high') return { card: 'pulse-high', icon: '' };
+    return { card: '', icon: '' };
 }
 
 // ============================================
@@ -631,35 +667,59 @@ async function initResponderDashboard() {
             userNameDisplay.textContent = (currentProfile.full_name || 'Responder') + ' (' + currentProfile.role + ')';
         }
 
-        // Responders link only visible for ADMIN
+        // ============================================================
+        // ROLE-BASED SIDEBAR VISIBILITY
+        // Responders link + Alerts link ONLY visible for ADMIN
+        // ============================================================
+        var rl = document.getElementById('respondersLink');
+        var al = document.getElementById('alertsLink');
         if (currentProfile.role === 'admin') {
-            var rl = document.getElementById('respondersLink');
             if (rl) rl.style.display = 'block';
+            if (al) al.style.display = 'block';
         } else {
-            var rl2 = document.getElementById('respondersLink');
-            if (rl2) rl2.style.display = 'none';
+            if (rl) rl.style.display = 'none';
+            if (al) al.style.display = 'none';
         }
 
         actionModal = new bootstrap.Modal(document.getElementById('actionModal'));
         addResponderModal = new bootstrap.Modal(document.getElementById('addResponderModal'));
         alertModal = new bootstrap.Modal(document.getElementById('alertModal'));
 
+        // Initialize Gemini for alert AI analysis
+        initGemini();
+
+        // Setup alert modal map + geocode + media upload
+        setupAlertModal();
+
         await loadDashboard();
 
+        // ============================================================
+        // SIDEBAR LINK BINDING
+        // If the link has a real href (like hotline.html), DO NOT
+        // preventDefault. Only internal "#" links get intercepted.
+        // ============================================================
         document.querySelectorAll('.dashboard-sidebar .nav-link').forEach(function(link) {
             link.addEventListener('click', function(e) {
-                e.preventDefault();
+                var href = this.getAttribute('href');
 
+                // External / real-href link → let the browser navigate
+                if (href && href !== '#') {
+                    return;
+                }
+
+                // Internal nav link
+                e.preventDefault();
                 var targetPage = this.dataset.page;
-                if (targetPage === 'responders' && currentProfile.role !== 'admin') {
+                if (!targetPage) return;
+
+                if ((targetPage === 'responders' || targetPage === 'alerts') && currentProfile.role !== 'admin') {
                     showToast('Access denied. Admins only.', 'warning', 4000);
                     return;
                 }
 
-                var page = targetPage;
                 document.querySelectorAll('.dashboard-sidebar .nav-link').forEach(function(l) { l.classList.remove('active'); });
                 this.classList.add('active');
-                loadPage(page);
+                loadPage(targetPage);
             });
         });
 
@@ -786,7 +846,7 @@ async function checkNewEmergencies() {
 // PAGE ROUTING
 // ============================================
 function loadPage(page) {
-    if (page === 'responders' && currentProfile && currentProfile.role !== 'admin') {
+    if ((page === 'responders' || page === 'alerts') && currentProfile && currentProfile.role !== 'admin') {
         showToast('Access denied. Admins only.', 'warning', 4000);
         return;
     }
@@ -829,6 +889,8 @@ async function loadDashboard() {
         var critical = reports.filter(function(r) { return r.priority === 'critical' && !['resolved', 'closed'].includes(r.status); }).length || 0;
         var resolved = reports.filter(function(r) { return r.status === 'resolved'; }).length || 0;
 
+        var isAdmin = currentProfile && currentProfile.role === 'admin';
+
         container.innerHTML = `
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
@@ -836,8 +898,11 @@ async function loadDashboard() {
                     <p class="text-muted mb-0">Barangay ${escapeHtml(currentProfile?.barangay || 'N/A')}</p>
                 </div>
                 <div class="d-flex gap-2 flex-wrap">
-                    ${currentProfile && currentProfile.role === 'admin' ? `
-                        <button class="btn btn-danger" onclick="addResponderModal.show()">
+                    ${isAdmin ? `
+                        <button class="btn btn-danger" onclick="openAlertModal()">
+                            <i class="fas fa-broadcast-tower me-2"></i>Send Alert
+                        </button>
+                        <button class="btn btn-primary" onclick="addResponderModal.show()">
                             <i class="fas fa-user-plus me-2"></i>Add Responder
                         </button>
                     ` : ''}
@@ -887,9 +952,16 @@ async function loadDashboard() {
                         <div class="list-group list-group-flush">
                             ${reports.slice(0, 5).map(function(incident) {
                                 var mediaUrls = getMediaUrls(incident);
+                                var priority = incident.priority || 'medium';
+                                var typeClass = getTypeClass(incident.type);
+                                var typeIcon = getTypeIcon(incident.type);
+                                var pulse = getPriorityPulseClasses(priority);
                                 return `
-                                    <div class="list-group-item d-flex align-items-center gap-3">
-                                        <span class="badge priority-${incident.priority || 'medium'}">${incident.priority || 'Medium'}</span>
+                                    <div class="list-group-item d-flex align-items-center gap-3 ${pulse.card}">
+                                        <div class="incident-type-icon ${typeClass} ${pulse.icon}" style="width:36px;height:36px;font-size:0.9rem;">
+                                            <i class="fas ${typeIcon}"></i>
+                                        </div>
+                                        <span class="badge priority-${priority}">${priority}</span>
                                         <div class="flex-grow-1">
                                             <div class="fw-semibold">${escapeHtml(incident.title || 'Untitled')}</div>
                                             <div class="small text-muted">${escapeHtml(incident.type || '')} • ${escapeHtml(formatLocationForPopup(incident.location))}</div>
@@ -1270,6 +1342,845 @@ function handleUpdateResponderMapIncident(newRow, source) {
         responderMapData[idx] = Object.assign({}, responderMapData[idx], normalized);
         renderResponderMarkers(responderMapData);
         updateResponderMapStatusBar(responderMapData);
+    }
+}
+
+// ============================================
+// ALERT MODAL — MAP + GEOCODE + MEDIA + AI
+// ============================================
+function setupAlertModal() {
+    // Reset state on modal show
+    var alertModalEl = document.getElementById('alertModal');
+    if (alertModalEl) {
+        alertModalEl.addEventListener('shown.bs.modal', function() {
+            if (!alertMapInitialized) {
+                setTimeout(initAlertMap, 300);
+            } else if (alertMap) {
+                setTimeout(function() { alertMap.invalidateSize(); }, 300);
+            }
+        });
+        alertModalEl.addEventListener('hidden.bs.modal', function() {
+            resetAlertForm();
+        });
+    }
+
+    // Geolocate button
+    var alertGeolocateBtn = document.getElementById('alertGeolocateBtn');
+    if (alertGeolocateBtn) {
+        alertGeolocateBtn.addEventListener('click', function() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function(pos) {
+                    const lat = pos.coords.latitude, lng = pos.coords.longitude;
+                    if (alertMap && alertMapMarker) {
+                        alertMap.setView([lat, lng], 16);
+                        alertMapMarker.setLatLng([lat, lng]);
+                        updateAlertCoordDisplay(lat, lng);
+                        reverseGeocodeAlert(lat, lng);
+                        showToast('📍 Location updated from GPS', 'success');
+                    }
+                }, function() { showToast('Unable to get GPS location', 'danger'); });
+            } else { showToast('Geolocation not supported', 'warning'); }
+        });
+    }
+
+    // Location search
+    var alertLocationInput = document.getElementById('alertLocation');
+    if (alertLocationInput) {
+        alertLocationInput.addEventListener('input', function(e) {
+            const query = this.value.trim();
+            if (query.length < 3) {
+                document.getElementById('alertGeocodeSuggestions').classList.remove('show');
+                return;
+            }
+            clearTimeout(alertGeocodeTimeout);
+            alertGeocodeTimeout = setTimeout(() => { searchAlertLocation(query); }, 500);
+        });
+        alertLocationInput.addEventListener('blur', function() {
+            setTimeout(() => { document.getElementById('alertGeocodeSuggestions').classList.remove('show'); }, 300);
+        });
+        alertLocationInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const query = this.value.trim();
+                if (query.length >= 3) searchAlertLocation(query);
+            }
+        });
+    }
+
+    // Media upload
+    setupAlertMediaUpload();
+}
+
+function resetAlertForm() {
+    var form = document.getElementById('alertForm');
+    if (form) form.reset();
+    var aiResult = document.getElementById('alertAiAnalysisResult');
+    if (aiResult) aiResult.classList.add('d-none');
+    var geocodeSug = document.getElementById('alertGeocodeSuggestions');
+    if (geocodeSug) geocodeSug.classList.remove('show');
+    var autoHint = document.getElementById('autoAlertTypeHint');
+    if (autoHint) autoHint.textContent = '';
+    window._alertAiResult = null;
+
+    selectedAlertMediaFiles = [];
+    clearAlertMediaPreviews();
+    var mediaCount = document.getElementById('alertMediaCount');
+    if (mediaCount) mediaCount.textContent = '0 / 5';
+    var mediaUpload = document.getElementById('alertMediaUpload');
+    if (mediaUpload) mediaUpload.value = '';
+
+    if (alertMap && alertMapMarker) {
+        alertMap.setView([BARANGAY_SCOPE.centerLat, BARANGAY_SCOPE.centerLng], 14);
+        alertMapMarker.setLatLng([BARANGAY_SCOPE.centerLat, BARANGAY_SCOPE.centerLng]);
+        updateAlertCoordDisplay(BARANGAY_SCOPE.centerLat, BARANGAY_SCOPE.centerLng);
+    }
+}
+
+function openAlertModal() {
+    if (!currentProfile || currentProfile.role !== 'admin') {
+        showToast('Access denied. Admins only.', 'warning', 4000);
+        return;
+    }
+    if (!alertModal) {
+        alertModal = new bootstrap.Modal(document.getElementById('alertModal'));
+    }
+    // Prefill contact with admin's number
+    var contactInput = document.getElementById('alertContact');
+    if (contactInput && currentProfile?.contact_number) {
+        contactInput.value = currentProfile.contact_number;
+    }
+    alertModal.show();
+}
+
+function initAlertMap() {
+    if (alertMapInitialized) return;
+    const mapContainer = document.getElementById('alertMap');
+    if (!mapContainer) return;
+
+    const defaultLat = BARANGAY_SCOPE.centerLat;
+    const defaultLng = BARANGAY_SCOPE.centerLng;
+    alertMap = L.map('alertMap').setView([defaultLat, defaultLng], 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(alertMap);
+
+    L.polygon(BARANGAY_SCOPE.polygon, {
+        color: '#2e7d32',
+        weight: 2,
+        opacity: 0.8,
+        fillColor: '#2e7d32',
+        fillOpacity: 0.08,
+        dashArray: '8 4'
+    }).addTo(alertMap);
+
+    alertMapMarker = L.marker([defaultLat, defaultLng], { draggable: true }).addTo(alertMap);
+    updateAlertCoordDisplay(defaultLat, defaultLng);
+
+    alertMapMarker.on('dragend', function(e) {
+        const pos = alertMapMarker.getLatLng();
+        updateAlertCoordDisplay(pos.lat, pos.lng);
+        reverseGeocodeAlert(pos.lat, pos.lng);
+    });
+    alertMap.on('click', function(e) {
+        const lat = e.latlng.lat, lng = e.latlng.lng;
+        alertMapMarker.setLatLng([lat, lng]);
+        updateAlertCoordDisplay(lat, lng);
+        reverseGeocodeAlert(lat, lng);
+    });
+    alertMapInitialized = true;
+}
+
+function updateAlertCoordDisplay(lat, lng) {
+    var latEl = document.getElementById('alertLat');
+    var lngEl = document.getElementById('alertLng');
+    var coordEl = document.getElementById('alertCoordDisplay');
+    if (latEl) latEl.value = lat;
+    if (lngEl) lngEl.value = lng;
+    if (coordEl) coordEl.textContent = `Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}`;
+}
+
+async function searchAlertLocation(query) {
+    const suggestions = document.getElementById('alertGeocodeSuggestions');
+    const spinner = document.getElementById('alertSearchSpinner');
+    if (isAlertGeocoding) return;
+    isAlertGeocoding = true;
+    if (spinner) spinner.classList.add('show');
+
+    try {
+        const viewbox = `${BARANGAY_SCOPE.bounds.west},${BARANGAY_SCOPE.bounds.north},${BARANGAY_SCOPE.bounds.east},${BARANGAY_SCOPE.bounds.south}`;
+        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&countrycodes=ph&viewbox=${viewbox}&bounded=1`;
+        const response = await fetch(url, { headers: { 'Accept': 'application/json', 'User-Agent': 'BarangayEMS/1.0' } });
+        const data = await response.json();
+        if (spinner) spinner.classList.remove('show');
+
+        if (data && data.length > 0) {
+            suggestions.innerHTML = data.map(item =>
+                `<div class="geocode-suggestion-item" data-lat="${item.lat}" data-lon="${item.lon}" data-display="${item.display_name}">
+                    <i class="fas fa-map-pin text-danger me-2"></i><span>${item.display_name}</span>
+                </div>`
+            ).join('');
+            suggestions.classList.add('show');
+            suggestions.querySelectorAll('.geocode-suggestion-item').forEach(el => {
+                el.addEventListener('click', function() {
+                    const lat = parseFloat(this.dataset.lat);
+                    const lon = parseFloat(this.dataset.lon);
+                    const display = this.dataset.display;
+                    document.getElementById('alertLocation').value = display;
+                    suggestions.classList.remove('show');
+                    if (alertMap && alertMapMarker) {
+                        alertMap.setView([lat, lon], 16);
+                        alertMapMarker.setLatLng([lat, lon]);
+                        updateAlertCoordDisplay(lat, lon);
+                    }
+                });
+            });
+        } else {
+            suggestions.classList.remove('show');
+        }
+    } catch (error) {
+        if (suggestions) suggestions.classList.remove('show');
+    } finally {
+        isAlertGeocoding = false;
+        if (spinner) spinner.classList.remove('show');
+    }
+}
+
+async function reverseGeocodeAlert(lat, lng) {
+    try {
+        const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=16`;
+        const response = await fetch(url, { headers: { 'Accept': 'application/json', 'User-Agent': 'BarangayEMS/1.0' } });
+        const data = await response.json();
+        if (data && data.display_name) {
+            document.getElementById('alertLocation').value = data.display_name;
+        }
+    } catch (error) { console.error('Reverse geocoding error:', error); }
+}
+
+// ============================================
+// ALERT MEDIA UPLOAD
+// ============================================
+function setupAlertMediaUpload() {
+    const fileInput = document.getElementById('alertMediaUpload');
+    const dropZone = document.getElementById('alertMediaDropZone');
+    if (!fileInput || !dropZone) return;
+
+    fileInput.addEventListener('change', function() { handleAlertMediaFiles(this.files); });
+    dropZone.addEventListener('dragover', function(e) { e.preventDefault(); this.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', function(e) { e.preventDefault(); this.classList.remove('dragover'); });
+    dropZone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        this.classList.remove('dragover');
+        if (e.dataTransfer.files.length > 0) handleAlertMediaFiles(e.dataTransfer.files);
+    });
+    dropZone.addEventListener('click', function() { fileInput.click(); });
+}
+
+function handleAlertMediaFiles(files) {
+    const maxFiles = 5, maxSize = 10 * 1024 * 1024;
+    if (selectedAlertMediaFiles.length === 0) clearAlertMediaPreviews();
+
+    let validFiles = [], errorMessages = [];
+    for (let file of files) {
+        if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
+            errorMessages.push(`${file.name}: Unsupported file type`);
+            continue;
+        }
+        if (file.size > maxSize) {
+            errorMessages.push(`${file.name}: File too large (max 10MB)`);
+            continue;
+        }
+        if (selectedAlertMediaFiles.length + validFiles.length >= maxFiles) {
+            errorMessages.push(`Maximum ${maxFiles} files allowed`);
+            break;
+        }
+        validFiles.push(file);
+    }
+
+    if (errorMessages.length > 0) showToast(errorMessages.join('. '), 'warning', 6000);
+    if (validFiles.length === 0) return;
+
+    for (let file of validFiles) {
+        selectedAlertMediaFiles.push(file);
+        const reader = new FileReader();
+        reader.onload = function(e) { createAlertMediaPreview(file, e.target.result); };
+        reader.readAsDataURL(file);
+    }
+    updateAlertMediaCount();
+}
+
+function createAlertMediaPreview(file, dataUrl) {
+    const container = document.getElementById('alertMediaPreviewContainer');
+    if (!container) return;
+    const isVideo = file.type.startsWith('video/');
+    const previewDiv = document.createElement('div');
+    previewDiv.className = 'media-preview-item';
+    previewDiv.dataset.index = container.children.length;
+
+    if (isVideo) {
+        previewDiv.innerHTML = `<video src="${dataUrl}" muted></video>
+            <div class="media-type-badge video"><i class="fas fa-video"></i></div>
+            <button class="remove-media-btn" onclick="removeAlertMediaFile(${container.children.length})"><i class="fas fa-times"></i></button>
+            <div class="media-file-name">${file.name}</div>`;
+    } else {
+        previewDiv.innerHTML = `<img src="${dataUrl}" alt="${file.name}">
+            <div class="media-type-badge image"><i class="fas fa-image"></i></div>
+            <button class="remove-media-btn" onclick="removeAlertMediaFile(${container.children.length})"><i class="fas fa-times"></i></button>
+            <div class="media-file-name">${file.name}</div>`;
+    }
+    container.appendChild(previewDiv);
+}
+
+function removeAlertMediaFile(index) {
+    if (index >= 0 && index < selectedAlertMediaFiles.length) {
+        selectedAlertMediaFiles.splice(index, 1);
+        clearAlertMediaPreviews();
+        for (let file of selectedAlertMediaFiles) {
+            const reader = new FileReader();
+            reader.onload = function(e) { createAlertMediaPreview(file, e.target.result); };
+            reader.readAsDataURL(file);
+        }
+        updateAlertMediaCount();
+    }
+}
+
+function clearAlertMediaPreviews() {
+    var container = document.getElementById('alertMediaPreviewContainer');
+    if (container) container.innerHTML = '';
+}
+
+function updateAlertMediaCount() {
+    const countDisplay = document.getElementById('alertMediaCount');
+    if (countDisplay) countDisplay.textContent = `${selectedAlertMediaFiles.length} / 5`;
+}
+
+async function uploadAlertMediaFiles(alertId) {
+    if (selectedAlertMediaFiles.length === 0) return [];
+    const uploadedUrls = [], storageBucket = 'incident-media';
+
+    for (let i = 0; i < selectedAlertMediaFiles.length; i++) {
+        const file = selectedAlertMediaFiles[i];
+        try {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `alerts/${alertId}/${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
+            const { data, error } = await supabaseClient.storage.from(storageBucket).upload(fileName, file, { cacheControl: '3600', upsert: false });
+            if (error) {
+                showToast(`Failed to upload ${file.name}: ${error.message}`, 'warning');
+                continue;
+            }
+            const { data: urlData } = supabaseClient.storage.from(storageBucket).getPublicUrl(fileName);
+            const mediaType = file.type.startsWith('video/') ? 'video' : 'image';
+            uploadedUrls.push({ url: urlData.publicUrl, type: mediaType, name: file.name, size: file.size });
+        } catch (error) {
+            showToast(`Error uploading ${file.name}`, 'danger');
+        }
+    }
+    return uploadedUrls;
+}
+
+// ============================================
+// ALERT AI ANALYSIS
+// ============================================
+function initGemini() {
+    try {
+        console.log('🔍 Checking Gemini setup...');
+
+        if (!window.GEMINI_CONFIG) {
+            console.warn('❌ window.GEMINI_CONFIG is undefined — gemini-config.js not loaded');
+            return false;
+        }
+        if (!window.GEMINI_CONFIG.API_KEY || window.GEMINI_CONFIG.API_KEY.indexOf('PASTE_YOUR') !== -1) {
+            console.warn('❌ API key not set in gemini-config.js');
+            return false;
+        }
+        if (typeof window.GoogleGenerativeAI === 'undefined') {
+            console.warn('❌ GoogleGenerativeAI SDK not loaded — check script tag in HTML');
+            return false;
+        }
+
+        geminiClient = new window.GoogleGenerativeAI(window.GEMINI_CONFIG.API_KEY);
+        geminiModel = geminiClient.getGenerativeModel({
+            model: window.GEMINI_CONFIG.MODEL || 'gemini-3.6-flash',
+            generationConfig: {
+                temperature: 0.2,
+                maxOutputTokens: 500,
+                responseMimeType: 'application/json'
+            }
+        });
+        geminiReady = true;
+        console.log('✅ Gemini AI ready:', window.GEMINI_CONFIG.MODEL);
+        return true;
+    } catch (e) {
+        console.warn('❌ Gemini init failed:', e);
+        geminiReady = false;
+        return false;
+    }
+}
+
+const TYPE_DETECTION_KEYWORDS = {
+    fire: ['fire', 'flame', 'smoke', 'burn', 'burning', 'blaze', 'sunog', 'apoy', 'usok', 'nagniningas', 'nasusunog'],
+    medical: ['medical', 'injury', 'sick', 'pain', 'chest pain', 'heart', 'breathing', 'unconscious', 'bleeding', 'faint', 'seizure', 'stroke', 'hospital', 'ambulance', 'medikal', 'sakit', 'sugat', 'nasugatan', 'hindi humihinga', 'walang malay', 'dugo'],
+    accident: ['accident', 'crash', 'collision', 'vehicle', 'car', 'motorcycle', 'truck', 'jeepney', 'fell', 'fall', 'hit', 'aksidente', 'bangga', 'nasagasaan', 'nahulog'],
+    flood: ['flood', 'flooding', 'flooded', 'water rising', 'overflow', 'river', 'rain', 'typhoon', 'storm', 'drowning', 'baha', 'pagbaha', 'binaha', 'tubig', 'ilog', 'ulan', 'bagyo', 'lunod'],
+    crime: ['crime', 'rob', 'robbery', 'theft', 'steal', 'thief', 'burglar', 'attack', 'assault', 'fight', 'weapon', 'gun', 'knife', 'shooting', 'stab', 'murder', 'krimen', 'holdap', 'nakaw', 'magnanakaw', 'pananakit', 'away', 'baril', 'kutsilyo', 'saksak', 'patayan']
+};
+
+function detectIncidentType(title, description) {
+    const text = ((title || '') + ' ' + (description || '')).toLowerCase();
+    const scores = { fire: 0, medical: 0, accident: 0, flood: 0, crime: 0 };
+
+    Object.keys(TYPE_DETECTION_KEYWORDS).forEach(function(type) {
+        TYPE_DETECTION_KEYWORDS[type].forEach(function(kw) {
+            if (kw.indexOf(' ') !== -1) {
+                if (text.indexOf(kw) !== -1) scores[type]++;
+            } else {
+                const re = new RegExp('\\b' + kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i');
+                if (re.test(text)) scores[type]++;
+            }
+        });
+    });
+
+    let detectedType = 'other';
+    let maxScore = 0;
+    Object.keys(scores).forEach(function(type) {
+        if (scores[type] > maxScore) {
+            maxScore = scores[type];
+            detectedType = type;
+        }
+    });
+
+    if (maxScore === 0) detectedType = 'other';
+    return { type: detectedType, score: maxScore, allScores: scores };
+}
+
+const AI_KEYWORDS = {
+    critical: {
+        3: ['explosion', 'exploded', 'shooting', 'shot', 'stabbing', 'stabbed', 'unconscious', 'not breathing', 'no pulse', 'severe bleeding', 'heart attack', 'stroke', 'cardiac arrest', 'drowning', 'drowned', 'gas leak', 'building collapse', 'collapsed', 'trapped', 'electrocuted', 'electrocution', 'seizure', 'choking', 'overdose', 'pagsabog', 'sumabog', 'bumaril', 'sinaksak', 'saksak', 'walang malay', 'hindi humihinga', 'walang pulso', 'matinding pagdurugo', 'atake sa puso', 'paglunod', 'nalunod', 'pagtagas ng gas', 'gumuhong gusali', 'naipit', 'nakuryente'],
+        2: ['fire', 'burning', 'flames', 'smoke', 'sunog', 'nasusunog', 'nagniningas', 'usok']
+    },
+    high: {
+        2: ['accident', 'collision', 'crash', 'flood', 'flooding', 'robbery', 'holdap', 'assault', 'attacked', 'chest pain', 'difficulty breathing', 'heavy bleeding', 'fracture', 'broken bone', 'head injury', 'burns', 'landslide', 'earthquake', 'typhoon', 'aksidente', 'banggaan', 'bumangga', 'baha', 'pagbaha', 'pananakit', 'sinaktan', 'sakit sa dibdib', 'hirap huminga', 'bali', 'baling buto', 'pinsala sa ulo', 'pagguho', 'lindol', 'bagyo'],
+        1: ['injured', 'injury', 'wounded', 'bleeding', 'sugatan', 'nasugatan', 'dugo']
+    },
+    medium: {
+        1: ['medical', 'suspicious', 'theft', 'stolen', 'vandalism', 'fight', 'argument', 'noise', 'disturbance', 'fallen tree', 'power outage', 'medikal', 'kahina-hinala', 'pagnanakaw', 'ninakaw', 'bandalismo', 'away', 'gulo', 'ingay', 'nahulog na puno', 'walang kuryente']
+    }
+};
+
+const NEGATION_WORDS = ['no', 'not', 'none', 'without', 'false alarm', 'walang', 'wala', 'hindi', 'huwag'];
+const FAKE_INDICATORS = ['test', 'testing', 'asdf', 'qwerty', 'joke', 'prank', 'lol', 'haha', 'hehe', 'fake', 'sample', 'dummy', 'biruan', 'biro', 'kalokohan', 'peke', 'pagsubok'];
+
+function aiNormalize(text) {
+    return String(text || '').toLowerCase().replace(/[^\w\sáéíóúñàèìòùâêîôûäëïöü]/gi, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function aiContainsWord(text, word) {
+    if (!word) return false;
+    if (word.indexOf(' ') !== -1) return text.indexOf(word) !== -1;
+    var re = new RegExp('\\b' + word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i');
+    return re.test(text);
+}
+
+function aiIsNegated(text, word) {
+    var idx = text.indexOf(word);
+    if (idx === -1) return false;
+    var before = text.substring(Math.max(0, idx - 40), idx).trim();
+    var words = before.split(/\s+/).slice(-4);
+    return words.some(function(w) { return NEGATION_WORDS.indexOf(w.toLowerCase()) !== -1; });
+}
+
+function aiIsNonsense(text) {
+    if (!text || text.length < 8) return true;
+    if (/(.)\1{4,}/.test(text)) return true;
+    for (var i = 0; i < FAKE_INDICATORS.length; i++) {
+        if (aiContainsWord(text, FAKE_INDICATORS[i])) return true;
+    }
+    var vowels = text.match(/[aeiouáéíóúàèìòùâêîôûäëïöü]/gi);
+    if (text.length > 6 && (!vowels || vowels.length < text.length * 0.1)) return true;
+    return false;
+}
+
+function enhancedAIAnalysis(type, description, location, title) {
+    var normDesc = aiNormalize(description || '');
+    var normTitle = aiNormalize(title || '');
+    var normLoc = aiNormalize(location || '');
+    var text = (normTitle + ' ' + normDesc + ' ' + normLoc).trim();
+
+    var isNonsense = aiIsNonsense(normDesc) && aiIsNonsense(normTitle);
+    var score = 0;
+    var matched = [];
+
+    Object.keys(AI_KEYWORDS).forEach(function(cat) {
+        Object.keys(AI_KEYWORDS[cat]).forEach(function(w) {
+            AI_KEYWORDS[cat][w].forEach(function(kw) {
+                if (aiContainsWord(text, kw) && !aiIsNegated(text, kw)) {
+                    score += parseInt(w, 10);
+                    matched.push(kw);
+                }
+            });
+        });
+    });
+
+    var typeBoost = 0;
+    if (['fire','medical','accident','flood','crime'].indexOf(type) !== -1) typeBoost = 1;
+    var finalScore = score + typeBoost;
+
+    var priority = 'low', confidence = 0.70;
+    if (isNonsense) { priority = 'low'; confidence = 0.40; }
+    else if (finalScore >= 8) { priority = 'critical'; confidence = 0.92; }
+    else if (finalScore >= 5) { priority = 'high'; confidence = 0.84; }
+    else if (finalScore >= 2) { priority = 'medium'; confidence = 0.76; }
+    else { priority = 'low'; confidence = 0.68; }
+
+    return {
+        priority: priority,
+        confidence: confidence,
+        actions: getActionsForType(type),
+        verification: getVerificationText(priority, confidence),
+        reasoning: ['Local analysis: ' + (matched.length ? 'matched ' + matched.slice(0,5).join(', ') : 'no strong keywords')],
+        detectedLanguage: 'unknown',
+        isNonsense: isNonsense,
+        source: 'rule-based'
+    };
+}
+
+async function analyzeWithGemini(type, title, description, location) {
+    if (!geminiReady || !geminiModel) throw new Error('Gemini not ready');
+
+    const cacheKey = `${type}|${title}|${description}|${location}`.toLowerCase().slice(0, 200);
+    if (window.GEMINI_CONFIG && window.GEMINI_CONFIG.ENABLE_CACHE && aiCache.has(cacheKey)) {
+        const cached = aiCache.get(cacheKey);
+        if (Date.now() - cached.ts < window.GEMINI_CONFIG.CACHE_TTL_MS) {
+            console.log('🎯 AI cache hit');
+            return cached.result;
+        }
+    }
+
+    const prompt = `You are an emergency dispatcher for a Barangay (village) emergency response system in the Philippines.
+
+Analyze the incident report below. You MUST understand English, Tagalog, and mixed Taglish.
+
+Title: ${title}
+Description: ${description}
+Location: ${location}
+User-selected type: ${type}
+
+TASK 1 — DETECT INCIDENT TYPE:
+Determine the actual incident type from the text. Choose ONE of:
+- "fire" (sunog, apoy, usok, nasusunog)
+- "medical" (sakit, sugat, ospital, hindi humihinga, atake)
+- "accident" (aksidente, bangga, nasagasaan, nahulog)
+- "flood" (baha, pagbaha, binaha, paglunod)
+- "crime" (holdap, nakaw, saksak, baril, away, pananakit)
+- "other" (none of the above)
+
+TASK 2 — DETECT PRIORITY:
+- "critical" = Life-threatening, immediate dispatch.
+- "high" = Serious, prompt response.
+- "medium" = Attention needed.
+- "low" = Non-urgent, unclear, nonsense, or test message.
+
+RULES:
+- If text is gibberish, return priority "low", confidence below 0.5.
+- If type is "fire" but says "no fire" or "walang sunog", do NOT mark critical.
+
+Return ONLY this JSON:
+{
+  "detectedType": "fire" | "medical" | "accident" | "flood" | "crime" | "other",
+  "priority": "critical" | "high" | "medium" | "low",
+  "confidence": 0.0,
+  "reasoning": "One sentence.",
+  "detectedLanguage": "english" | "tagalog" | "taglish" | "other",
+  "isNonsense": false
+}`;
+
+    const result = await geminiModel.generateContent(prompt);
+    const response = await result.response;
+    let text = response.text().trim();
+    text = text.replace(/```json\n?/gi, '').replace(/```\n?/g, '').trim();
+
+    let parsed;
+    try {
+        parsed = JSON.parse(text);
+    } catch (e) {
+        const match = text.match(/\{[\s\S]*\}/);
+        if (match) parsed = JSON.parse(match[0]);
+        else throw new Error('Invalid AI response format');
+    }
+
+    const validTypes = ['fire', 'medical', 'accident', 'flood', 'crime', 'other'];
+    const detectedType = validTypes.indexOf(parsed.detectedType) !== -1 ? parsed.detectedType : type;
+
+    const priority = ['critical','high','medium','low'].indexOf(parsed.priority) !== -1 ? parsed.priority : 'medium';
+    const confidence = Math.min(0.99, Math.max(0.5, parseFloat(parsed.confidence) || 0.75));
+
+    const aiResult = {
+        priority: priority,
+        confidence: confidence,
+        actions: getActionsForType(detectedType),
+        verification: getVerificationText(priority, confidence),
+        reasoning: [parsed.reasoning || 'AI classification completed'],
+        detectedLanguage: parsed.detectedLanguage || 'unknown',
+        detectedType: detectedType,
+        isNonsense: !!parsed.isNonsense,
+        source: 'gemini'
+    };
+
+    if (window.GEMINI_CONFIG && window.GEMINI_CONFIG.ENABLE_CACHE) {
+        aiCache.set(cacheKey, { result: aiResult, ts: Date.now() });
+    }
+
+    return aiResult;
+}
+
+function getActionsForType(type) {
+    const map = {
+        fire:     ['Evacuate immediately', 'Call fire department (BFP)', 'Use extinguisher only if safe', 'Avoid smoke inhalation'],
+        medical:  ['Call ambulance (911)', 'Perform CPR if trained', 'Keep victim calm', 'Do not move injured person'],
+        accident: ['Call emergency services', 'Secure the area', 'Provide first aid if safe', 'Direct traffic away'],
+        flood:    ['Move to higher ground', 'Turn off electricity', 'Avoid walking in floodwater', 'Secure documents'],
+        crime:    ['Ensure your safety first', 'Call police (117)', 'Do not confront suspects', 'Preserve evidence'],
+        other:    ['Assess the situation', 'Call emergency services if needed', 'Provide assistance if safe']
+    };
+    return map[type] || map.other;
+}
+
+function getVerificationText(priority, confidence) {
+    if (priority === 'critical') return '🔴 Urgent: dispatch responders immediately';
+    if (priority === 'high')     return '🟠 High priority: verify within 5 minutes';
+    if (priority === 'medium')   return '🟡 Schedule verification within 10–15 minutes';
+    return '🟢 Low priority: routine follow-up';
+}
+
+async function analyzeAlertWithAI() {
+    const typeSelect = document.getElementById('alertType');
+    const type  = typeSelect.value;
+    const title = document.getElementById('alertTitle').value.trim();
+    const desc  = document.getElementById('alertMessage').value.trim();
+    const loc   = document.getElementById('alertLocation').value.trim();
+
+    if (!desc && !title) {
+        showToast('Please enter a title or message first', 'warning');
+        return;
+    }
+
+    const resultDiv = document.getElementById('alertAiAnalysisResult');
+    resultDiv.classList.remove('d-none');
+    document.getElementById('alertAiPriorityBadge').textContent = 'Analyzing…';
+    document.getElementById('alertAiPriorityBadge').className = 'ai-badge bg-secondary text-white';
+    document.getElementById('alertAiConfidenceBadge').textContent = 'Please wait…';
+    document.getElementById('alertAiActionsList').innerHTML = '';
+    document.getElementById('alertAiVerifyText').textContent = '';
+
+    let result;
+    try {
+        if (geminiReady) {
+            result = await analyzeWithGemini(type, title, desc, loc);
+        } else {
+            const detected = detectIncidentType(title, desc);
+            result = enhancedAIAnalysis(detected.type, desc, loc, title);
+            result.detectedType = detected.type;
+        }
+    } catch (err) {
+        console.warn('Gemini call failed:', err);
+        if (window.GEMINI_CONFIG && window.GEMINI_CONFIG.ENABLE_FALLBACK) {
+            const detected = detectIncidentType(title, desc);
+            result = enhancedAIAnalysis(detected.type, desc, loc, title);
+            result.detectedType = detected.type;
+            result.source = 'rule-based (AI unavailable)';
+            showToast('AI busy — using local analysis', 'info', 3000);
+        } else {
+            showToast('AI analysis failed: ' + err.message, 'danger');
+            resultDiv.classList.add('d-none');
+            return;
+        }
+    }
+
+    if (result.detectedType && result.detectedType !== type) {
+        typeSelect.value = result.detectedType;
+        const hint = document.getElementById('autoAlertTypeHint');
+        if (hint) {
+            hint.textContent = `✨ Auto-detected: ${result.detectedType}`;
+            hint.style.color = 'var(--primary)';
+            setTimeout(() => { hint.textContent = ''; }, 8000);
+        }
+    }
+
+    renderAlertAIAnalysisResult(result);
+}
+
+function renderAlertAIAnalysisResult(result) {
+    const resultDiv       = document.getElementById('alertAiAnalysisResult');
+    const priorityBadge   = document.getElementById('alertAiPriorityBadge');
+    const confidenceBadge = document.getElementById('alertAiConfidenceBadge');
+    const actionsList     = document.getElementById('alertAiActionsList');
+    const verifyText      = document.getElementById('alertAiVerifyText');
+
+    const colors = { critical: 'danger', high: 'warning', medium: 'primary', low: 'secondary' };
+
+    priorityBadge.textContent = `Priority: ${result.priority.toUpperCase()}`;
+    priorityBadge.className = `ai-badge bg-${colors[result.priority] || 'secondary'} text-white`;
+    confidenceBadge.textContent = `Confidence: ${(result.confidence * 100).toFixed(0)}%`;
+    actionsList.innerHTML = '<i class="fas fa-tasks me-1"></i> ' + result.actions.join(' · ');
+    verifyText.textContent = result.verification;
+
+    resultDiv.style.borderLeftColor =
+        result.priority === 'critical' ? '#dc3545' :
+        result.priority === 'high'     ? '#fd7e14' :
+        result.priority === 'medium'   ? '#0d6efd' : '#6c757d';
+
+    window._alertAiResult = result;
+
+    showToast(
+        `AI: ${result.priority.toUpperCase()} (${(result.confidence * 100).toFixed(0)}%)` +
+        (result.detectedType ? ` — Type: ${result.detectedType}` : ''),
+        result.priority === 'critical' ? 'danger' :
+        result.priority === 'high'     ? 'warning' : 'info',
+        4000
+    );
+}
+
+async function analyzeWithGeminiFallback(type, title, desc, loc) {
+    if (geminiReady) {
+        try {
+            return await analyzeWithGemini(type, title, desc, loc);
+        } catch (e) {
+            console.warn('Gemini failed during submit, using rule-based:', e);
+        }
+    }
+    const detected = detectIncidentType(title, desc);
+    const result = enhancedAIAnalysis(detected.type, desc, loc, title);
+    result.detectedType = detected.type;
+    return result;
+}
+
+// ============================================
+// SEND ALERT (ADMIN ONLY) — same flow as incident report
+// ============================================
+async function sendAlert() {
+    if (!currentProfile || currentProfile.role !== 'admin') {
+        showToast('Access denied. Admins only.', 'warning', 4000);
+        return;
+    }
+
+    const type = document.getElementById('alertType').value;
+    const title = document.getElementById('alertTitle').value.trim();
+    const message = document.getElementById('alertMessage').value.trim();
+    const location = document.getElementById('alertLocation').value.trim();
+    const contact = document.getElementById('alertContact').value.trim();
+    const lat = document.getElementById('alertLat').value;
+    const lng = document.getElementById('alertLng').value;
+
+    if (!title || !message || !location || !contact) {
+        showToast('Please fill in all fields', 'warning');
+        return;
+    }
+    if (!lat || !lng) {
+        showToast('Please select a location on the map or search for a place', 'warning');
+        return;
+    }
+
+    // AI analysis (auto)
+    let aiResult = window._alertAiResult;
+    if (!aiResult) {
+        aiResult = await analyzeWithGeminiFallback(type, title, message, location);
+        window._alertAiResult = aiResult;
+    }
+
+    const btn = document.getElementById('sendAlertBtn');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Sending...';
+    }
+
+    try {
+        const locationObj = { address: location, latitude: parseFloat(lat), longitude: parseFloat(lng) };
+
+        // Get resident count for recipients_count
+        let residentCount = 0;
+        try {
+            const residentsResult = await supabaseClient.from('profiles').select('id').eq('role', 'resident');
+            residentCount = residentsResult.data?.length || 0;
+        } catch (e) {}
+
+        const alertPayload = {
+            title: title,
+            message: message,
+            type: type,
+            priority: aiResult.priority,
+            status: 'sent',
+            location: JSON.stringify(locationObj),
+            contact_number: contact,
+            barangay: currentProfile?.barangay || null,
+            recipients_count: residentCount,
+            sent_by: currentUser.id,
+            sent_at: new Date().toISOString(),
+            ai_analysis: {
+                priority: aiResult.priority,
+                confidence: aiResult.confidence,
+                actions: aiResult.actions,
+                verification: aiResult.verification,
+                source: aiResult.source || 'rule-based',
+                reasoning: aiResult.reasoning || [],
+                detectedLanguage: aiResult.detectedLanguage || 'unknown',
+                detectedType: aiResult.detectedType || type
+            },
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+
+        const insertResult = await supabaseClient
+            .from('alerts')
+            .insert([alertPayload])
+            .select()
+            .single();
+
+        if (insertResult.error) throw insertResult.error;
+
+        const alertData = insertResult.data;
+
+        // Upload media if any
+        let mediaUrls = [];
+        if (selectedAlertMediaFiles.length > 0) {
+            showToast('📤 Uploading media files...', 'info', 3000);
+            mediaUrls = await uploadAlertMediaFiles(alertData.id);
+
+            if (mediaUrls.length > 0) {
+                const { error: updateError } = await supabaseClient
+                    .from('alerts')
+                    .update({ media_urls: JSON.stringify(mediaUrls), updated_at: new Date().toISOString() })
+                    .eq('id', alertData.id);
+                if (updateError) {
+                    showToast('Alert saved but media upload failed', 'warning');
+                } else {
+                    showToast(`✅ ${mediaUrls.length} attachment(s) uploaded!`, 'success');
+                }
+            }
+        }
+
+        showToast('✅ Alert sent to ' + residentCount + ' residents!', 'success');
+
+        // Try email notification
+        try {
+            if (typeof window.sendEmergencyEmailNotification === 'function') {
+                const result = await window.sendEmergencyEmailNotification(alertData, false);
+                if (result && result.success) {
+                    showToast('📧 Email notifications sent to all users!', 'success', 5000);
+                }
+            }
+        } catch (emailError) {
+            console.error('Email notification error:', emailError);
+        }
+
+        if (alertModal) alertModal.hide();
+        resetAlertForm();
+        loadAlerts();
+
+    } catch (error) {
+        console.error('Send alert error:', error);
+        showToast('Failed to send alert: ' + error.message, 'danger');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Alert';
+        }
     }
 }
 
@@ -1830,15 +2741,13 @@ function renderIncidentCard(incident) {
     var hasDescription = rawDescription.length > 0;
     var escapedDescription = escapeHtml(rawDescription);
 
-    var typeIconMap = {
-        fire: 'fa-fire', medical: 'fa-heart-pulse', accident: 'fa-car-burst',
-        flood: 'fa-water', crime: 'fa-shield-halved', other: 'fa-circle-exclamation'
-    };
-    var typeIcon = typeIconMap[incident.type] || 'fa-circle-exclamation';
-    var typeClass = typeIconMap[incident.type] ? incident.type : 'other';
+    var typeIcon = getTypeIcon(incident.type);
+    var typeClass = getTypeClass(incident.type);
     var priority = incident.priority || 'medium';
     var status = incident.status || 'reported';
     var createdDate = formatDateTime(incident.created_at);
+
+    var pulse = getPriorityPulseClasses(priority);
 
     var isLongDescription = rawDescription.length > 180;
     var safeSearch = (incident.title + ' ' + incident.type + ' ' + (incident.location || '') + ' ' + rawDescription)
@@ -1849,11 +2758,11 @@ function renderIncidentCard(incident) {
         : `<div class="incident-no-desc"><i class="fas fa-info-circle"></i>No description provided by reporter</div>`;
 
     return `
-        <div class="incident-card priority-${priority} bg-transparent" data-incident-id="${incident.id}"
+        <div class="incident-card priority-${priority} bg-transparent ${pulse.card}" data-incident-id="${incident.id}"
              data-search="${safeSearch}" data-status="${status}" data-priority="${priority}">
             <div class="incident-card-header">
                 <div class="d-flex align-items-start gap-3 flex-grow-1" style="min-width:0;">
-                    <div class="incident-type-icon ${typeClass}"><i class="fas ${typeIcon}"></i></div>
+                    <div class="incident-type-icon ${typeClass} ${pulse.icon}"><i class="fas ${typeIcon}"></i></div>
                     <div style="min-width:0;flex:1;">
                         <div class="incident-card-title"><span style="word-break:break-word;">${escapeHtml(incident.title) || 'Untitled Incident'}</span></div>
                         <div class="incident-card-meta">
@@ -1926,8 +2835,7 @@ async function viewIncidentDetails(incidentId) {
     if (!incident) { showToast('Incident not found', 'warning'); return; }
 
     var mediaUrls = getMediaUrls(incident);
-    var typeIconMap = { fire: 'fa-fire', medical: 'fa-heart-pulse', accident: 'fa-car-burst', flood: 'fa-water', crime: 'fa-shield-halved', other: 'fa-circle-exclamation' };
-    var typeIcon = typeIconMap[incident.type] || 'fa-circle-exclamation';
+    var typeIcon = getTypeIcon(incident.type);
     var priority = incident.priority || 'medium';
     var status = incident.status || 'reported';
 
@@ -2149,11 +3057,18 @@ async function addResponder() {
 }
 
 // ============================================
-// ALERTS
+// ALERTS (ADMIN ONLY)
 // ============================================
 async function loadAlerts() {
     var container = document.getElementById('pageContent');
     if (!container) return;
+
+    if (!currentProfile || currentProfile.role !== 'admin') {
+        showToast('Access denied. Admins only.', 'warning', 4000);
+        loadDashboard();
+        return;
+    }
+
     try {
         var alertsResult = await supabaseClient.from('alerts').select('*').order('created_at', { ascending: false });
         var alerts = alertsResult.data || [];
@@ -2161,15 +3076,32 @@ async function loadAlerts() {
         container.innerHTML = `
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h4 class="fw-bold"><i class="fas fa-broadcast me-2"></i>Alerts</h4>
-                <button class="btn btn-danger" onclick="alertModal.show()"><i class="fas fa-plus me-2"></i>New Alert</button>
+                <button class="btn btn-danger" onclick="openAlertModal()"><i class="fas fa-plus me-2"></i>New Alert</button>
             </div>
             ${alerts && alerts.length > 0 ? `
                 <div class="table-responsive">
                     <table class="table table-hover">
-                        <thead><tr><th>Date</th><th>Title</th><th>Priority</th><th>Status</th><th>Recipients</th></tr></thead>
+                        <thead><tr><th>Date</th><th>Title</th><th>Type</th><th>Priority</th><th>Status</th><th>Recipients</th></tr></thead>
                         <tbody>
                             ${alerts.map(function(alert) {
-                                return `<tr><td>${new Date(alert.created_at).toLocaleString()}</td><td>${escapeHtml(alert.title || '')}</td><td><span class="badge priority-${alert.priority || 'medium'}">${alert.priority || 'Medium'}</span></td><td><span class="badge bg-${alert.status === 'sent' ? 'success' : 'secondary'}">${alert.status || 'Draft'}</span></td><td>${alert.recipients_count || 0}</td></tr>`;
+                                var typeIcon = getTypeIcon(alert.type);
+                                var typeClass = getTypeClass(alert.type);
+                                var pulse = getPriorityPulseClasses(alert.priority);
+                                return `<tr class="${pulse.card}">
+                                    <td>${new Date(alert.created_at).toLocaleString()}</td>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="incident-type-icon ${typeClass} ${pulse.icon}" style="width:30px;height:30px;font-size:0.75rem;">
+                                                <i class="fas ${typeIcon}"></i>
+                                            </div>
+                                            <span>${escapeHtml(alert.title || '')}</span>
+                                        </div>
+                                    </td>
+                                    <td><span class="text-capitalize">${escapeHtml(alert.type || 'other')}</span></td>
+                                    <td><span class="badge priority-${alert.priority || 'medium'}">${alert.priority || 'Medium'}</span></td>
+                                    <td><span class="badge bg-${alert.status === 'sent' ? 'success' : 'secondary'}">${alert.status || 'Draft'}</span></td>
+                                    <td>${alert.recipients_count || 0}</td>
+                                </tr>`;
                             }).join('')}
                         </tbody>
                     </table>
@@ -2225,36 +3157,6 @@ async function performAction() {
     }
 }
 
-async function sendAlert() {
-    var title = document.getElementById('alertTitle').value.trim();
-    var message = document.getElementById('alertMessage').value.trim();
-    var priority = document.getElementById('alertPriority').value;
-    if (!title || !message) { showToast('Please fill in all fields', 'warning'); return; }
-
-    var btn = document.querySelector('#alertModal .btn-danger');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Sending...';
-
-    try {
-        var residentsResult = await supabaseClient.from('profiles').select('id').eq('role', 'resident');
-        var insertResult = await supabaseClient.from('alerts').insert([{
-            title: title, message: message, priority: priority, status: 'sent',
-            recipients_count: residentsResult.data?.length || 0, sent_by: currentUser.id, sent_at: new Date()
-        }]);
-        if (insertResult.error) throw insertResult.error;
-
-        showToast('Alert sent to ' + (residentsResult.data?.length || 0) + ' residents', 'success');
-        alertModal.hide();
-        document.getElementById('alertForm').reset();
-        loadAlerts();
-    } catch (error) {
-        showToast('Failed to send alert: ' + error.message, 'danger');
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Send Alert';
-    }
-}
-
 // ============================================
 // LOGOUT
 // ============================================
@@ -2298,6 +3200,15 @@ window.resetIncidentFilters = resetIncidentFilters;
 window.renderIncidentCard = renderIncidentCard;
 window.closeIncidentDetailModalAndAction = closeIncidentDetailModalAndAction;
 window.showEmergencyPopup = showEmergencyPopup;
+window.openAlertModal = openAlertModal;
+window.analyzeAlertWithAI = analyzeAlertWithAI;
+window.removeAlertMediaFile = removeAlertMediaFile;
+window.resetAlertForm = resetAlertForm;
+window.initGemini = initGemini;
+window.analyzeWithGemini = analyzeWithGemini;
+window.analyzeWithGeminiFallback = analyzeWithGeminiFallback;
+window.enhancedAIAnalysis = enhancedAIAnalysis;
+window.detectIncidentType = detectIncidentType;
 
 // ============================================
 // INITIALIZE
