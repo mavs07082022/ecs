@@ -12,6 +12,7 @@
   <meta name="theme-color" content="#0A2342">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="../design.css" />
   <link rel="stylesheet" href="../css/style.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js" defer></script>
@@ -130,6 +131,164 @@
       display: none;
     }
     .search-spinner.show { display: inline-block; }
+
+    /* ========================================================
+       ICON FIX — force Font Awesome glyphs to render
+       ======================================================== */
+    .incident-type-icon,
+    .hotline-type-icon,
+    .inc-icon {
+      width: 40px;
+      height: 40px;
+      min-width: 40px;
+      border-radius: calc(var(--radius) + 2px);
+      display: flex !important;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      flex-shrink: 0;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+    .incident-type-icon i,
+    .hotline-type-icon i,
+    .inc-icon i {
+      display: inline-block !important;
+      font-family: "Font Awesome 6 Free" !important;
+      font-weight: 900 !important;
+      font-style: normal !important;
+      line-height: 1 !important;
+      font-size: 1rem;
+    }
+    .incident-type-icon.fire, .inc-icon.fire {
+      background: color-mix(in oklab, var(--destructive) 20%, transparent) !important;
+      color: var(--destructive) !important;
+    }
+    .incident-type-icon.medical, .inc-icon.medical {
+      background: color-mix(in oklab, var(--pri-low) 20%, transparent) !important;
+      color: var(--pri-low) !important;
+    }
+    .incident-type-icon.accident, .inc-icon.accident {
+      background: color-mix(in oklab, var(--pri-high) 24%, transparent) !important;
+      color: oklch(0.42 0.14 55) !important;
+    }
+    .dark .incident-type-icon.accident, .dark .inc-icon.accident { color: var(--pri-high) !important; }
+    .incident-type-icon.flood, .inc-icon.flood {
+      background: color-mix(in oklab, oklch(0.6 0.13 195) 22%, transparent) !important;
+      color: oklch(0.42 0.14 195) !important;
+    }
+    .dark .incident-type-icon.flood, .dark .inc-icon.flood { color: oklch(0.82 0.12 195) !important; }
+    .incident-type-icon.crime, .inc-icon.crime {
+      background: color-mix(in oklab, oklch(0.5 0.18 290) 20%, transparent) !important;
+      color: oklch(0.42 0.18 290) !important;
+    }
+    .dark .incident-type-icon.crime, .dark .inc-icon.crime { color: oklch(0.82 0.15 290) !important; }
+    .incident-type-icon.other, .inc-icon.other {
+      background: var(--muted) !important;
+      color: var(--muted-foreground) !important;
+    }
+
+    /* Pulse animations */
+    @keyframes pulse-critical-glow {
+      0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--destructive) 55%, transparent), 0 6px 20px -8px color-mix(in oklab, var(--destructive) 30%, transparent); }
+      50% { box-shadow: 0 0 0 10px color-mix(in oklab, var(--destructive) 0%, transparent), 0 6px 24px -6px color-mix(in oklab, var(--destructive) 50%, transparent); }
+    }
+    @keyframes pulse-high-glow {
+      0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--pri-high) 50%, transparent), 0 6px 20px -8px color-mix(in oklab, var(--pri-high) 25%, transparent); }
+      50% { box-shadow: 0 0 0 8px color-mix(in oklab, var(--pri-high) 0%, transparent), 0 6px 22px -6px color-mix(in oklab, var(--pri-high) 45%, transparent); }
+    }
+    .incident-card.pulse-critical,
+    .hotline-row.pulse-critical,
+    .incident-row.pulse-critical,
+    .list-group-item.pulse-critical {
+      animation: pulse-critical-glow 2.2s ease-in-out infinite;
+      border-color: color-mix(in oklab, var(--destructive) 40%, transparent) !important;
+    }
+    .incident-card.pulse-high,
+    .hotline-row.pulse-high,
+    .incident-row.pulse-high,
+    .list-group-item.pulse-high {
+      animation: pulse-high-glow 2.6s ease-in-out infinite;
+      border-color: color-mix(in oklab, var(--pri-high) 35%, transparent) !important;
+    }
+    @keyframes pulse-icon-critical-ring {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.12); }
+    }
+    .incident-type-icon.pulse-icon-critical,
+    .hotline-type-icon.pulse-icon-critical,
+    .inc-icon.pulse-icon-critical {
+      animation: pulse-icon-critical-ring 1.4s ease-in-out infinite;
+      position: relative;
+    }
+    .incident-type-icon.pulse-icon-critical::after,
+    .hotline-type-icon.pulse-icon-critical::after,
+    .inc-icon.pulse-icon-critical::after {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border-radius: inherit;
+      border: 2px solid color-mix(in oklab, var(--destructive) 60%, transparent);
+      animation: marker-pulse 1.8s ease-in-out infinite;
+      pointer-events: none;
+    }
+    @keyframes fire-flicker {
+      0%, 100% { transform: rotate(0deg) scale(1); filter: brightness(1); }
+      25% { transform: rotate(-3deg) scale(1.05); filter: brightness(1.15); }
+      50% { transform: rotate(2deg) scale(1.08); filter: brightness(1.1); }
+      75% { transform: rotate(-2deg) scale(1.03); filter: brightness(1.12); }
+    }
+    .incident-type-icon.fire:not(.pulse-icon-critical) i,
+    .inc-icon.fire:not(.pulse-icon-critical) i {
+      animation: fire-flicker 2s ease-in-out infinite;
+    }
+    @keyframes medical-beat {
+      0%, 100% { transform: scale(1); }
+      15% { transform: scale(1.12); }
+      30% { transform: scale(1); }
+      45% { transform: scale(1.08); }
+      60% { transform: scale(1); }
+    }
+    .incident-type-icon.medical:not(.pulse-icon-critical) i,
+    .inc-icon.medical:not(.pulse-icon-critical) i {
+      animation: medical-beat 1.8s ease-in-out infinite;
+    }
+    @keyframes accident-shake {
+      0%, 100% { transform: translateX(0) rotate(0); }
+      20% { transform: translateX(-2px) rotate(-4deg); }
+      40% { transform: translateX(2px) rotate(4deg); }
+      60% { transform: translateX(-1px) rotate(-2deg); }
+      80% { transform: translateX(1px) rotate(2deg); }
+    }
+    .incident-type-icon.accident:not(.pulse-icon-critical) i,
+    .inc-icon.accident:not(.pulse-icon-critical) i {
+      animation: accident-shake 2.5s ease-in-out infinite;
+    }
+    @keyframes flood-wave {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-3px); }
+    }
+    .incident-type-icon.flood:not(.pulse-icon-critical) i,
+    .inc-icon.flood:not(.pulse-icon-critical) i {
+      animation: flood-wave 2s ease-in-out infinite;
+    }
+    @keyframes crime-glow {
+      0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklab, oklch(0.5 0.18 290) 40%, transparent); }
+      50% { box-shadow: 0 0 0 6px color-mix(in oklab, oklch(0.5 0.18 290) 0%, transparent); }
+    }
+    .incident-type-icon.crime:not(.pulse-icon-critical),
+    .inc-icon.crime:not(.pulse-icon-critical) {
+      animation: crime-glow 2.4s ease-in-out infinite;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .incident-card.pulse-critical, .incident-card.pulse-high,
+      .hotline-row.pulse-critical, .hotline-row.pulse-high,
+      .incident-row.pulse-critical, .incident-row.pulse-high,
+      .list-group-item.pulse-critical, .list-group-item.pulse-high,
+      .incident-type-icon, .hotline-type-icon, .inc-icon,
+      .incident-type-icon i, .hotline-type-icon i, .inc-icon i {
+        animation: none !important;
+      }
+    }
   </style>
 </head>
 <body class="dashboard-page">
@@ -152,13 +311,13 @@
           <h5>Barangay Culiat</h5>
           <small id="userNameDisplay">Resident</small>
           <div class="mt-3">
-           <button type="button" data-theme-toggle class="btn-civic btn-outline btn-sm w-100 theme-toggle-btn theme-toggle-sidebar" aria-label="Toggle theme">
-  <span class="theme-toggle-label">Theme</span>
-  <span class="theme-toggle-icon-wrap">
-    <i data-lucide="sun" data-icon="sun" class="theme-toggle-icon" style="width:16px;height:16px;"></i>
-    <i data-lucide="moon" data-icon="moon" class="theme-toggle-icon hidden-icon" style="width:16px;height:16px;"></i>
-  </span>
-</button>
+            <button type="button" data-theme-toggle class="btn-civic btn-outline btn-sm w-100 theme-toggle-btn theme-toggle-sidebar" aria-label="Toggle theme">
+              <span class="theme-toggle-label">Theme</span>
+              <span class="theme-toggle-icon-wrap">
+                <i data-lucide="sun" data-icon="sun" class="theme-toggle-icon" style="width:16px;height:16px;"></i>
+                <i data-lucide="moon" data-icon="moon" class="theme-toggle-icon hidden-icon" style="width:16px;height:16px;"></i>
+              </span>
+            </button>
           </div>
         </div>
         <nav class="nav flex-column">
@@ -184,7 +343,7 @@
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title"><i data-lucide="alert-triangle"></i> Report Emergency</h5>
+          <h5 class="modal-title"><i class="fas fa-exclamation-triangle me-2"></i> Report Emergency</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
@@ -218,7 +377,7 @@
                   <div class="input-group mb-2">
                     <input type="text" class="form-control" id="incidentLocation" placeholder="Search for a place..." required autocomplete="off">
                     <button class="btn-civic btn-outline" type="button" id="geolocateBtn" aria-label="Locate me" style="border-radius:0 calc(var(--radius) + 2px) calc(var(--radius) + 2px) 0 !important;">
-                      <i data-lucide="crosshair" style="width:16px;height:16px;"></i>
+                      <i class="fas fa-crosshairs"></i>
                     </button>
                     <span class="search-spinner" id="searchSpinner">
                       <span class="spinner-border spinner-border-sm" role="status"></span>
@@ -228,7 +387,7 @@
                 </div>
                 <div id="incidentMap"></div>
                 <div class="d-flex justify-content-between align-items-center mt-2 flex-wrap gap-2">
-                  <small class="text-muted-civic"><i data-lucide="map-pin" style="width:12px;height:12px;"></i> Tap map or search above to set location</small>
+                  <small class="text-muted-civic"><i class="fas fa-map-pin"></i> Tap map or search above to set location</small>
                   <span class="pill" id="coordDisplay">Lat: --, Lng: --</span>
                 </div>
                 <input type="hidden" id="incidentLat" value="">
@@ -240,38 +399,38 @@
               </div>
               <div class="col-12">
                 <label class="form-label">
-                  <i data-lucide="paperclip" style="width:14px;height:14px;"></i> Attach Photos or Videos
+                  <i class="fas fa-paperclip"></i> Attach Photos or Videos
                   <span class="text-muted-civic small fw-normal">(max 5 files, 10MB each)</span>
                 </label>
                 <div class="media-upload-area" id="mediaDropZone">
-                  <i data-lucide="cloud-upload" style="width:36px;height:36px;"></i>
+                  <i class="fas fa-cloud-upload-alt" style="font-size:36px;"></i>
                   <div class="fw-bold">Click or drag files here</div>
                   <div class="small">Supported: JPG, PNG, GIF, MP4, MOV, AVI</div>
                   <input type="file" id="mediaUpload" accept="image/*,video/*" multiple style="display:none;">
                 </div>
                 <div class="d-flex justify-content-between align-items-center mt-2 flex-wrap gap-2">
                   <span class="text-muted-civic" id="mediaCount">0 / 5</span>
-                  <span class="text-muted-civic small"><i data-lucide="info" style="width:12px;height:12px;"></i> First 5 files will be uploaded</span>
+                  <span class="text-muted-civic small"><i class="fas fa-info-circle"></i> First 5 files will be uploaded</span>
                 </div>
                 <div class="media-preview-container" id="mediaPreviewContainer"></div>
               </div>
               <div class="col-12">
                 <div id="aiAnalysisResult" class="ai-result-card d-none">
                   <div class="d-flex align-items-start gap-2">
-                    <i data-lucide="bot" style="width:36px;height:36px;color:var(--primary);"></i>
+                    <i class="fas fa-robot" style="font-size:36px;color:var(--primary);"></i>
                     <div id="aiResultText" style="flex:1;">
                       <span class="fw-bold">AI Analysis</span><br>
                       <span id="aiPriorityBadge" class="ai-badge" style="background:var(--muted);color:var(--muted-foreground);">Priority: --</span>
                       <span id="aiConfidenceBadge" class="ai-badge" style="background:var(--card);color:var(--card-foreground);">Confidence: --</span>
                       <div id="aiActionsList" class="mt-1 small text-muted-civic"></div>
-                      <div id="aiVerification" class="mt-1 small"><i data-lucide="shield" style="width:12px;height:12px;"></i> Verification: <span id="aiVerifyText">Pending</span></div>
+                      <div id="aiVerification" class="mt-1 small"><i class="fas fa-shield-alt"></i> Verification: <span id="aiVerifyText">Pending</span></div>
                     </div>
                   </div>
                 </div>
               </div>
               <div class="col-12">
                 <button type="button" class="btn-civic btn-outline btn-sm" onclick="analyzeWithAI()">
-                  <i data-lucide="bot" style="width:14px;height:14px;"></i> Analyze with AI
+                  <i class="fas fa-robot"></i> Analyze with AI
                 </button>
               </div>
             </div>
@@ -280,7 +439,7 @@
         <div class="modal-footer">
           <button class="btn-civic btn-outline" data-bs-dismiss="modal">Cancel</button>
           <button class="btn-civic btn-primary" onclick="submitReport()" id="submitReportBtn">
-            <i data-lucide="send"></i> Submit Report
+            <i class="fas fa-paper-plane"></i> Submit Report
           </button>
         </div>
       </div>
@@ -292,14 +451,14 @@
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title" id="residentDetailTitle">
-            <i data-lucide="file-text"></i> Incident Details
+            <i class="fas fa-file-alt me-2"></i> Incident Details
           </h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body" id="residentDetailBody"></div>
         <div class="modal-footer">
           <button class="btn-civic btn-outline" data-bs-dismiss="modal">
-            <i data-lucide="x"></i> Close
+            <i class="fas fa-times"></i> Close
           </button>
         </div>
       </div>
@@ -358,16 +517,12 @@
 
     /* ============================================================
        SESSION SECURITY GUARD — v3 (robust)
-       1. Waits for CuliatAuthSecurity to be loaded.
-       2. Enforces OTP verification for this tab/session (once).
-       3. Starts inactivity watcher (2 min) reliably.
        ============================================================ */
     (async function enforceSessionSecurity() {
       const TAG = '%c🔒 [Dashboard Guard]';
       const STYLE = 'color:#e83e8c;font-weight:bold;';
       console.log(TAG, STYLE, 'Starting session security check...');
 
-      // --- Wait for supabaseClient ---
       let tries = 0;
       while (!window.supabaseClient && tries < 100) {
         await new Promise(r => setTimeout(r, 100));
@@ -379,7 +534,6 @@
       }
       console.log(TAG, STYLE, 'supabaseClient ready');
 
-      // --- Wait for CuliatAuthSecurity (up to 10s) ---
       tries = 0;
       while (!window.CuliatAuthSecurity && tries < 100) {
         await new Promise(r => setTimeout(r, 100));
@@ -391,7 +545,6 @@
       }
       console.log(TAG, STYLE, 'CuliatAuthSecurity ready');
 
-      // --- Check session ---
       const { data: { session } } = await window.supabaseClient.auth.getSession();
       if (!session) {
         console.log(TAG, STYLE, 'No session — resident.js will handle redirect');
@@ -399,7 +552,6 @@
       }
       console.log(TAG, STYLE, 'Session found for', session.user.email);
 
-      // --- Skip if this is an admin/responder (should not use resident dashboard) ---
       try {
         const { data: profile } = await window.supabaseClient
           .from('profiles').select('role').eq('id', session.user.id).maybeSingle();
@@ -413,8 +565,6 @@
         console.warn(TAG, STYLE, 'Could not check role — continuing', e);
       }
 
-      // --- OTP verification check ---
-      // Allow a "grace pass" if the user just refreshed (sessionStorage persists across reload in same tab)
       const otpOk = window.CuliatAuthSecurity.isOtpVerifiedForSession();
       console.log(TAG, STYLE, 'OTP verified for session?', otpOk);
 
@@ -426,7 +576,6 @@
         return;
       }
 
-      // --- OTP OK → start inactivity watch ---
       console.log(TAG, STYLE, '✅ Starting inactivity watch (2 min)');
       try {
         window.CuliatAuthSecurity.startInactivityWatch();
@@ -435,14 +584,12 @@
         console.error(TAG, STYLE, 'startInactivityWatch threw:', e);
       }
 
-      // --- Heartbeat log every 30s so you can confirm it's alive ---
       setInterval(function () {
         const last = localStorage.getItem('culiat_last_activity');
         const ago = last ? Math.round((Date.now() - parseInt(last, 10)) / 1000) : 'n/a';
         console.log(TAG, STYLE, '💓 Heartbeat · last activity ' + ago + 's ago');
       }, 30000);
 
-      // Safety net: even if the module timer fails, this interval will force logout
       setInterval(function () {
         const last = parseInt(localStorage.getItem('culiat_last_activity') || '0', 10);
         if (!last) return;
