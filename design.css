@@ -3346,3 +3346,527 @@ body.login-page .login-watermark,
     opacity: 0.3 !important;
   }
 }
+/* ============================================================
+   HOTLINE ENHANCEMENTS — Type icons, chips, pulse animations
+   ============================================================ */
+
+/* Type icon chips (reuse incident-type-icon styling) */
+.hotline-type-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: calc(var(--radius) + 2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  flex-shrink: 0;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.hotline-type-icon.fire {
+  background: color-mix(in oklab, var(--destructive) 18%, transparent) !important;
+  color: var(--destructive) !important;
+}
+.hotline-type-icon.medical {
+  background: color-mix(in oklab, var(--pri-low) 18%, transparent) !important;
+  color: var(--pri-low) !important;
+}
+.hotline-type-icon.accident {
+  background: color-mix(in oklab, var(--pri-high) 22%, transparent) !important;
+  color: oklch(0.42 0.14 55) !important;
+}
+.dark .hotline-type-icon.accident { color: var(--pri-high) !important; }
+.hotline-type-icon.flood {
+  background: color-mix(in oklab, oklch(0.6 0.13 195) 20%, transparent) !important;
+  color: oklch(0.42 0.14 195) !important;
+}
+.dark .hotline-type-icon.flood { color: oklch(0.82 0.12 195) !important; }
+.hotline-type-icon.crime {
+  background: color-mix(in oklab, oklch(0.5 0.18 290) 18%, transparent) !important;
+  color: oklch(0.42 0.18 290) !important;
+}
+.dark .hotline-type-icon.crime { color: oklch(0.82 0.15 290) !important; }
+.hotline-type-icon.other {
+  background: var(--muted) !important;
+  color: var(--muted-foreground) !important;
+}
+
+/* Type label chips inside titles */
+.hotline-type-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.62rem;
+  font-weight: 800;
+  padding: 2px 9px;
+  border-radius: 9999px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.hotline-type-chip.fire {
+  background: color-mix(in oklab, var(--destructive) 15%, transparent);
+  color: var(--destructive);
+  border: 1px solid color-mix(in oklab, var(--destructive) 30%, transparent);
+}
+.hotline-type-chip.medical {
+  background: color-mix(in oklab, var(--pri-low) 15%, transparent);
+  color: var(--pri-low);
+  border: 1px solid color-mix(in oklab, var(--pri-low) 30%, transparent);
+}
+.hotline-type-chip.accident {
+  background: color-mix(in oklab, var(--pri-high) 18%, transparent);
+  color: oklch(0.42 0.14 55);
+  border: 1px solid color-mix(in oklab, var(--pri-high) 35%, transparent);
+}
+.dark .hotline-type-chip.accident { color: var(--pri-high); }
+.hotline-type-chip.flood {
+  background: color-mix(in oklab, oklch(0.6 0.13 195) 18%, transparent);
+  color: oklch(0.42 0.14 195);
+  border: 1px solid color-mix(in oklab, oklch(0.6 0.13 195) 35%, transparent);
+}
+.dark .hotline-type-chip.flood { color: oklch(0.82 0.12 195); }
+.hotline-type-chip.crime {
+  background: color-mix(in oklab, oklch(0.5 0.18 290) 15%, transparent);
+  color: oklch(0.42 0.18 290);
+  border: 1px solid color-mix(in oklab, oklch(0.5 0.18 290) 30%, transparent);
+}
+.dark .hotline-type-chip.crime { color: oklch(0.82 0.15 290); }
+.hotline-type-chip.other {
+  background: var(--muted);
+  color: var(--muted-foreground);
+  border: 1px solid var(--border);
+}
+
+/* Hotline row hover animation */
+.hotline-row {
+  transition: background 0.18s ease, transform 0.18s ease;
+  position: relative;
+}
+.hotline-row:hover {
+  transform: translateX(3px);
+}
+.hotline-row:hover .hotline-type-icon {
+  transform: rotate(6deg) scale(1.08);
+}
+
+/* ============================================================
+   PULSE ANIMATIONS — for critical/high priority items
+   ============================================================ */
+
+/* Critical priority pulse — red glow around card/row */
+@keyframes pulse-critical-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--destructive) 55%, transparent),
+                0 6px 20px -8px color-mix(in oklab, var(--destructive) 30%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 10px color-mix(in oklab, var(--destructive) 0%, transparent),
+                0 6px 24px -6px color-mix(in oklab, var(--destructive) 50%, transparent);
+  }
+}
+@keyframes pulse-high-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--pri-high) 50%, transparent),
+                0 6px 20px -8px color-mix(in oklab, var(--pri-high) 25%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 8px color-mix(in oklab, var(--pri-high) 0%, transparent),
+                0 6px 22px -6px color-mix(in oklab, var(--pri-high) 45%, transparent);
+  }
+}
+
+.incident-card.pulse-critical,
+.hotline-row.pulse-critical {
+  animation: pulse-critical-glow 2.2s ease-in-out infinite;
+  border-color: color-mix(in oklab, var(--destructive) 40%, transparent) !important;
+}
+
+.incident-card.pulse-high,
+.hotline-row.pulse-high {
+  animation: pulse-high-glow 2.6s ease-in-out infinite;
+  border-color: color-mix(in oklab, var(--pri-high) 35%, transparent) !important;
+}
+
+/* Icon pulse for critical items */
+@keyframes pulse-icon-critical-ring {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+.hotline-type-icon.pulse-icon-critical,
+.incident-type-icon.pulse-icon-critical {
+  animation: pulse-icon-critical-ring 1.4s ease-in-out infinite;
+  position: relative;
+}
+
+/* Soft pulse ring around critical type icon */
+.hotline-type-icon.pulse-icon-critical::after,
+.incident-type-icon.pulse-icon-critical::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  border: 2px solid color-mix(in oklab, var(--destructive) 60%, transparent);
+  animation: marker-pulse 1.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Fire icon flicker for fire type */
+@keyframes fire-flicker {
+  0%, 100% { transform: rotate(0deg) scale(1); filter: brightness(1); }
+  25% { transform: rotate(-3deg) scale(1.05); filter: brightness(1.15); }
+  50% { transform: rotate(2deg) scale(1.08); filter: brightness(1.1); }
+  75% { transform: rotate(-2deg) scale(1.03); filter: brightness(1.12); }
+}
+.hotline-type-icon.fire:not(.pulse-icon-critical),
+.incident-type-icon.fire:not(.pulse-icon-critical) {
+  animation: fire-flicker 2s ease-in-out infinite;
+}
+
+/* Medical heartbeat for medical type */
+@keyframes medical-beat {
+  0%, 100% { transform: scale(1); }
+  15% { transform: scale(1.12); }
+  30% { transform: scale(1); }
+  45% { transform: scale(1.08); }
+  60% { transform: scale(1); }
+}
+.hotline-type-icon.medical:not(.pulse-icon-critical),
+.incident-type-icon.medical:not(.pulse-icon-critical) {
+  animation: medical-beat 1.8s ease-in-out infinite;
+}
+
+/* Accident shake for accident type */
+@keyframes accident-shake {
+  0%, 100% { transform: translateX(0) rotate(0); }
+  20% { transform: translateX(-2px) rotate(-4deg); }
+  40% { transform: translateX(2px) rotate(4deg); }
+  60% { transform: translateX(-1px) rotate(-2deg); }
+  80% { transform: translateX(1px) rotate(2deg); }
+}
+.hotline-type-icon.accident:not(.pulse-icon-critical),
+.incident-type-icon.accident:not(.pulse-icon-critical) {
+  animation: accident-shake 2.5s ease-in-out infinite;
+}
+
+/* Flood wave for flood type */
+@keyframes flood-wave {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+.hotline-type-icon.flood:not(.pulse-icon-critical),
+.incident-type-icon.flood:not(.pulse-icon-critical) {
+  animation: flood-wave 2s ease-in-out infinite;
+}
+
+/* Crime shield pulse for crime type */
+@keyframes crime-glow {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklab, oklch(0.5 0.18 290) 40%, transparent); }
+  50% { box-shadow: 0 0 0 6px color-mix(in oklab, oklch(0.5 0.18 290) 0%, transparent); }
+}
+.hotline-type-icon.crime:not(.pulse-icon-critical),
+.incident-type-icon.crime:not(.pulse-icon-critical) {
+  animation: crime-glow 2.4s ease-in-out infinite;
+}
+
+/* Reduce motion safety */
+@media (prefers-reduced-motion: reduce) {
+  .incident-card.pulse-critical,
+  .incident-card.pulse-high,
+  .hotline-row.pulse-critical,
+  .hotline-row.pulse-high,
+  .hotline-type-icon,
+  .incident-type-icon {
+    animation: none !important;
+  }
+}
+/* ============================================================
+   HOTLINE + ICON ENHANCEMENTS — type icons, chips, pulses
+   ============================================================ */
+
+/* Force Font Awesome icons to display properly */
+.incident-type-icon i,
+.incident-type-icon svg,
+.hotline-type-icon i,
+.hotline-type-icon svg,
+.inc-icon i,
+.inc-icon svg {
+  display: inline-block !important;
+  font-family: "Font Awesome 6 Free" !important;
+  font-weight: 900 !important;
+  font-style: normal !important;
+  line-height: 1 !important;
+}
+
+/* Base type icon chip */
+.incident-type-icon,
+.hotline-type-icon,
+.inc-icon {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: calc(var(--radius) + 2px);
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  flex-shrink: 0;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+/* Fallback so an icon is always visible even if FA fails */
+.incident-type-icon::before,
+.hotline-type-icon::before,
+.inc-icon::before {
+  content: '';
+}
+
+/* ---------- Type color schemes (chip background + icon color) ---------- */
+.incident-type-icon.fire,
+.hotline-type-icon.fire,
+.inc-icon.fire {
+  background: color-mix(in oklab, var(--destructive) 20%, transparent) !important;
+  color: var(--destructive) !important;
+}
+.incident-type-icon.medical,
+.hotline-type-icon.medical,
+.inc-icon.medical {
+  background: color-mix(in oklab, var(--pri-low) 20%, transparent) !important;
+  color: var(--pri-low) !important;
+}
+.incident-type-icon.accident,
+.hotline-type-icon.accident,
+.inc-icon.accident {
+  background: color-mix(in oklab, var(--pri-high) 24%, transparent) !important;
+  color: oklch(0.42 0.14 55) !important;
+}
+.dark .incident-type-icon.accident,
+.dark .hotline-type-icon.accident,
+.dark .inc-icon.accident { color: var(--pri-high) !important; }
+
+.incident-type-icon.flood,
+.hotline-type-icon.flood,
+.inc-icon.flood {
+  background: color-mix(in oklab, oklch(0.6 0.13 195) 22%, transparent) !important;
+  color: oklch(0.42 0.14 195) !important;
+}
+.dark .incident-type-icon.flood,
+.dark .hotline-type-icon.flood,
+.dark .inc-icon.flood { color: oklch(0.82 0.12 195) !important; }
+
+.incident-type-icon.crime,
+.hotline-type-icon.crime,
+.inc-icon.crime {
+  background: color-mix(in oklab, oklch(0.5 0.18 290) 20%, transparent) !important;
+  color: oklch(0.42 0.18 290) !important;
+}
+.dark .incident-type-icon.crime,
+.dark .hotline-type-icon.crime,
+.dark .inc-icon.crime { color: oklch(0.82 0.15 290) !important; }
+
+.incident-type-icon.other,
+.hotline-type-icon.other,
+.inc-icon.other {
+  background: var(--muted) !important;
+  color: var(--muted-foreground) !important;
+}
+
+/* ---------- Type label chips ---------- */
+.hotline-type-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.62rem;
+  font-weight: 800;
+  padding: 2px 9px;
+  border-radius: 9999px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.hotline-type-chip.fire {
+  background: color-mix(in oklab, var(--destructive) 15%, transparent);
+  color: var(--destructive);
+  border: 1px solid color-mix(in oklab, var(--destructive) 30%, transparent);
+}
+.hotline-type-chip.medical {
+  background: color-mix(in oklab, var(--pri-low) 15%, transparent);
+  color: var(--pri-low);
+  border: 1px solid color-mix(in oklab, var(--pri-low) 30%, transparent);
+}
+.hotline-type-chip.accident {
+  background: color-mix(in oklab, var(--pri-high) 18%, transparent);
+  color: oklch(0.42 0.14 55);
+  border: 1px solid color-mix(in oklab, var(--pri-high) 35%, transparent);
+}
+.dark .hotline-type-chip.accident { color: var(--pri-high); }
+.hotline-type-chip.flood {
+  background: color-mix(in oklab, oklch(0.6 0.13 195) 18%, transparent);
+  color: oklch(0.42 0.14 195);
+  border: 1px solid color-mix(in oklab, oklch(0.6 0.13 195) 35%, transparent);
+}
+.dark .hotline-type-chip.flood { color: oklch(0.82 0.12 195); }
+.hotline-type-chip.crime {
+  background: color-mix(in oklab, oklch(0.5 0.18 290) 15%, transparent);
+  color: oklch(0.42 0.18 290);
+  border: 1px solid color-mix(in oklab, oklch(0.5 0.18 290) 30%, transparent);
+}
+.dark .hotline-type-chip.crime { color: oklch(0.82 0.15 290); }
+.hotline-type-chip.other {
+  background: var(--muted);
+  color: var(--muted-foreground);
+  border: 1px solid var(--border);
+}
+
+/* ---------- Hotline row hover ---------- */
+.hotline-row {
+  transition: background 0.18s ease, transform 0.18s ease;
+  position: relative;
+  display: block;
+}
+.hotline-row:hover {
+  transform: translateX(3px);
+}
+.hotline-row:hover .hotline-type-icon {
+  transform: rotate(6deg) scale(1.08);
+}
+
+/* ============================================================
+   PULSE ANIMATIONS
+   ============================================================ */
+
+@keyframes pulse-critical-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--destructive) 55%, transparent),
+                0 6px 20px -8px color-mix(in oklab, var(--destructive) 30%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 10px color-mix(in oklab, var(--destructive) 0%, transparent),
+                0 6px 24px -6px color-mix(in oklab, var(--destructive) 50%, transparent);
+  }
+}
+@keyframes pulse-high-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--pri-high) 50%, transparent),
+                0 6px 20px -8px color-mix(in oklab, var(--pri-high) 25%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 8px color-mix(in oklab, var(--pri-high) 0%, transparent),
+                0 6px 22px -6px color-mix(in oklab, var(--pri-high) 45%, transparent);
+  }
+}
+
+.incident-card.pulse-critical,
+.hotline-row.pulse-critical {
+  animation: pulse-critical-glow 2.2s ease-in-out infinite;
+  border-color: color-mix(in oklab, var(--destructive) 40%, transparent) !important;
+}
+
+.incident-card.pulse-high,
+.hotline-row.pulse-high {
+  animation: pulse-high-glow 2.6s ease-in-out infinite;
+  border-color: color-mix(in oklab, var(--pri-high) 35%, transparent) !important;
+}
+
+@keyframes pulse-icon-critical-ring {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+}
+.hotline-type-icon.pulse-icon-critical,
+.incident-type-icon.pulse-icon-critical,
+.inc-icon.pulse-icon-critical {
+  animation: pulse-icon-critical-ring 1.4s ease-in-out infinite;
+  position: relative;
+}
+.hotline-type-icon.pulse-icon-critical::after,
+.incident-type-icon.pulse-icon-critical::after,
+.inc-icon.pulse-icon-critical::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  border: 2px solid color-mix(in oklab, var(--destructive) 60%, transparent);
+  animation: marker-pulse 1.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* ---------- Per-type icon animations ---------- */
+@keyframes fire-flicker {
+  0%, 100% { transform: rotate(0deg) scale(1); filter: brightness(1); }
+  25% { transform: rotate(-3deg) scale(1.05); filter: brightness(1.15); }
+  50% { transform: rotate(2deg) scale(1.08); filter: brightness(1.1); }
+  75% { transform: rotate(-2deg) scale(1.03); filter: brightness(1.12); }
+}
+.incident-type-icon.fire:not(.pulse-icon-critical) i,
+.hotline-type-icon.fire:not(.pulse-icon-critical) i,
+.inc-icon.fire:not(.pulse-icon-critical) i {
+  animation: fire-flicker 2s ease-in-out infinite;
+  display: inline-block !important;
+}
+
+@keyframes medical-beat {
+  0%, 100% { transform: scale(1); }
+  15% { transform: scale(1.12); }
+  30% { transform: scale(1); }
+  45% { transform: scale(1.08); }
+  60% { transform: scale(1); }
+}
+.incident-type-icon.medical:not(.pulse-icon-critical) i,
+.hotline-type-icon.medical:not(.pulse-icon-critical) i,
+.inc-icon.medical:not(.pulse-icon-critical) i {
+  animation: medical-beat 1.8s ease-in-out infinite;
+  display: inline-block !important;
+}
+
+@keyframes accident-shake {
+  0%, 100% { transform: translateX(0) rotate(0); }
+  20% { transform: translateX(-2px) rotate(-4deg); }
+  40% { transform: translateX(2px) rotate(4deg); }
+  60% { transform: translateX(-1px) rotate(-2deg); }
+  80% { transform: translateX(1px) rotate(2deg); }
+}
+.incident-type-icon.accident:not(.pulse-icon-critical) i,
+.hotline-type-icon.accident:not(.pulse-icon-critical) i,
+.inc-icon.accident:not(.pulse-icon-critical) i {
+  animation: accident-shake 2.5s ease-in-out infinite;
+  display: inline-block !important;
+}
+
+@keyframes flood-wave {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+.incident-type-icon.flood:not(.pulse-icon-critical) i,
+.hotline-type-icon.flood:not(.pulse-icon-critical) i,
+.inc-icon.flood:not(.pulse-icon-critical) i {
+  animation: flood-wave 2s ease-in-out infinite;
+  display: inline-block !important;
+}
+
+@keyframes crime-glow {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklab, oklch(0.5 0.18 290) 40%, transparent); }
+  50% { box-shadow: 0 0 0 6px color-mix(in oklab, oklch(0.5 0.18 290) 0%, transparent); }
+}
+.incident-type-icon.crime:not(.pulse-icon-critical),
+.hotline-type-icon.crime:not(.pulse-icon-critical),
+.inc-icon.crime:not(.pulse-icon-critical) {
+  animation: crime-glow 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .incident-card.pulse-critical,
+  .incident-card.pulse-high,
+  .hotline-row.pulse-critical,
+  .hotline-row.pulse-high,
+  .hotline-type-icon,
+  .incident-type-icon,
+  .inc-icon,
+  .hotline-type-icon i,
+  .incident-type-icon i,
+  .inc-icon i {
+    animation: none !important;
+  }
+}
