@@ -29,6 +29,45 @@
   <style>
     body { background: var(--content-bg); color: var(--foreground); }
 
+    /* ============================================================
+       SIDEBAR ALERTS BUTTON — bell icon + unread badge
+       ============================================================ */
+    #alertsLink {
+      position: relative;
+    }
+    #alertsLink .alerts-badge {
+      position: absolute;
+      top: 6px;
+      right: 10px;
+      min-width: 20px;
+      height: 20px;
+      padding: 0 5px;
+      background: #dc3545;
+      color: #fff;
+      border-radius: 9999px;
+      font-size: 0.68rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      box-shadow: 0 2px 6px rgba(220, 53, 69, 0.5);
+      animation: alertsBadgePulse 1.6s ease-in-out infinite;
+      z-index: 2;
+    }
+    @keyframes alertsBadgePulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 2px 6px rgba(220, 53, 69, 0.5); }
+      50% { transform: scale(1.1); box-shadow: 0 4px 12px rgba(220, 53, 69, 0.8); }
+    }
+
+    /* ============================================================
+       ALERT NOTIFICATION POPUP (bell icon top-right corner)
+       ============================================================ */
+    @keyframes alertPopupIn {
+      from { transform: translateX(400px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
     .emergency-popup {
       position: fixed; inset: 0; z-index: 99998;
       display: none; align-items: center; justify-content: center;
@@ -704,6 +743,124 @@
     }
 
     /* ============================================================
+       PROFESSIONAL STAT CARDS — icon pinned to the right
+       ============================================================ */
+    .stat-card-professional {
+      background: var(--card) !important;
+      color: var(--card-foreground) !important;
+      border: 1px solid var(--border) !important;
+      border-radius: calc(var(--radius) + 4px);
+      padding: 1.35rem 1.4rem;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      gap: 1rem;
+      height: 100%;
+      min-height: 108px;
+      box-shadow: var(--card-shadow);
+      transition: all 300ms var(--ease-civic);
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-card-professional::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; bottom: 0;
+      width: 4px;
+      background: var(--primary);
+      opacity: 0;
+      transition: opacity 300ms ease;
+    }
+    .stat-card-professional:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--card-shadow-hover);
+      border-color: color-mix(in oklab, var(--primary) 40%, transparent) !important;
+    }
+    .stat-card-professional:hover::before { opacity: 1; }
+
+    .stat-card-professional.accent-primary::before { background: var(--primary); }
+    .stat-card-professional.accent-warning::before { background: var(--pri-high); }
+    .stat-card-professional.accent-danger::before  { background: var(--destructive); }
+    .stat-card-professional.accent-success::before { background: var(--primary); }
+
+    .stat-card-professional .stat-info {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-width: 0;
+      flex: 1;
+    }
+    .stat-card-professional .stat-num {
+      font-family: "Sora", sans-serif !important;
+      font-weight: 900 !important;
+      font-size: 2rem !important;
+      line-height: 1 !important;
+      letter-spacing: -0.03em;
+      color: var(--card-foreground) !important;
+      margin-bottom: 0.35rem;
+    }
+    .stat-card-professional.accent-warning .stat-num { color: oklch(0.55 0.16 55) !important; }
+    .dark .stat-card-professional.accent-warning .stat-num { color: var(--pri-high) !important; }
+    .stat-card-professional.accent-danger  .stat-num { color: var(--destructive) !important; }
+    .stat-card-professional.accent-success .stat-num { color: var(--primary) !important; }
+
+    .stat-card-professional .stat-lbl {
+      font-size: 0.72rem !important;
+      font-weight: 800 !important;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted-foreground) !important;
+      line-height: 1.2;
+    }
+
+    .stat-card-professional .stat-icon-right {
+      width: 54px;
+      height: 54px;
+      min-width: 54px;
+      border-radius: calc(var(--radius) + 2px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      flex-shrink: 0;
+      transition: transform 0.3s ease;
+    }
+    .stat-card-professional:hover .stat-icon-right {
+      transform: scale(1.08) rotate(4deg);
+    }
+    .stat-card-professional .stat-icon-right.blue {
+      background: color-mix(in oklab, var(--pri-low) 15%, transparent);
+      color: var(--pri-low);
+    }
+    .stat-card-professional .stat-icon-right.yellow {
+      background: color-mix(in oklab, var(--pri-medium) 30%, transparent);
+      color: oklch(0.45 0.14 75);
+    }
+    .dark .stat-card-professional .stat-icon-right.yellow {
+      color: var(--pri-medium);
+    }
+    .stat-card-professional .stat-icon-right.red {
+      background: color-mix(in oklab, var(--destructive) 15%, transparent);
+      color: var(--destructive);
+    }
+    .stat-card-professional .stat-icon-right.green {
+      background: color-mix(in oklab, var(--primary) 15%, transparent);
+      color: var(--primary);
+    }
+
+    @media (max-width: 576px) {
+      .stat-card-professional {
+        padding: 1.1rem 1.15rem;
+        min-height: 96px;
+      }
+      .stat-card-professional .stat-num { font-size: 1.65rem !important; }
+      .stat-card-professional .stat-icon-right {
+        width: 46px; height: 46px; min-width: 46px;
+        font-size: 1.15rem;
+      }
+    }
+
+    /* ============================================================
        ALERT MODAL — same as incident report modal
        ============================================================ */
     .alert-modal .modal-content {
@@ -887,6 +1044,42 @@
     .alert-modal .search-spinner.show {
       display: inline-block;
     }
+
+    /* ============================================================
+       ALERT DETAIL MODAL (view-only, responders + admins)
+       ============================================================ */
+    .alert-detail-modal .modal-content {
+      border-radius: calc(var(--radius) + 8px) !important;
+      background: var(--card);
+      color: var(--card-foreground);
+    }
+    .alert-detail-modal .modal-header {
+      background: color-mix(in oklab, var(--destructive) 12%, var(--card)) !important;
+      color: var(--card-foreground) !important;
+    }
+    .alert-detail-modal .modal-footer {
+      background: color-mix(in oklab, var(--muted) 55%, var(--card)) !important;
+      border-top: 1px solid var(--border) !important;
+    }
+    .alert-detail-message {
+      background: color-mix(in oklab, var(--muted) 70%, var(--card));
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) + 2px);
+      padding: 0.9rem 1.1rem;
+      font-size: 0.92rem;
+      line-height: 1.6;
+      color: var(--card-foreground);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .ai-detail-card {
+      background: color-mix(in oklab, var(--muted) 75%, var(--card));
+      border: 1px solid var(--border);
+      border-left: 5px solid var(--primary);
+      border-radius: calc(var(--radius) + 2px);
+      padding: 0.9rem 1rem;
+      color: var(--card-foreground);
+    }
   </style>
 </head>
 <body class="dashboard-page">
@@ -924,7 +1117,7 @@
           <a class="nav-link" href="./hotline.html" id="hotlineNavLink"><i data-lucide="phone-call"></i>Hotline Management</a>
           <a class="nav-link" href="#" data-page="analytics"><i data-lucide="bar-chart-3"></i>Analytics</a>
           <a class="nav-link" href="#" data-page="responders" id="respondersLink" style="display:none;"><i data-lucide="users"></i>Responders</a>
-          <a class="nav-link" href="#" data-page="alerts" id="alertsLink" style="display:none;"><i data-lucide="broadcast"></i>Alerts</a>
+          <a class="nav-link" href="#" data-page="alerts" id="alertsLink"><i data-lucide="bell"></i>Alerts</a>
           <a class="nav-link" href="#" data-page="profile"><i data-lucide="user"></i>Profile</a>
         </nav>
         <div class="sidebar-footer">
