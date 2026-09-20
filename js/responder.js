@@ -1,10 +1,14 @@
 /* ============================================================
-   Culiat Public Safety — Responder Dashboard (v8)
-   Realtime Siren + Emergency Popup + Barangay Map
-   + Enhanced type icons & pulse animations
-   + Fixed external link navigation
-   + Admin-only: Responders + Alerts sidebar
-   + Send Alert modal = full incident-style form
+   Culiat Public Safety — Responder Dashboard (v11)
+   - Realtime siren + emergency popup + barangay map
+   - Enhanced type icons & pulse animations
+   - Send Alert modal = full incident-style form (admin only)
+   - Professional stat cards (icon pinned right)
+   - Alerts visible to BOTH admin + responders (view-only for responders)
+   - Alerts notify residents + responders (in-app notification rows)
+   - Alert popup notifications appear on dashboard (like incident reports)
+   - Live unread-alerts badge on sidebar bell icon
+   - NEW: Responders + admins can VIEW full alert details
    ============================================================ */
 
 let currentUser = null;
@@ -52,13 +56,17 @@ let isAlertGeocoding = false;
 
 // Alert media state
 let selectedAlertMediaFiles = [];
-let alertMediaPreviewUrls = [];
 
-// Gemini state (for alert AI analysis)
+// Gemini state
 let geminiClient = null;
 let geminiModel = null;
 let geminiReady = false;
 const aiCache = new Map();
+
+// Notifications state
+let notificationsRealtimeChannel = null;
+let unreadAlertsCount = 0;
+let processedNotificationIds = new Set();
 
 // Geocode cache
 const geocodeCache = new Map();
@@ -68,30 +76,15 @@ const geocodeCache = new Map();
 // ============================================
 const BARANGAY_SCOPE = {
     name: 'Barangay Culiat',
-    bounds: {
-        north: 14.7000,
-        south: 14.6400,
-        east: 121.0400,
-        west: 120.9700
-    },
+    bounds: { north: 14.7000, south: 14.6400, east: 121.0400, west: 120.9700 },
     centerLat: 14.6760,
     centerLng: 121.0150,
     polygon: [
-        [14.6990, 121.0150],
-        [14.7020, 121.0280],
-        [14.6980, 121.0380],
-        [14.6880, 121.0420],
-        [14.6750, 121.0400],
-        [14.6650, 121.0330],
-        [14.6580, 121.0250],
-        [14.6550, 121.0150],
-        [14.6580, 121.0050],
-        [14.6680, 120.9980],
-        [14.6780, 120.9930],
-        [14.6880, 120.9900],
-        [14.6960, 120.9950],
-        [14.6990, 121.0050],
-        [14.6990, 121.0150]
+        [14.6990, 121.0150], [14.7020, 121.0280], [14.6980, 121.0380],
+        [14.6880, 121.0420], [14.6750, 121.0400], [14.6650, 121.0330],
+        [14.6580, 121.0250], [14.6550, 121.0150], [14.6580, 121.0050],
+        [14.6680, 120.9980], [14.6780, 120.9930], [14.6880, 120.9900],
+        [14.6960, 120.9950], [14.6990, 121.0050], [14.6990, 121.0150]
     ]
 };
 
@@ -100,16 +93,11 @@ const BARANGAY_SCOPE = {
 // ============================================
 function initAudio() {
     try {
-        if (!audioContext) {
-            audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        if (audioContext.state === 'suspended') { audioContext.resume(); }
+        if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioContext.state === 'suspended') audioContext.resume();
         if (audioContext.state === 'running') {
             audioInitialized = true;
-            if (pendingSirenRequest) {
-                pendingSirenRequest = null;
-                playSirenSound();
-            }
+            if (pendingSirenRequest) { pendingSirenRequest = null; playSirenSound(); }
             return true;
         }
         return false;
@@ -119,21 +107,17 @@ function initAudio() {
 function playSirenSound() {
     try {
         stopSirenSound();
-        if (!audioInitialized) { pendingSirenRequest = true; return; }
-        if (!audioContext || audioContext.state !== 'running') { pendingSirenRequest = true; return; }
+        if (!audioInitialized || !audioContext || audioContext.state !== 'running') { pendingSirenRequest = true; return; }
         isSirenPlaying = true;
-
         const osc = audioContext.createOscillator();
         const gain = audioContext.createGain();
-        osc.connect(gain);
-        gain.connect(audioContext.destination);
+        osc.connect(gain); gain.connect(audioContext.destination);
         osc.type = 'square';
         osc.frequency.setValueAtTime(600, audioContext.currentTime);
         gain.gain.setValueAtTime(0.12, audioContext.currentTime);
         sirenOscillators = [osc];
         sirenGainNodes = [gain];
         osc.start(audioContext.currentTime);
-
         let toggle = false;
         function updateSiren() {
             if (!isSirenPlaying) return;
@@ -165,18 +149,12 @@ function showToast(message, type, duration) {
     duration = duration || 5000;
     var container = document.getElementById('toastContainer') || createToastContainer();
     var colors = {
-        success: 'bg-success text-white',
-        danger: 'bg-danger text-white',
-        warning: 'bg-warning text-dark',
-        info: 'bg-info text-white',
-        emergency: 'bg-danger text-white'
+        success: 'bg-success text-white', danger: 'bg-danger text-white',
+        warning: 'bg-warning text-dark', info: 'bg-info text-white', emergency: 'bg-danger text-white'
     };
     var icons = {
-        success: 'check-circle',
-        danger: 'times-circle',
-        warning: 'exclamation-triangle',
-        info: 'info-circle',
-        emergency: 'exclamation-triangle'
+        success: 'check-circle', danger: 'times-circle', warning: 'exclamation-triangle',
+        info: 'info-circle', emergency: 'exclamation-triangle'
     };
     var toast = document.createElement('div');
     toast.className = 'toast align-items-center ' + (colors[type] || colors.info) + ' border-0';
@@ -218,22 +196,14 @@ function getMediaUrls(incident) {
 
 function escapeHtml(str) {
     if (str === null || str === undefined) return '';
-    return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 function formatLocationForPopup(location) {
     if (!location) return 'Unknown location';
     var text = String(location);
     if (text.trim().startsWith('{')) {
-        try {
-            var obj = JSON.parse(text);
-            if (obj && obj.address) return String(obj.address);
-        } catch (e) {}
+        try { var obj = JSON.parse(text); if (obj && obj.address) return String(obj.address); } catch (e) {}
     }
     return text;
 }
@@ -242,15 +212,10 @@ function getShortLocation(location) {
     if (!location) return 'Unknown location';
     var text = String(location);
     if (text.trim().startsWith('{')) {
-        try {
-            var obj = JSON.parse(text);
-            if (obj && obj.address) text = String(obj.address);
-        } catch (e) {}
+        try { var obj = JSON.parse(text); if (obj && obj.address) text = String(obj.address); } catch (e) {}
     }
     var parts = text.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
-    if (parts.length > 2) {
-        return parts.slice(0, 2).join(', ');
-    }
+    if (parts.length > 2) return parts.slice(0, 2).join(', ');
     return text;
 }
 
@@ -267,8 +232,7 @@ function formatDateTime(dateStr) {
     if (!dateStr) return '—';
     try {
         return new Date(dateStr).toLocaleString('en-US', {
-            month: 'short', day: 'numeric', year: 'numeric',
-            hour: '2-digit', minute: '2-digit'
+            month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
         });
     } catch (e) { return '—'; }
 }
@@ -300,15 +264,6 @@ function getTypeColor(type) {
     return map[type] || map.other;
 }
 
-function getTypeLabel(type) {
-    var map = {
-        fire: 'Fire', medical: 'Medical', accident: 'Accident',
-        flood: 'Flood', crime: 'Crime', armed_conflict: 'Armed Conflict',
-        natural_disaster: 'Natural Disaster', other: 'Other'
-    };
-    return map[type] || 'Other';
-}
-
 function getPriorityPulseClasses(priority) {
     if (priority === 'critical') return { card: 'pulse-critical', icon: 'pulse-icon-critical' };
     if (priority === 'high') return { card: 'pulse-high', icon: '' };
@@ -316,50 +271,38 @@ function getPriorityPulseClasses(priority) {
 }
 
 // ============================================
-// GEOCODING (for incidents without coords)
+// GEOCODING
 // ============================================
 async function geocodeLocationString(locationInput) {
     let address = '';
     if (typeof locationInput === 'string') {
         address = locationInput;
         if (address.trim().startsWith('{')) {
-            try {
-                const obj = JSON.parse(address);
-                address = obj.address || obj.location || address;
-            } catch (e) {}
+            try { const obj = JSON.parse(address); address = obj.address || obj.location || address; } catch (e) {}
         }
     } else if (typeof locationInput === 'object' && locationInput) {
         address = locationInput.address || '';
     }
-
     address = String(address).trim();
     if (address.length < 3) return null;
-
     if (geocodeCache.has(address)) return geocodeCache.get(address);
-
     const coordMatch = address.match(/^(-?\d+\.\d+),?\s*(-?\d+\.\d+)$/);
     if (coordMatch) {
         const result = { lat: parseFloat(coordMatch[1]), lng: parseFloat(coordMatch[2]) };
         geocodeCache.set(address, result);
         return result;
     }
-
     try {
         const viewbox = `${BARANGAY_SCOPE.bounds.west},${BARANGAY_SCOPE.bounds.north},${BARANGAY_SCOPE.bounds.east},${BARANGAY_SCOPE.bounds.south}`;
         const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1&countrycodes=ph&viewbox=${viewbox}&bounded=1`;
-        const res = await fetch(url, {
-            headers: { 'Accept': 'application/json', 'User-Agent': 'BarangayEMS/1.0' }
-        });
+        const res = await fetch(url, { headers: { 'Accept': 'application/json', 'User-Agent': 'BarangayEMS/1.0' } });
         const data = await res.json();
         if (data && data.length > 0) {
             const result = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
             geocodeCache.set(address, result);
             return result;
         }
-    } catch (e) {
-        console.warn('Geocode failed for:', address, e.message);
-    }
-
+    } catch (e) { console.warn('Geocode failed:', e.message); }
     geocodeCache.set(address, null);
     return null;
 }
@@ -371,10 +314,7 @@ function renderPopupMedia(mediaUrls) {
     var container = document.getElementById('popupMediaContainer');
     var list = document.getElementById('popupMediaList');
     if (!container || !list) return;
-    if (!mediaUrls || mediaUrls.length === 0) {
-        container.style.display = 'none';
-        return;
-    }
+    if (!mediaUrls || mediaUrls.length === 0) { container.style.display = 'none'; return; }
     container.style.display = 'block';
     list.innerHTML = '';
     mediaUrls.forEach(function(media) {
@@ -396,10 +336,7 @@ function renderPopupMedia(mediaUrls) {
 function openLightbox(mediaUrl, mediaType) {
     var lightbox = document.getElementById('mediaLightbox');
     var content = document.getElementById('lightboxContent');
-    if (!lightbox || !content) {
-        window.open(mediaUrl, '_blank');
-        return;
-    }
+    if (!lightbox || !content) { window.open(mediaUrl, '_blank'); return; }
     if (mediaType === 'video') {
         content.innerHTML = '<video controls autoplay style="max-width:100%;max-height:85vh;border-radius:12px;"><source src="' + mediaUrl + '" type="video/mp4"></video>';
     } else {
@@ -439,51 +376,37 @@ function getPriorityMeta(priority) {
 }
 
 // ============================================
-// EMERGENCY POPUP
+// EMERGENCY POPUP (incident reports)
 // ============================================
 function startPopupTimer() {
     if (popupTimerInterval) clearInterval(popupTimerInterval);
     var timerText = document.getElementById('popupTimerText');
     if (!timerText || !popupData) return;
-    function update() {
-        timerText.textContent = timeAgo(popupData.created_at);
-    }
+    function update() { timerText.textContent = timeAgo(popupData.created_at); }
     update();
     popupTimerInterval = setInterval(update, 30000);
 }
 
 function stopPopupTimer() {
-    if (popupTimerInterval) {
-        clearInterval(popupTimerInterval);
-        popupTimerInterval = null;
-    }
+    if (popupTimerInterval) { clearInterval(popupTimerInterval); popupTimerInterval = null; }
 }
 
 function showEmergencyPopup(incident) {
     if (!incident || !incident.id) return;
-
     if (incident.status && incident.status !== 'reported') {
         console.log('Skipping popup — incident already ' + incident.status);
         return;
     }
-
     popupData = incident;
-
     var meta = getPriorityMeta(incident.priority);
     var banner = document.getElementById('popupPriorityBanner');
     var icon = document.getElementById('popupPriorityIcon');
     var label = document.getElementById('popupPriorityLabel');
     var content = document.getElementById('emergencyPopupContent');
 
-    if (banner) {
-        banner.className = 'popup-priority-banner ' + meta.cls;
-    }
-    if (icon) {
-        icon.innerHTML = '<i class="fas ' + meta.icon + '"></i>';
-    }
-    if (label) {
-        label.textContent = meta.label;
-    }
+    if (banner) banner.className = 'popup-priority-banner ' + meta.cls;
+    if (icon) icon.innerHTML = '<i class="fas ' + meta.icon + '"></i>';
+    if (label) label.textContent = meta.label;
     if (content) {
         content.classList.remove('critical', 'high', 'medium', 'low');
         if (incident.priority) content.classList.add(incident.priority);
@@ -510,9 +433,7 @@ function showEmergencyPopup(incident) {
         supabaseClient.from('profiles').select('full_name').eq('id', incident.reporter_id).maybeSingle()
             .then(function(result) {
                 var reporterEl = document.getElementById('popupReporter');
-                if (reporterEl) {
-                    reporterEl.textContent = (result.data && result.data.full_name) ? result.data.full_name : 'Anonymous';
-                }
+                if (reporterEl) reporterEl.textContent = (result.data && result.data.full_name) ? result.data.full_name : 'Anonymous';
             })
             .catch(function() {
                 var reporterEl = document.getElementById('popupReporter');
@@ -522,40 +443,27 @@ function showEmergencyPopup(incident) {
         setText('popupReporter', 'Anonymous');
     }
 
-    var mediaUrls = getMediaUrls(incident);
-    renderPopupMedia(mediaUrls);
+    renderPopupMedia(getMediaUrls(incident));
 
     var popup = document.getElementById('emergencyPopup');
-    if (popup) {
-        popup.classList.add('active');
-    }
+    if (popup) popup.classList.add('active');
 
     var siren = document.getElementById('sirenIndicator');
-    if (siren) {
-        siren.classList.add('show');
-        siren.style.display = 'inline-flex';
-    }
+    if (siren) { siren.classList.add('show'); siren.style.display = 'inline-flex'; }
 
     playSirenSound();
     startPopupTimer();
     document.body.style.overflow = 'hidden';
-
-    console.log('🚨 Emergency popup shown for:', incident.id, '[' + (incident.priority || 'medium') + ']');
+    console.log('🚨 Emergency popup shown:', incident.id, '[' + (incident.priority || 'medium') + ']');
 }
 
 function closePopup() {
     stopSirenSound();
     stopPopupTimer();
-
     var popup = document.getElementById('emergencyPopup');
     if (popup) popup.classList.remove('active');
-
     var siren = document.getElementById('sirenIndicator');
-    if (siren) {
-        siren.classList.remove('show');
-        siren.style.display = 'none';
-    }
-
+    if (siren) { siren.classList.remove('show'); siren.style.display = 'none'; }
     document.body.style.overflow = '';
     popupData = null;
 }
@@ -564,73 +472,232 @@ function closePopup() {
 // ACKNOWLEDGE
 // ============================================
 async function acknowledgePopup() {
-    if (!popupData) {
-        showToast('No incident data found', 'warning');
-        return;
-    }
-
+    if (!popupData) { showToast('No incident data found', 'warning'); return; }
     var btn = document.getElementById('acknowledgeBtn');
     var originalHTML = btn ? btn.innerHTML : '';
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Acknowledging…';
-    }
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Acknowledging…'; }
 
     try {
         stopSirenSound();
-
-        var updateData = {
-            status: 'acknowledged',
-            updated_at: new Date().toISOString()
-        };
-
+        var updateData = { status: 'acknowledged', updated_at: new Date().toISOString() };
         try {
             updateData.acknowledged_at = new Date().toISOString();
             updateData.acknowledged_by = currentUser ? currentUser.id : null;
         } catch (e) {}
 
-        var result = await supabaseClient
-            .from('incident_reports')
-            .update(updateData)
-            .eq('id', popupData.id);
-
+        var result = await supabaseClient.from('incident_reports').update(updateData).eq('id', popupData.id);
         if (result.error) {
             if (result.error.message.includes('column') && result.error.message.includes('does not exist')) {
-                var retryResult = await supabaseClient
-                    .from('incident_reports')
-                    .update({ status: 'acknowledged', updated_at: new Date().toISOString() })
-                    .eq('id', popupData.id);
+                var retryResult = await supabaseClient.from('incident_reports')
+                    .update({ status: 'acknowledged', updated_at: new Date().toISOString() }).eq('id', popupData.id);
                 if (retryResult.error) throw retryResult.error;
-            } else {
-                throw result.error;
-            }
+            } else throw result.error;
         }
 
         showToast('✅ Emergency acknowledged successfully!', 'success');
-
         try {
             if (typeof window.sendEmergencyEmailNotification === 'function') {
                 var emailResult = await window.sendEmergencyEmailNotification(popupData, true);
-                if (emailResult && emailResult.success) {
-                    showToast('📧 Email notifications sent to all users!', 'success', 5000);
-                }
+                if (emailResult && emailResult.success) showToast('📧 Email notifications sent!', 'success', 5000);
             }
-        } catch (emailError) {
-            console.error('Email notification error:', emailError);
-        }
+        } catch (emailError) { console.error('Email error:', emailError); }
 
         closePopup();
         setTimeout(function() { loadDashboard(); }, 400);
-
     } catch (error) {
         console.error('Acknowledge error:', error);
         showToast('Failed to acknowledge: ' + error.message, 'danger');
     } finally {
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = originalHTML || '<i class="fas fa-check"></i> Acknowledge &amp; Dispatch';
-        }
+        if (btn) { btn.disabled = false; btn.innerHTML = originalHTML || '<i class="fas fa-check"></i> Acknowledge &amp; Dispatch'; }
     }
+}
+
+// ============================================
+// ALERT NOTIFICATION POPUP (for admin-sent alerts)
+// ============================================
+function showAlertNotificationPopup(notif) {
+    if (!notif || !notif.id) return;
+
+    // Avoid duplicates
+    if (processedNotificationIds.has(notif.id)) return;
+    processedNotificationIds.add(notif.id);
+
+    var existing = document.getElementById('alertNotificationPopup');
+    if (existing) existing.remove();
+
+    var priority = (notif.priority || 'medium').toLowerCase();
+    var priorityColor = {
+        critical: '#dc3545', high: '#fd7e14', medium: '#ffc107', low: '#0d6efd'
+    }[priority] || '#6c757d';
+
+    var alertType = (notif.data && notif.data.alert_type) ? notif.data.alert_type : 'other';
+    var icon = getTypeIcon(alertType);
+
+    var popup = document.createElement('div');
+    popup.id = 'alertNotificationPopup';
+    popup.style.cssText = `
+        position: fixed; top: 80px; right: 20px; z-index: 99997;
+        max-width: 380px; background: var(--card); color: var(--card-foreground);
+        border-radius: calc(var(--radius) + 6px); border: 1px solid var(--border);
+        box-shadow: 0 24px 60px -16px rgba(0,0,0,0.45), 0 0 0 1px var(--border);
+        overflow: hidden; animation: alertPopupIn 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+        border-left: 5px solid ${priorityColor};
+    `;
+
+    popup.innerHTML = `
+        <div style="padding: 0.85rem 1rem; background: color-mix(in oklab, ${priorityColor} 12%, var(--card)); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 0.6rem;">
+            <div style="width: 34px; height: 34px; border-radius: 50%; background: ${priorityColor}; color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <i class="fas fa-bullhorn" style="font-size: 0.9rem;"></i>
+            </div>
+            <div style="flex: 1; min-width: 0;">
+                <div style="font-family: 'Sora', sans-serif; font-weight: 800; font-size: 0.82rem; color: ${priorityColor}; text-transform: uppercase; letter-spacing: 0.06em;">
+                    🚨 Barangay Alert · ${priority.toUpperCase()}
+                </div>
+            </div>
+            <button type="button" onclick="dismissAlertPopup()" style="background: transparent; border: none; color: var(--muted-foreground); font-size: 1.2rem; cursor: pointer; padding: 0; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 50%;" onmouseover="this.style.background='var(--muted)'" onmouseout="this.style.background='transparent'">&times;</button>
+        </div>
+        <div style="padding: 1rem;">
+            <div style="display: flex; align-items: flex-start; gap: 0.7rem; margin-bottom: 0.7rem;">
+                <div style="width: 40px; height: 40px; border-radius: calc(var(--radius) + 2px); background: color-mix(in oklab, ${priorityColor} 18%, transparent); color: ${priorityColor}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <i class="fas ${icon}" style="font-size: 1rem;"></i>
+                </div>
+                <div style="flex: 1; min-width: 0;">
+                    <div style="font-family: 'Sora', sans-serif; font-weight: 800; font-size: 0.95rem; color: var(--card-foreground); margin-bottom: 0.25rem; word-break: break-word;">
+                        ${escapeHtml(notif.title || 'Alert')}
+                    </div>
+                    <div style="font-size: 0.82rem; color: var(--muted-foreground); line-height: 1.5; word-break: break-word;">
+                        ${escapeHtml((notif.message || '').substring(0, 180))}${(notif.message || '').length > 180 ? '…' : ''}
+                    </div>
+                </div>
+            </div>
+            <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                <button type="button" onclick="dismissAlertPopup()" style="font-size: 0.75rem; font-weight: 700; padding: 0.4rem 0.85rem; border-radius: 9999px; background: var(--card); color: var(--foreground); border: 1px solid var(--border); cursor: pointer;">
+                    Dismiss
+                </button>
+                <button type="button" onclick="openAlertsFromPopup()" style="font-size: 0.75rem; font-weight: 700; padding: 0.4rem 0.85rem; border-radius: 9999px; background: var(--primary); color: var(--primary-foreground); border: none; cursor: pointer;">
+                    <i class="fas fa-bell me-1"></i> View Alerts
+                </button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(popup);
+    setTimeout(function() {
+        var p = document.getElementById('alertNotificationPopup');
+        if (p) {
+            p.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+            p.style.opacity = '0';
+            p.style.transform = 'translateX(400px)';
+            setTimeout(function() { p.remove(); }, 350);
+        }
+    }, 15000);
+}
+
+window.dismissAlertPopup = function() {
+    var p = document.getElementById('alertNotificationPopup');
+    if (p) {
+        p.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+        p.style.opacity = '0';
+        p.style.transform = 'translateX(400px)';
+        setTimeout(function() { p.remove(); }, 350);
+    }
+};
+
+window.openAlertsFromPopup = function() {
+    window.dismissAlertPopup();
+    var alertsLink = document.getElementById('alertsLink');
+    if (alertsLink) {
+        document.querySelectorAll('.dashboard-sidebar .nav-link').forEach(function(l) { l.classList.remove('active'); });
+        alertsLink.classList.add('active');
+        loadPage('alerts');
+    }
+};
+
+async function markAllNotificationsRead() {
+    if (!currentUser) return;
+    try {
+        await supabaseClient.from('notifications').update({ read: true })
+            .eq('user_id', currentUser.id).eq('read', false);
+        unreadAlertsCount = 0;
+        updateAlertsBadge();
+    } catch (e) { console.warn('Mark-all-read failed:', e); }
+}
+
+// ============================================
+// NOTIFICATIONS — REALTIME + BADGE
+// ============================================
+async function refreshUnreadAlertsCount() {
+    if (!currentUser) return;
+    try {
+        var result = await supabaseClient
+            .from('notifications')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', currentUser.id)
+            .eq('read', false)
+            .eq('type', 'alert');
+        unreadAlertsCount = result.count || 0;
+        updateAlertsBadge();
+    } catch (e) { console.warn('Count unread alerts failed:', e); }
+}
+
+function updateAlertsBadge() {
+    var alertsLink = document.getElementById('alertsLink');
+    if (!alertsLink) return;
+    var badge = alertsLink.querySelector('.alerts-badge');
+    if (unreadAlertsCount > 0) {
+        if (!badge) {
+            badge = document.createElement('span');
+            badge.className = 'alerts-badge';
+            alertsLink.appendChild(badge);
+        }
+        badge.textContent = unreadAlertsCount > 99 ? '99+' : String(unreadAlertsCount);
+    } else if (badge) {
+        badge.remove();
+    }
+}
+
+function setupNotificationsRealtime() {
+    if (!currentUser) return;
+    if (notificationsRealtimeChannel) {
+        try { supabaseClient.removeChannel(notificationsRealtimeChannel); } catch(e) {}
+    }
+
+    notificationsRealtimeChannel = supabaseClient
+        .channel('notifications-realtime-' + currentUser.id)
+        .on('postgres_changes', {
+            event: 'INSERT', schema: 'public', table: 'notifications',
+            filter: `user_id=eq.${currentUser.id}`
+        }, function(payload) {
+            var notif = payload.new;
+            if (!notif) return;
+            console.log('🔔 New notification:', notif);
+
+            unreadAlertsCount++;
+            updateAlertsBadge();
+
+            // Popup — same behavior as incident report popup
+            showAlertNotificationPopup(notif);
+
+            try {
+                if (audioContext && audioContext.state === 'running') {
+                    var osc = audioContext.createOscillator();
+                    var gain = audioContext.createGain();
+                    osc.connect(gain); gain.connect(audioContext.destination);
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(880, audioContext.currentTime);
+                    gain.gain.setValueAtTime(0.08, audioContext.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.25);
+                    osc.start(audioContext.currentTime);
+                    osc.stop(audioContext.currentTime + 0.25);
+                }
+            } catch (e) {}
+
+            var activePage = document.querySelector('.dashboard-sidebar .nav-link.active')?.dataset?.page;
+            if (activePage === 'alerts') loadAlerts();
+        })
+        .subscribe(function(status) {
+            console.log('📡 Notifications realtime status:', status);
+        });
 }
 
 // ============================================
@@ -649,10 +716,7 @@ async function initResponderDashboard() {
 
         currentUser = session.user;
         var profileResult = await supabaseClient.from('profiles').select('*').eq('id', currentUser.id).maybeSingle();
-        if (profileResult.error || !profileResult.data) {
-            showToast('Error loading profile', 'danger');
-            return;
-        }
+        if (profileResult.error || !profileResult.data) { showToast('Error loading profile', 'danger'); return; }
 
         currentProfile = profileResult.data;
         if (currentProfile.role !== 'responder' && currentProfile.role !== 'admin') {
@@ -669,50 +733,40 @@ async function initResponderDashboard() {
 
         // ============================================================
         // ROLE-BASED SIDEBAR VISIBILITY
-        // Responders link + Alerts link ONLY visible for ADMIN
+        // - Alerts link: ALWAYS visible (both admin + responder)
+        // - Responders link: ADMIN only
         // ============================================================
         var rl = document.getElementById('respondersLink');
         var al = document.getElementById('alertsLink');
         if (currentProfile.role === 'admin') {
             if (rl) rl.style.display = 'block';
-            if (al) al.style.display = 'block';
         } else {
             if (rl) rl.style.display = 'none';
-            if (al) al.style.display = 'none';
         }
+        if (al) al.style.display = 'flex';
 
         actionModal = new bootstrap.Modal(document.getElementById('actionModal'));
         addResponderModal = new bootstrap.Modal(document.getElementById('addResponderModal'));
         alertModal = new bootstrap.Modal(document.getElementById('alertModal'));
 
-        // Initialize Gemini for alert AI analysis
         initGemini();
-
-        // Setup alert modal map + geocode + media upload
         setupAlertModal();
 
         await loadDashboard();
 
-        // ============================================================
-        // SIDEBAR LINK BINDING
-        // If the link has a real href (like hotline.html), DO NOT
-        // preventDefault. Only internal "#" links get intercepted.
-        // ============================================================
+        setupNotificationsRealtime();
+        await refreshUnreadAlertsCount();
+
         document.querySelectorAll('.dashboard-sidebar .nav-link').forEach(function(link) {
             link.addEventListener('click', function(e) {
                 var href = this.getAttribute('href');
-
-                // External / real-href link → let the browser navigate
-                if (href && href !== '#') {
-                    return;
-                }
-
-                // Internal nav link
+                if (href && href !== '#') return;
                 e.preventDefault();
                 var targetPage = this.dataset.page;
                 if (!targetPage) return;
 
-                if ((targetPage === 'responders' || targetPage === 'alerts') && currentProfile.role !== 'admin') {
+                // Only admins can access Responders page
+                if (targetPage === 'responders' && currentProfile.role !== 'admin') {
                     showToast('Access denied. Admins only.', 'warning', 4000);
                     return;
                 }
@@ -735,46 +789,29 @@ async function initResponderDashboard() {
 }
 
 // ============================================
-// REALTIME — start early
+// REALTIME — incidents
 // ============================================
 function startRealtimeEarly() {
-    if (realtimeChannel) {
-        try { supabaseClient.removeChannel(realtimeChannel); } catch (e) {}
-    }
+    if (realtimeChannel) { try { supabaseClient.removeChannel(realtimeChannel); } catch (e) {} }
 
     realtimeChannel = supabaseClient
-        .channel('responder-realtime-v2', {
-            config: { broadcast: { self: false } }
-        })
-        .on('postgres_changes', {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'incident_reports'
-        }, function(payload) {
+        .channel('responder-realtime-v2', { config: { broadcast: { self: false } } })
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'incident_reports' }, function(payload) {
             var inc = payload.new;
             if (!inc) return;
-            console.log('🔔 Realtime INSERT received:', inc.id, inc.status, inc.priority);
-
+            console.log('🔔 Realtime INSERT:', inc.id, inc.status);
             if (inc.status === 'reported' && !processedIncidentIds.has(inc.id)) {
                 processedIncidentIds.add(inc.id);
                 showEmergencyPopup(inc);
                 showToast('🚨 NEW EMERGENCY REPORTED!', 'emergency', 10000);
                 var activePage = document.querySelector('.dashboard-sidebar .nav-link.active')?.dataset?.page;
-                if (activePage === 'incidents') {
-                    refreshIncidentsListInPlace();
-                } else if (activePage === 'analytics') {
-                    refreshAnalyticsDataInPlace();
-                }
+                if (activePage === 'incidents') refreshIncidentsListInPlace();
+                else if (activePage === 'analytics') refreshAnalyticsDataInPlace();
             }
         })
-        .on('postgres_changes', {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'incident_reports'
-        }, function(payload) {
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'incident_reports' }, function(payload) {
             var inc = payload.new;
             if (!inc) return;
-
             var idx = allIncidents.findIndex(function(i) { return i.id === inc.id; });
             if (idx >= 0) allIncidents[idx] = Object.assign({}, allIncidents[idx], inc);
             else allIncidents.unshift(inc);
@@ -784,17 +821,11 @@ function startRealtimeEarly() {
                 closePopup();
                 showToast('Incident status updated to ' + inc.status, 'info');
             }
-
             var activePage = document.querySelector('.dashboard-sidebar .nav-link.active')?.dataset?.page;
-            if (activePage === 'incidents') {
-                refreshIncidentsListInPlace();
-            } else if (activePage === 'analytics') {
-                refreshAnalyticsDataInPlace();
-            }
+            if (activePage === 'incidents') refreshIncidentsListInPlace();
+            else if (activePage === 'analytics') refreshAnalyticsDataInPlace();
         })
-        .subscribe(function(status) {
-            console.log('📡 Realtime channel status:', status);
-        });
+        .subscribe(function(status) { console.log('📡 Realtime channel status:', status); });
 }
 
 // ============================================
@@ -804,12 +835,8 @@ function setupPolling() {
     if (pollingInterval) clearInterval(pollingInterval);
     pollingInterval = setInterval(async function() {
         try {
-            var reportsResult = await supabaseClient
-                .from('incident_reports')
-                .select('*')
-                .eq('status', 'reported')
-                .order('created_at', { ascending: false })
-                .limit(3);
+            var reportsResult = await supabaseClient.from('incident_reports').select('*')
+                .eq('status', 'reported').order('created_at', { ascending: false }).limit(3);
             var reports = reportsResult.data || [];
             if (reports.length > 0) {
                 var latest = reports[0];
@@ -819,18 +846,14 @@ function setupPolling() {
                     showToast('🚨 NEW EMERGENCY REPORTED!', 'emergency', 10000);
                 }
             }
-        } catch (error) { /* silent */ }
+        } catch (error) {}
     }, 3000);
 }
 
 async function checkNewEmergencies() {
     try {
-        var reportsResult = await supabaseClient
-            .from('incident_reports')
-            .select('*')
-            .eq('status', 'reported')
-            .order('created_at', { ascending: false })
-            .limit(1);
+        var reportsResult = await supabaseClient.from('incident_reports').select('*')
+            .eq('status', 'reported').order('created_at', { ascending: false }).limit(1);
         var reports = reportsResult.data || [];
         if (reports.length > 0) {
             var latestReport = reports[0];
@@ -846,17 +869,15 @@ async function checkNewEmergencies() {
 // PAGE ROUTING
 // ============================================
 function loadPage(page) {
-    if ((page === 'responders' || page === 'alerts') && currentProfile && currentProfile.role !== 'admin') {
+    // Only admins can access Responders page
+    if (page === 'responders' && currentProfile && currentProfile.role !== 'admin') {
         showToast('Access denied. Admins only.', 'warning', 4000);
         return;
     }
 
     isOnIncidentsPage = (page === 'incidents');
     if (page !== 'analytics') destroyAllCharts();
-
-    if (page !== 'dashboard' && responderMap) {
-        destroyResponderMap();
-    }
+    if (page !== 'dashboard' && responderMap) destroyResponderMap();
 
     switch (page) {
         case 'dashboard': loadDashboard(); break;
@@ -870,17 +891,14 @@ function loadPage(page) {
 }
 
 // ============================================
-// DASHBOARD
+// DASHBOARD — professional stat cards
 // ============================================
 async function loadDashboard() {
     var container = document.getElementById('pageContent');
     if (!container) return;
 
     try {
-        var reportsResult = await supabaseClient
-            .from('incident_reports')
-            .select('*')
-            .order('created_at', { ascending: false });
+        var reportsResult = await supabaseClient.from('incident_reports').select('*').order('created_at', { ascending: false });
         var reports = reportsResult.data || [];
         allIncidents = reports;
 
@@ -892,28 +910,50 @@ async function loadDashboard() {
         var isAdmin = currentProfile && currentProfile.role === 'admin';
 
         container.innerHTML = `
-            <div class="d-flex justify-content-between align-items-center mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
                 <div>
-                    <h4 class="fw-bold">Responder Dashboard</h4>
+                    <h4 class="fw-bold mb-1">Responder Dashboard</h4>
                     <p class="text-muted mb-0">Barangay ${escapeHtml(currentProfile?.barangay || 'N/A')}</p>
                 </div>
                 <div class="d-flex gap-2 flex-wrap">
                     ${isAdmin ? `
-                        <button class="btn btn-danger" onclick="openAlertModal()">
-                            <i class="fas fa-broadcast-tower me-2"></i>Send Alert
+                        <button class="btn btn-danger d-inline-flex align-items-center gap-2" onclick="openAlertModal()">
+                            <i class="fas fa-broadcast-tower"></i>
+                            <span>Send Alert</span>
                         </button>
-                        <button class="btn btn-primary" onclick="addResponderModal.show()">
-                            <i class="fas fa-user-plus me-2"></i>Add Responder
+                        <button class="btn btn-primary d-inline-flex align-items-center gap-2" onclick="addResponderModal.show()">
+                            <i class="fas fa-user-plus"></i>
+                            <span>Add Responder</span>
                         </button>
                     ` : ''}
                 </div>
             </div>
 
-            <div class="row g-4 mb-4">
-                <div class="col-md-3"><div class="stat-card"><div class="d-flex justify-content-between align-items-center"><div><div class="number">${total}</div><div class="text-muted small">Total Incidents</div></div><div class="text-primary"><i class="fas fa-file-alt fa-2x"></i></div></div></div></div>
-                <div class="col-md-3"><div class="stat-card"><div class="d-flex justify-content-between align-items-center"><div><div class="number">${active}</div><div class="text-muted small">Active</div></div><div class="text-warning"><i class="fas fa-clock fa-2x"></i></div></div></div></div>
-                <div class="col-md-3"><div class="stat-card" style="border-left: 3px solid #dc3545;"><div class="d-flex justify-content-between align-items-center"><div><div class="number text-danger">${critical}</div><div class="text-muted small">Critical</div></div><div class="text-danger"><i class="fas fa-exclamation-triangle fa-2x"></i></div></div></div></div>
-                <div class="col-md-3"><div class="stat-card"><div class="d-flex justify-content-between align-items-center"><div><div class="number text-success">${resolved}</div><div class="text-muted small">Resolved</div></div><div class="text-success"><i class="fas fa-check-circle fa-2x"></i></div></div></div></div>
+            <div class="row g-3 mb-4">
+                <div class="col-6 col-lg-3">
+                    <div class="stat-card-professional accent-primary">
+                        <div class="stat-info"><div class="stat-num">${total}</div><div class="stat-lbl">Total Incidents</div></div>
+                        <div class="stat-icon-right blue"><i class="fas fa-file-alt"></i></div>
+                    </div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="stat-card-professional accent-warning">
+                        <div class="stat-info"><div class="stat-num">${active}</div><div class="stat-lbl">Active</div></div>
+                        <div class="stat-icon-right yellow"><i class="fas fa-clock"></i></div>
+                    </div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="stat-card-professional accent-danger">
+                        <div class="stat-info"><div class="stat-num">${critical}</div><div class="stat-lbl">Critical</div></div>
+                        <div class="stat-icon-right red"><i class="fas fa-exclamation-triangle"></i></div>
+                    </div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="stat-card-professional accent-success">
+                        <div class="stat-info"><div class="stat-num">${resolved}</div><div class="stat-lbl">Resolved</div></div>
+                        <div class="stat-icon-right green"><i class="fas fa-check-circle"></i></div>
+                    </div>
+                </div>
             </div>
 
             <!-- LIVE BARANGAY MAP -->
@@ -988,85 +1028,50 @@ async function loadDashboard() {
 }
 
 // ============================================
-// RESPONDER BARANGAY MAP
+// RESPONDER MAP
 // ============================================
 function initResponderMap() {
     const mapEl = document.getElementById('responderMap');
     if (!mapEl || responderMap) return;
 
-    responderMap = L.map('responderMap', {
-        zoomControl: true,
-        attributionControl: false
-    }).setView([BARANGAY_SCOPE.centerLat, BARANGAY_SCOPE.centerLng], 14);
+    responderMap = L.map('responderMap', { zoomControl: true, attributionControl: false })
+        .setView([BARANGAY_SCOPE.centerLat, BARANGAY_SCOPE.centerLng], 14);
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap',
-        maxZoom: 19
-    }).addTo(responderMap);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap', maxZoom: 19 }).addTo(responderMap);
 
     responderBoundaryLayer = L.polygon(BARANGAY_SCOPE.polygon, {
-        color: '#2e7d32',
-        weight: 2.5,
-        opacity: 0.85,
-        fillColor: '#2e7d32',
-        fillOpacity: 0.06,
-        dashArray: '10 5',
-        className: 'barangay-boundary'
+        color: '#2e7d32', weight: 2.5, opacity: 0.85,
+        fillColor: '#2e7d32', fillOpacity: 0.06,
+        dashArray: '10 5', className: 'barangay-boundary'
     }).addTo(responderMap);
 
-    responderBoundaryLayer.bindTooltip('Barangay Culiat Scope', {
-        permanent: false,
-        direction: 'center'
-    });
-
+    responderBoundaryLayer.bindTooltip('Barangay Culiat Scope', { permanent: false, direction: 'center' });
     responderMap.fitBounds(responderBoundaryLayer.getBounds(), { padding: [20, 20] });
 
     loadResponderMapIncidents();
     setupResponderMapRealtime();
 
-    setTimeout(function() {
-        if (responderMap) responderMap.invalidateSize();
-    }, 300);
+    setTimeout(function() { if (responderMap) responderMap.invalidateSize(); }, 300);
 }
 
 function destroyResponderMap() {
-    if (responderMap) {
-        try { responderMap.remove(); } catch(e) {}
-        responderMap = null;
-    }
+    if (responderMap) { try { responderMap.remove(); } catch(e) {} responderMap = null; }
     responderMarkers = [];
     responderMapData = [];
-    if (responderMapRealtime1) {
-        try { supabaseClient.removeChannel(responderMapRealtime1); } catch(e) {}
-        responderMapRealtime1 = null;
-    }
-    if (responderMapRealtime2) {
-        try { supabaseClient.removeChannel(responderMapRealtime2); } catch(e) {}
-        responderMapRealtime2 = null;
-    }
+    if (responderMapRealtime1) { try { supabaseClient.removeChannel(responderMapRealtime1); } catch(e) {} responderMapRealtime1 = null; }
+    if (responderMapRealtime2) { try { supabaseClient.removeChannel(responderMapRealtime2); } catch(e) {} responderMapRealtime2 = null; }
 }
 
 async function loadResponderMapIncidents() {
     if (!responderMap) return;
-
     try {
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
         const sinceIso = thirtyDaysAgo.toISOString();
 
         const [incidentRes, emergencyRes] = await Promise.all([
-            supabaseClient
-                .from('incident_reports')
-                .select('*')
-                .gte('created_at', sinceIso)
-                .order('created_at', { ascending: false })
-                .limit(100),
-            supabaseClient
-                .from('emergencies')
-                .select('*')
-                .gte('created_at', sinceIso)
-                .order('created_at', { ascending: false })
-                .limit(100)
+            supabaseClient.from('incident_reports').select('*').gte('created_at', sinceIso).order('created_at', { ascending: false }).limit(100),
+            supabaseClient.from('emergencies').select('*').gte('created_at', sinceIso).order('created_at', { ascending: false }).limit(100)
         ]);
 
         const fromResidents = (incidentRes.data || []).map(r => normalizeMapRow(r, 'resident'));
@@ -1081,7 +1086,6 @@ async function loadResponderMapIncidents() {
             seen.add(key);
             deduped.push(inc);
         }
-
         deduped.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
         responderMapData = deduped;
 
@@ -1089,36 +1093,25 @@ async function loadResponderMapIncidents() {
         await geocodeMissingResponderIncidents();
         renderResponderMarkers(responderMapData);
         updateResponderMapStatusBar(responderMapData);
-    } catch (err) {
-        console.warn('Failed to load map incidents:', err);
-    }
+    } catch (err) { console.warn('Failed to load map incidents:', err); }
 }
 
 function normalizeMapRow(row, source) {
     let coords = extractCoords(row.location);
-
     if (!coords && row.latitude != null && row.longitude != null) {
         coords = { lat: parseFloat(row.latitude), lng: parseFloat(row.longitude) };
     }
     if (!coords && row.lat != null && row.lng != null) {
         coords = { lat: parseFloat(row.lat), lng: parseFloat(row.lng) };
     }
-
     return {
-        id: row.id,
-        type: row.type || 'other',
-        title: row.title || 'Untitled Incident',
-        description: row.description || '',
-        location: row.location,
-        priority: row.priority || 'medium',
-        status: row.status || 'reported',
-        created_at: row.created_at,
-        barangay: row.barangay || null,
+        id: row.id, type: row.type || 'other', title: row.title || 'Untitled Incident',
+        description: row.description || '', location: row.location,
+        priority: row.priority || 'medium', status: row.status || 'reported',
+        created_at: row.created_at, barangay: row.barangay || null,
         contact_number: row.contact_number || row.reporter_phone || null,
-        reporter_name: row.reporter_name || null,
-        source: source,
-        _lat: coords ? coords.lat : null,
-        _lng: coords ? coords.lng : null
+        reporter_name: row.reporter_name || null, source: source,
+        _lat: coords ? coords.lat : null, _lng: coords ? coords.lng : null
     };
 }
 
@@ -1127,9 +1120,7 @@ function extractCoords(location) {
     if (typeof location === 'string' && location.trim().startsWith('{')) {
         try {
             var obj = JSON.parse(location);
-            if (obj.latitude != null && obj.longitude != null) {
-                return { lat: parseFloat(obj.latitude), lng: parseFloat(obj.longitude) };
-            }
+            if (obj.latitude != null && obj.longitude != null) return { lat: parseFloat(obj.latitude), lng: parseFloat(obj.longitude) };
         } catch (e) {}
     }
     if (typeof location === 'object' && location.latitude != null && location.longitude != null) {
@@ -1137,9 +1128,7 @@ function extractCoords(location) {
     }
     if (typeof location === 'string') {
         var match = location.match(/(-?\d+\.\d+)[,\s]+(-?\d+\.\d+)/);
-        if (match) {
-            return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
-        }
+        if (match) return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
     }
     return null;
 }
@@ -1147,32 +1136,22 @@ function extractCoords(location) {
 async function geocodeMissingResponderIncidents() {
     const needsGeocode = responderMapData.filter(i => i._lat == null || i._lng == null);
     if (needsGeocode.length === 0) return;
-
-    console.log(`🗺️ Geocoding ${needsGeocode.length} incidents for responder map...`);
-
+    console.log(`🗺️ Geocoding ${needsGeocode.length} incidents...`);
     for (const inc of needsGeocode) {
         const coords = await geocodeLocationString(inc.location);
-        if (coords) {
-            inc._lat = coords.lat;
-            inc._lng = coords.lng;
-        } else {
-            inc._lat = BARANGAY_SCOPE.centerLat;
-            inc._lng = BARANGAY_SCOPE.centerLng;
-            inc._geocodeFallback = true;
-        }
+        if (coords) { inc._lat = coords.lat; inc._lng = coords.lng; }
+        else { inc._lat = BARANGAY_SCOPE.centerLat; inc._lng = BARANGAY_SCOPE.centerLng; inc._geocodeFallback = true; }
         await new Promise(r => setTimeout(r, 1100));
     }
 }
 
 function renderResponderMarkers(incidents) {
     if (!responderMap) return;
-
     responderMarkers.forEach(function(m) { try { responderMap.removeLayer(m); } catch(e) {} });
     responderMarkers = [];
 
     incidents.forEach(function(incident) {
         if (incident._lat == null || incident._lng == null) return;
-
         const type = incident.type || 'other';
         const typeIcon = getTypeIcon(type);
         const typeClass = getTypeClass(type);
@@ -1194,21 +1173,15 @@ function renderResponderMarkers(incidents) {
         `;
 
         const customIcon = L.divIcon({
-            html: iconHtml,
-            className: 'custom-incident-marker',
-            iconSize: [30, 30],
-            iconAnchor: [15, 30],
-            popupAnchor: [0, -30]
+            html: iconHtml, className: 'custom-incident-marker',
+            iconSize: [30, 30], iconAnchor: [15, 30], popupAnchor: [0, -30]
         });
 
         const marker = L.marker([incident._lat, incident._lng], { icon: customIcon }).addTo(responderMap);
 
         const createdDate = incident.created_at
-            ? new Date(incident.created_at).toLocaleString('en-US', {
-                month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-            })
+            ? new Date(incident.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
             : 'Unknown';
-
         const shortDesc = incident.description
             ? String(incident.description).substring(0, 100) + (String(incident.description).length > 100 ? '…' : '')
             : 'No description';
@@ -1239,13 +1212,7 @@ function renderResponderMarkers(incidents) {
             </div>
         `;
 
-        marker.bindPopup(popupHtml, {
-            maxWidth: 280,
-            minWidth: 220,
-            closeButton: true,
-            autoPan: true
-        });
-
+        marker.bindPopup(popupHtml, { maxWidth: 280, minWidth: 220, closeButton: true, autoPan: true });
         responderMarkers.push(marker);
     });
 }
@@ -1253,29 +1220,12 @@ function renderResponderMarkers(incidents) {
 function updateResponderMapStatusBar(incidents) {
     var bar = document.getElementById('responderMapStatusBar');
     if (!bar) return;
-
-    var activeCount = incidents.filter(function(i) {
-        return !['resolved', 'closed', 'processed'].includes(i.status);
-    }).length;
-
-    var criticalCount = incidents.filter(function(i) {
-        return i.priority === 'critical' && !['resolved', 'closed', 'processed'].includes(i.status);
-    }).length;
-
-    var fbCount = incidents.filter(function(i) {
-        return i.source === 'facebook' && !['resolved', 'closed', 'processed'].includes(i.status);
-    }).length;
-
-    var text = activeCount === 0
-        ? 'All clear in your barangay'
-        : activeCount + ' active incident' + (activeCount > 1 ? 's' : '');
-
-    if (criticalCount > 0) {
-        text = '🚨 ' + criticalCount + ' CRITICAL incident' + (criticalCount > 1 ? 's' : '');
-    } else if (fbCount > 0) {
-        text += ' · 📘 ' + fbCount + ' from Facebook';
-    }
-
+    var activeCount = incidents.filter(function(i) { return !['resolved', 'closed', 'processed'].includes(i.status); }).length;
+    var criticalCount = incidents.filter(function(i) { return i.priority === 'critical' && !['resolved', 'closed', 'processed'].includes(i.status); }).length;
+    var fbCount = incidents.filter(function(i) { return i.source === 'facebook' && !['resolved', 'closed', 'processed'].includes(i.status); }).length;
+    var text = activeCount === 0 ? 'All clear in your barangay' : activeCount + ' active incident' + (activeCount > 1 ? 's' : '');
+    if (criticalCount > 0) text = '🚨 ' + criticalCount + ' CRITICAL incident' + (criticalCount > 1 ? 's' : '');
+    else if (fbCount > 0) text += ' · 📘 ' + fbCount + ' from Facebook';
     bar.innerHTML = '<span class="map-live-dot"></span>' + escapeHtml(text);
 }
 
@@ -1283,8 +1233,7 @@ function setupResponderMapRealtime() {
     if (responderMapRealtime1) { try { supabaseClient.removeChannel(responderMapRealtime1); } catch(e) {} }
     if (responderMapRealtime2) { try { supabaseClient.removeChannel(responderMapRealtime2); } catch(e) {} }
 
-    responderMapRealtime1 = supabaseClient
-        .channel('responder-map-residents')
+    responderMapRealtime1 = supabaseClient.channel('responder-map-residents')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'incident_reports' }, function(payload) {
             if (!payload.new) return;
             handleNewResponderMapIncident(payload.new, 'resident');
@@ -1295,8 +1244,7 @@ function setupResponderMapRealtime() {
         })
         .subscribe();
 
-    responderMapRealtime2 = supabaseClient
-        .channel('responder-map-facebook')
+    responderMapRealtime2 = supabaseClient.channel('responder-map-facebook')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'emergencies' }, function(payload) {
             if (!payload.new) return;
             handleNewResponderMapIncident(payload.new, 'facebook');
@@ -1310,22 +1258,13 @@ function setupResponderMapRealtime() {
 
 async function handleNewResponderMapIncident(newRow, source) {
     const normalized = normalizeMapRow(newRow, source);
-
     if (normalized._lat == null || normalized._lng == null) {
         const coords = await geocodeLocationString(normalized.location);
-        if (coords) {
-            normalized._lat = coords.lat;
-            normalized._lng = coords.lng;
-        } else {
-            normalized._lat = BARANGAY_SCOPE.centerLat;
-            normalized._lng = BARANGAY_SCOPE.centerLng;
-            normalized._geocodeFallback = true;
-        }
+        if (coords) { normalized._lat = coords.lat; normalized._lng = coords.lng; }
+        else { normalized._lat = BARANGAY_SCOPE.centerLat; normalized._lng = BARANGAY_SCOPE.centerLng; normalized._geocodeFallback = true; }
     }
-
     const exists = responderMapData.find(function(i) { return i.id === normalized.id; });
     if (exists) return;
-
     responderMapData.unshift(normalized);
     renderResponderMarkers(responderMapData);
     updateResponderMapStatusBar(responderMapData);
@@ -1349,22 +1288,15 @@ function handleUpdateResponderMapIncident(newRow, source) {
 // ALERT MODAL — MAP + GEOCODE + MEDIA + AI
 // ============================================
 function setupAlertModal() {
-    // Reset state on modal show
     var alertModalEl = document.getElementById('alertModal');
     if (alertModalEl) {
         alertModalEl.addEventListener('shown.bs.modal', function() {
-            if (!alertMapInitialized) {
-                setTimeout(initAlertMap, 300);
-            } else if (alertMap) {
-                setTimeout(function() { alertMap.invalidateSize(); }, 300);
-            }
+            if (!alertMapInitialized) setTimeout(initAlertMap, 300);
+            else if (alertMap) setTimeout(function() { alertMap.invalidateSize(); }, 300);
         });
-        alertModalEl.addEventListener('hidden.bs.modal', function() {
-            resetAlertForm();
-        });
+        alertModalEl.addEventListener('hidden.bs.modal', function() { resetAlertForm(); });
     }
 
-    // Geolocate button
     var alertGeolocateBtn = document.getElementById('alertGeolocateBtn');
     if (alertGeolocateBtn) {
         alertGeolocateBtn.addEventListener('click', function() {
@@ -1379,19 +1311,15 @@ function setupAlertModal() {
                         showToast('📍 Location updated from GPS', 'success');
                     }
                 }, function() { showToast('Unable to get GPS location', 'danger'); });
-            } else { showToast('Geolocation not supported', 'warning'); }
+            } else showToast('Geolocation not supported', 'warning');
         });
     }
 
-    // Location search
     var alertLocationInput = document.getElementById('alertLocation');
     if (alertLocationInput) {
         alertLocationInput.addEventListener('input', function(e) {
             const query = this.value.trim();
-            if (query.length < 3) {
-                document.getElementById('alertGeocodeSuggestions').classList.remove('show');
-                return;
-            }
+            if (query.length < 3) { document.getElementById('alertGeocodeSuggestions').classList.remove('show'); return; }
             clearTimeout(alertGeocodeTimeout);
             alertGeocodeTimeout = setTimeout(() => { searchAlertLocation(query); }, 500);
         });
@@ -1407,7 +1335,6 @@ function setupAlertModal() {
         });
     }
 
-    // Media upload
     setupAlertMediaUpload();
 }
 
@@ -1441,14 +1368,9 @@ function openAlertModal() {
         showToast('Access denied. Admins only.', 'warning', 4000);
         return;
     }
-    if (!alertModal) {
-        alertModal = new bootstrap.Modal(document.getElementById('alertModal'));
-    }
-    // Prefill contact with admin's number
+    if (!alertModal) alertModal = new bootstrap.Modal(document.getElementById('alertModal'));
     var contactInput = document.getElementById('alertContact');
-    if (contactInput && currentProfile?.contact_number) {
-        contactInput.value = currentProfile.contact_number;
-    }
+    if (contactInput && currentProfile?.contact_number) contactInput.value = currentProfile.contact_number;
     alertModal.show();
 }
 
@@ -1456,24 +1378,15 @@ function initAlertMap() {
     if (alertMapInitialized) return;
     const mapContainer = document.getElementById('alertMap');
     if (!mapContainer) return;
-
-    const defaultLat = BARANGAY_SCOPE.centerLat;
-    const defaultLng = BARANGAY_SCOPE.centerLng;
+    const defaultLat = BARANGAY_SCOPE.centerLat, defaultLng = BARANGAY_SCOPE.centerLng;
     alertMap = L.map('alertMap').setView([defaultLat, defaultLng], 14);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(alertMap);
-
     L.polygon(BARANGAY_SCOPE.polygon, {
-        color: '#2e7d32',
-        weight: 2,
-        opacity: 0.8,
-        fillColor: '#2e7d32',
-        fillOpacity: 0.08,
-        dashArray: '8 4'
+        color: '#2e7d32', weight: 2, opacity: 0.8,
+        fillColor: '#2e7d32', fillOpacity: 0.08, dashArray: '8 4'
     }).addTo(alertMap);
-
     alertMapMarker = L.marker([defaultLat, defaultLng], { draggable: true }).addTo(alertMap);
     updateAlertCoordDisplay(defaultLat, defaultLng);
-
     alertMapMarker.on('dragend', function(e) {
         const pos = alertMapMarker.getLatLng();
         updateAlertCoordDisplay(pos.lat, pos.lng);
@@ -1489,9 +1402,7 @@ function initAlertMap() {
 }
 
 function updateAlertCoordDisplay(lat, lng) {
-    var latEl = document.getElementById('alertLat');
-    var lngEl = document.getElementById('alertLng');
-    var coordEl = document.getElementById('alertCoordDisplay');
+    var latEl = document.getElementById('alertLat'), lngEl = document.getElementById('alertLng'), coordEl = document.getElementById('alertCoordDisplay');
     if (latEl) latEl.value = lat;
     if (lngEl) lngEl.value = lng;
     if (coordEl) coordEl.textContent = `Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}`;
@@ -1503,26 +1414,20 @@ async function searchAlertLocation(query) {
     if (isAlertGeocoding) return;
     isAlertGeocoding = true;
     if (spinner) spinner.classList.add('show');
-
     try {
         const viewbox = `${BARANGAY_SCOPE.bounds.west},${BARANGAY_SCOPE.bounds.north},${BARANGAY_SCOPE.bounds.east},${BARANGAY_SCOPE.bounds.south}`;
         const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&countrycodes=ph&viewbox=${viewbox}&bounded=1`;
         const response = await fetch(url, { headers: { 'Accept': 'application/json', 'User-Agent': 'BarangayEMS/1.0' } });
         const data = await response.json();
         if (spinner) spinner.classList.remove('show');
-
         if (data && data.length > 0) {
             suggestions.innerHTML = data.map(item =>
-                `<div class="geocode-suggestion-item" data-lat="${item.lat}" data-lon="${item.lon}" data-display="${item.display_name}">
-                    <i class="fas fa-map-pin text-danger me-2"></i><span>${item.display_name}</span>
-                </div>`
+                `<div class="geocode-suggestion-item" data-lat="${item.lat}" data-lon="${item.lon}" data-display="${item.display_name}"><i class="fas fa-map-pin text-danger me-2"></i><span>${item.display_name}</span></div>`
             ).join('');
             suggestions.classList.add('show');
             suggestions.querySelectorAll('.geocode-suggestion-item').forEach(el => {
                 el.addEventListener('click', function() {
-                    const lat = parseFloat(this.dataset.lat);
-                    const lon = parseFloat(this.dataset.lon);
-                    const display = this.dataset.display;
+                    const lat = parseFloat(this.dataset.lat), lon = parseFloat(this.dataset.lon), display = this.dataset.display;
                     document.getElementById('alertLocation').value = display;
                     suggestions.classList.remove('show');
                     if (alertMap && alertMapMarker) {
@@ -1532,9 +1437,7 @@ async function searchAlertLocation(query) {
                     }
                 });
             });
-        } else {
-            suggestions.classList.remove('show');
-        }
+        } else suggestions.classList.remove('show');
     } catch (error) {
         if (suggestions) suggestions.classList.remove('show');
     } finally {
@@ -1548,9 +1451,7 @@ async function reverseGeocodeAlert(lat, lng) {
         const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=16`;
         const response = await fetch(url, { headers: { 'Accept': 'application/json', 'User-Agent': 'BarangayEMS/1.0' } });
         const data = await response.json();
-        if (data && data.display_name) {
-            document.getElementById('alertLocation').value = data.display_name;
-        }
+        if (data && data.display_name) document.getElementById('alertLocation').value = data.display_name;
     } catch (error) { console.error('Reverse geocoding error:', error); }
 }
 
@@ -1561,7 +1462,6 @@ function setupAlertMediaUpload() {
     const fileInput = document.getElementById('alertMediaUpload');
     const dropZone = document.getElementById('alertMediaDropZone');
     if (!fileInput || !dropZone) return;
-
     fileInput.addEventListener('change', function() { handleAlertMediaFiles(this.files); });
     dropZone.addEventListener('dragover', function(e) { e.preventDefault(); this.classList.add('dragover'); });
     dropZone.addEventListener('dragleave', function(e) { e.preventDefault(); this.classList.remove('dragover'); });
@@ -1576,27 +1476,15 @@ function setupAlertMediaUpload() {
 function handleAlertMediaFiles(files) {
     const maxFiles = 5, maxSize = 10 * 1024 * 1024;
     if (selectedAlertMediaFiles.length === 0) clearAlertMediaPreviews();
-
     let validFiles = [], errorMessages = [];
     for (let file of files) {
-        if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
-            errorMessages.push(`${file.name}: Unsupported file type`);
-            continue;
-        }
-        if (file.size > maxSize) {
-            errorMessages.push(`${file.name}: File too large (max 10MB)`);
-            continue;
-        }
-        if (selectedAlertMediaFiles.length + validFiles.length >= maxFiles) {
-            errorMessages.push(`Maximum ${maxFiles} files allowed`);
-            break;
-        }
+        if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) { errorMessages.push(`${file.name}: Unsupported file type`); continue; }
+        if (file.size > maxSize) { errorMessages.push(`${file.name}: File too large (max 10MB)`); continue; }
+        if (selectedAlertMediaFiles.length + validFiles.length >= maxFiles) { errorMessages.push(`Maximum ${maxFiles} files allowed`); break; }
         validFiles.push(file);
     }
-
     if (errorMessages.length > 0) showToast(errorMessages.join('. '), 'warning', 6000);
     if (validFiles.length === 0) return;
-
     for (let file of validFiles) {
         selectedAlertMediaFiles.push(file);
         const reader = new FileReader();
@@ -1613,17 +1501,10 @@ function createAlertMediaPreview(file, dataUrl) {
     const previewDiv = document.createElement('div');
     previewDiv.className = 'media-preview-item';
     previewDiv.dataset.index = container.children.length;
-
     if (isVideo) {
-        previewDiv.innerHTML = `<video src="${dataUrl}" muted></video>
-            <div class="media-type-badge video"><i class="fas fa-video"></i></div>
-            <button class="remove-media-btn" onclick="removeAlertMediaFile(${container.children.length})"><i class="fas fa-times"></i></button>
-            <div class="media-file-name">${file.name}</div>`;
+        previewDiv.innerHTML = `<video src="${dataUrl}" muted></video><div class="media-type-badge video"><i class="fas fa-video"></i></div><button class="remove-media-btn" onclick="removeAlertMediaFile(${container.children.length})"><i class="fas fa-times"></i></button><div class="media-file-name">${file.name}</div>`;
     } else {
-        previewDiv.innerHTML = `<img src="${dataUrl}" alt="${file.name}">
-            <div class="media-type-badge image"><i class="fas fa-image"></i></div>
-            <button class="remove-media-btn" onclick="removeAlertMediaFile(${container.children.length})"><i class="fas fa-times"></i></button>
-            <div class="media-file-name">${file.name}</div>`;
+        previewDiv.innerHTML = `<img src="${dataUrl}" alt="${file.name}"><div class="media-type-badge image"><i class="fas fa-image"></i></div><button class="remove-media-btn" onclick="removeAlertMediaFile(${container.children.length})"><i class="fas fa-times"></i></button><div class="media-file-name">${file.name}</div>`;
     }
     container.appendChild(previewDiv);
 }
@@ -1654,23 +1535,17 @@ function updateAlertMediaCount() {
 async function uploadAlertMediaFiles(alertId) {
     if (selectedAlertMediaFiles.length === 0) return [];
     const uploadedUrls = [], storageBucket = 'incident-media';
-
     for (let i = 0; i < selectedAlertMediaFiles.length; i++) {
         const file = selectedAlertMediaFiles[i];
         try {
             const fileExt = file.name.split('.').pop();
             const fileName = `alerts/${alertId}/${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
             const { data, error } = await supabaseClient.storage.from(storageBucket).upload(fileName, file, { cacheControl: '3600', upsert: false });
-            if (error) {
-                showToast(`Failed to upload ${file.name}: ${error.message}`, 'warning');
-                continue;
-            }
+            if (error) { showToast(`Failed to upload ${file.name}: ${error.message}`, 'warning'); continue; }
             const { data: urlData } = supabaseClient.storage.from(storageBucket).getPublicUrl(fileName);
             const mediaType = file.type.startsWith('video/') ? 'video' : 'image';
             uploadedUrls.push({ url: urlData.publicUrl, type: mediaType, name: file.name, size: file.size });
-        } catch (error) {
-            showToast(`Error uploading ${file.name}`, 'danger');
-        }
+        } catch (error) { showToast(`Error uploading ${file.name}`, 'danger'); }
     }
     return uploadedUrls;
 }
@@ -1681,37 +1556,18 @@ async function uploadAlertMediaFiles(alertId) {
 function initGemini() {
     try {
         console.log('🔍 Checking Gemini setup...');
-
-        if (!window.GEMINI_CONFIG) {
-            console.warn('❌ window.GEMINI_CONFIG is undefined — gemini-config.js not loaded');
-            return false;
-        }
-        if (!window.GEMINI_CONFIG.API_KEY || window.GEMINI_CONFIG.API_KEY.indexOf('PASTE_YOUR') !== -1) {
-            console.warn('❌ API key not set in gemini-config.js');
-            return false;
-        }
-        if (typeof window.GoogleGenerativeAI === 'undefined') {
-            console.warn('❌ GoogleGenerativeAI SDK not loaded — check script tag in HTML');
-            return false;
-        }
-
+        if (!window.GEMINI_CONFIG) { console.warn('❌ GEMINI_CONFIG missing'); return false; }
+        if (!window.GEMINI_CONFIG.API_KEY || window.GEMINI_CONFIG.API_KEY.indexOf('PASTE_YOUR') !== -1) { console.warn('❌ API key not set'); return false; }
+        if (typeof window.GoogleGenerativeAI === 'undefined') { console.warn('❌ SDK missing'); return false; }
         geminiClient = new window.GoogleGenerativeAI(window.GEMINI_CONFIG.API_KEY);
         geminiModel = geminiClient.getGenerativeModel({
             model: window.GEMINI_CONFIG.MODEL || 'gemini-3.6-flash',
-            generationConfig: {
-                temperature: 0.2,
-                maxOutputTokens: 500,
-                responseMimeType: 'application/json'
-            }
+            generationConfig: { temperature: 0.2, maxOutputTokens: 500, responseMimeType: 'application/json' }
         });
         geminiReady = true;
         console.log('✅ Gemini AI ready:', window.GEMINI_CONFIG.MODEL);
         return true;
-    } catch (e) {
-        console.warn('❌ Gemini init failed:', e);
-        geminiReady = false;
-        return false;
-    }
+    } catch (e) { console.warn('❌ Gemini init failed:', e); geminiReady = false; return false; }
 }
 
 const TYPE_DETECTION_KEYWORDS = {
@@ -1725,27 +1581,14 @@ const TYPE_DETECTION_KEYWORDS = {
 function detectIncidentType(title, description) {
     const text = ((title || '') + ' ' + (description || '')).toLowerCase();
     const scores = { fire: 0, medical: 0, accident: 0, flood: 0, crime: 0 };
-
     Object.keys(TYPE_DETECTION_KEYWORDS).forEach(function(type) {
         TYPE_DETECTION_KEYWORDS[type].forEach(function(kw) {
-            if (kw.indexOf(' ') !== -1) {
-                if (text.indexOf(kw) !== -1) scores[type]++;
-            } else {
-                const re = new RegExp('\\b' + kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i');
-                if (re.test(text)) scores[type]++;
-            }
+            if (kw.indexOf(' ') !== -1) { if (text.indexOf(kw) !== -1) scores[type]++; }
+            else { const re = new RegExp('\\b' + kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i'); if (re.test(text)) scores[type]++; }
         });
     });
-
-    let detectedType = 'other';
-    let maxScore = 0;
-    Object.keys(scores).forEach(function(type) {
-        if (scores[type] > maxScore) {
-            maxScore = scores[type];
-            detectedType = type;
-        }
-    });
-
+    let detectedType = 'other', maxScore = 0;
+    Object.keys(scores).forEach(function(type) { if (scores[type] > maxScore) { maxScore = scores[type]; detectedType = type; } });
     if (maxScore === 0) detectedType = 'other';
     return { type: detectedType, score: maxScore, allScores: scores };
 }
@@ -1789,70 +1632,47 @@ function aiIsNegated(text, word) {
 function aiIsNonsense(text) {
     if (!text || text.length < 8) return true;
     if (/(.)\1{4,}/.test(text)) return true;
-    for (var i = 0; i < FAKE_INDICATORS.length; i++) {
-        if (aiContainsWord(text, FAKE_INDICATORS[i])) return true;
-    }
+    for (var i = 0; i < FAKE_INDICATORS.length; i++) if (aiContainsWord(text, FAKE_INDICATORS[i])) return true;
     var vowels = text.match(/[aeiouáéíóúàèìòùâêîôûäëïöü]/gi);
     if (text.length > 6 && (!vowels || vowels.length < text.length * 0.1)) return true;
     return false;
 }
 
 function enhancedAIAnalysis(type, description, location, title) {
-    var normDesc = aiNormalize(description || '');
-    var normTitle = aiNormalize(title || '');
-    var normLoc = aiNormalize(location || '');
+    var normDesc = aiNormalize(description || ''), normTitle = aiNormalize(title || ''), normLoc = aiNormalize(location || '');
     var text = (normTitle + ' ' + normDesc + ' ' + normLoc).trim();
-
     var isNonsense = aiIsNonsense(normDesc) && aiIsNonsense(normTitle);
-    var score = 0;
-    var matched = [];
-
+    var score = 0, matched = [];
     Object.keys(AI_KEYWORDS).forEach(function(cat) {
         Object.keys(AI_KEYWORDS[cat]).forEach(function(w) {
             AI_KEYWORDS[cat][w].forEach(function(kw) {
-                if (aiContainsWord(text, kw) && !aiIsNegated(text, kw)) {
-                    score += parseInt(w, 10);
-                    matched.push(kw);
-                }
+                if (aiContainsWord(text, kw) && !aiIsNegated(text, kw)) { score += parseInt(w, 10); matched.push(kw); }
             });
         });
     });
-
-    var typeBoost = 0;
-    if (['fire','medical','accident','flood','crime'].indexOf(type) !== -1) typeBoost = 1;
+    var typeBoost = ['fire','medical','accident','flood','crime'].indexOf(type) !== -1 ? 1 : 0;
     var finalScore = score + typeBoost;
-
     var priority = 'low', confidence = 0.70;
     if (isNonsense) { priority = 'low'; confidence = 0.40; }
     else if (finalScore >= 8) { priority = 'critical'; confidence = 0.92; }
     else if (finalScore >= 5) { priority = 'high'; confidence = 0.84; }
     else if (finalScore >= 2) { priority = 'medium'; confidence = 0.76; }
     else { priority = 'low'; confidence = 0.68; }
-
     return {
-        priority: priority,
-        confidence: confidence,
-        actions: getActionsForType(type),
+        priority: priority, confidence: confidence, actions: getActionsForType(type),
         verification: getVerificationText(priority, confidence),
         reasoning: ['Local analysis: ' + (matched.length ? 'matched ' + matched.slice(0,5).join(', ') : 'no strong keywords')],
-        detectedLanguage: 'unknown',
-        isNonsense: isNonsense,
-        source: 'rule-based'
+        detectedLanguage: 'unknown', isNonsense: isNonsense, source: 'rule-based'
     };
 }
 
 async function analyzeWithGemini(type, title, description, location) {
     if (!geminiReady || !geminiModel) throw new Error('Gemini not ready');
-
     const cacheKey = `${type}|${title}|${description}|${location}`.toLowerCase().slice(0, 200);
     if (window.GEMINI_CONFIG && window.GEMINI_CONFIG.ENABLE_CACHE && aiCache.has(cacheKey)) {
         const cached = aiCache.get(cacheKey);
-        if (Date.now() - cached.ts < window.GEMINI_CONFIG.CACHE_TTL_MS) {
-            console.log('🎯 AI cache hit');
-            return cached.result;
-        }
+        if (Date.now() - cached.ts < window.GEMINI_CONFIG.CACHE_TTL_MS) return cached.result;
     }
-
     const prompt = `You are an emergency dispatcher for a Barangay (village) emergency response system in the Philippines.
 
 Analyze the incident report below. You MUST understand English, Tagalog, and mixed Taglish.
@@ -1863,103 +1683,71 @@ Location: ${location}
 User-selected type: ${type}
 
 TASK 1 — DETECT INCIDENT TYPE:
-Determine the actual incident type from the text. Choose ONE of:
 - "fire" (sunog, apoy, usok, nasusunog)
 - "medical" (sakit, sugat, ospital, hindi humihinga, atake)
 - "accident" (aksidente, bangga, nasagasaan, nahulog)
 - "flood" (baha, pagbaha, binaha, paglunod)
 - "crime" (holdap, nakaw, saksak, baril, away, pananakit)
-- "other" (none of the above)
+- "other"
 
-TASK 2 — DETECT PRIORITY:
-- "critical" = Life-threatening, immediate dispatch.
-- "high" = Serious, prompt response.
-- "medium" = Attention needed.
-- "low" = Non-urgent, unclear, nonsense, or test message.
-
-RULES:
-- If text is gibberish, return priority "low", confidence below 0.5.
-- If type is "fire" but says "no fire" or "walang sunog", do NOT mark critical.
+TASK 2 — DETECT PRIORITY: critical / high / medium / low
 
 Return ONLY this JSON:
-{
-  "detectedType": "fire" | "medical" | "accident" | "flood" | "crime" | "other",
-  "priority": "critical" | "high" | "medium" | "low",
-  "confidence": 0.0,
-  "reasoning": "One sentence.",
-  "detectedLanguage": "english" | "tagalog" | "taglish" | "other",
-  "isNonsense": false
-}`;
-
+{ "detectedType": "fire"|"medical"|"accident"|"flood"|"crime"|"other",
+  "priority": "critical"|"high"|"medium"|"low",
+  "confidence": 0.0, "reasoning": "...", "detectedLanguage": "english"|"tagalog"|"taglish"|"other",
+  "isNonsense": false }`;
     const result = await geminiModel.generateContent(prompt);
     const response = await result.response;
-    let text = response.text().trim();
-    text = text.replace(/```json\n?/gi, '').replace(/```\n?/g, '').trim();
-
+    let text = response.text().trim().replace(/```json\n?/gi, '').replace(/```\n?/g, '').trim();
     let parsed;
-    try {
-        parsed = JSON.parse(text);
-    } catch (e) {
+    try { parsed = JSON.parse(text); } catch (e) {
         const match = text.match(/\{[\s\S]*\}/);
         if (match) parsed = JSON.parse(match[0]);
         else throw new Error('Invalid AI response format');
     }
-
     const validTypes = ['fire', 'medical', 'accident', 'flood', 'crime', 'other'];
     const detectedType = validTypes.indexOf(parsed.detectedType) !== -1 ? parsed.detectedType : type;
-
     const priority = ['critical','high','medium','low'].indexOf(parsed.priority) !== -1 ? parsed.priority : 'medium';
     const confidence = Math.min(0.99, Math.max(0.5, parseFloat(parsed.confidence) || 0.75));
-
     const aiResult = {
-        priority: priority,
-        confidence: confidence,
-        actions: getActionsForType(detectedType),
+        priority: priority, confidence: confidence, actions: getActionsForType(detectedType),
         verification: getVerificationText(priority, confidence),
         reasoning: [parsed.reasoning || 'AI classification completed'],
         detectedLanguage: parsed.detectedLanguage || 'unknown',
-        detectedType: detectedType,
-        isNonsense: !!parsed.isNonsense,
-        source: 'gemini'
+        detectedType: detectedType, isNonsense: !!parsed.isNonsense, source: 'gemini'
     };
-
-    if (window.GEMINI_CONFIG && window.GEMINI_CONFIG.ENABLE_CACHE) {
-        aiCache.set(cacheKey, { result: aiResult, ts: Date.now() });
-    }
-
+    if (window.GEMINI_CONFIG && window.GEMINI_CONFIG.ENABLE_CACHE) aiCache.set(cacheKey, { result: aiResult, ts: Date.now() });
     return aiResult;
 }
 
 function getActionsForType(type) {
     const map = {
-        fire:     ['Evacuate immediately', 'Call fire department (BFP)', 'Use extinguisher only if safe', 'Avoid smoke inhalation'],
-        medical:  ['Call ambulance (911)', 'Perform CPR if trained', 'Keep victim calm', 'Do not move injured person'],
+        fire: ['Evacuate immediately', 'Call fire department (BFP)', 'Use extinguisher only if safe', 'Avoid smoke inhalation'],
+        medical: ['Call ambulance (911)', 'Perform CPR if trained', 'Keep victim calm', 'Do not move injured person'],
         accident: ['Call emergency services', 'Secure the area', 'Provide first aid if safe', 'Direct traffic away'],
-        flood:    ['Move to higher ground', 'Turn off electricity', 'Avoid walking in floodwater', 'Secure documents'],
-        crime:    ['Ensure your safety first', 'Call police (117)', 'Do not confront suspects', 'Preserve evidence'],
-        other:    ['Assess the situation', 'Call emergency services if needed', 'Provide assistance if safe']
+        flood: ['Move to higher ground', 'Turn off electricity', 'Avoid walking in floodwater', 'Secure documents'],
+        crime: ['Ensure your safety first', 'Call police (117)', 'Do not confront suspects', 'Preserve evidence'],
+        other: ['Assess the situation', 'Call emergency services if needed', 'Provide assistance if safe']
     };
     return map[type] || map.other;
 }
 
 function getVerificationText(priority, confidence) {
     if (priority === 'critical') return '🔴 Urgent: dispatch responders immediately';
-    if (priority === 'high')     return '🟠 High priority: verify within 5 minutes';
-    if (priority === 'medium')   return '🟡 Schedule verification within 10–15 minutes';
+    if (priority === 'high') return '🟠 High priority: verify within 5 minutes';
+    if (priority === 'medium') return '🟡 Schedule verification within 10–15 minutes';
     return '🟢 Low priority: routine follow-up';
 }
 
 async function analyzeAlertWithAI() {
     const typeSelect = document.getElementById('alertType');
-    const type  = typeSelect.value;
+    const type = typeSelect.value;
     const title = document.getElementById('alertTitle').value.trim();
-    const desc  = document.getElementById('alertMessage').value.trim();
-    const loc   = document.getElementById('alertLocation').value.trim();
+    const desc = document.getElementById('alertMessage').value.trim();
+    const loc = document.getElementById('alertLocation').value.trim();
 
-    if (!desc && !title) {
-        showToast('Please enter a title or message first', 'warning');
-        return;
-    }
+    if (!desc && !title) { showToast('Please enter a title or message first', 'warning'); return; }
 
     const resultDiv = document.getElementById('alertAiAnalysisResult');
     resultDiv.classList.remove('d-none');
@@ -1971,9 +1759,8 @@ async function analyzeAlertWithAI() {
 
     let result;
     try {
-        if (geminiReady) {
-            result = await analyzeWithGemini(type, title, desc, loc);
-        } else {
+        if (geminiReady) result = await analyzeWithGemini(type, title, desc, loc);
+        else {
             const detected = detectIncidentType(title, desc);
             result = enhancedAIAnalysis(detected.type, desc, loc, title);
             result.detectedType = detected.type;
@@ -2002,48 +1789,37 @@ async function analyzeAlertWithAI() {
             setTimeout(() => { hint.textContent = ''; }, 8000);
         }
     }
-
     renderAlertAIAnalysisResult(result);
 }
 
 function renderAlertAIAnalysisResult(result) {
-    const resultDiv       = document.getElementById('alertAiAnalysisResult');
-    const priorityBadge   = document.getElementById('alertAiPriorityBadge');
+    const resultDiv = document.getElementById('alertAiAnalysisResult');
+    const priorityBadge = document.getElementById('alertAiPriorityBadge');
     const confidenceBadge = document.getElementById('alertAiConfidenceBadge');
-    const actionsList     = document.getElementById('alertAiActionsList');
-    const verifyText      = document.getElementById('alertAiVerifyText');
-
+    const actionsList = document.getElementById('alertAiActionsList');
+    const verifyText = document.getElementById('alertAiVerifyText');
     const colors = { critical: 'danger', high: 'warning', medium: 'primary', low: 'secondary' };
-
     priorityBadge.textContent = `Priority: ${result.priority.toUpperCase()}`;
     priorityBadge.className = `ai-badge bg-${colors[result.priority] || 'secondary'} text-white`;
     confidenceBadge.textContent = `Confidence: ${(result.confidence * 100).toFixed(0)}%`;
     actionsList.innerHTML = '<i class="fas fa-tasks me-1"></i> ' + result.actions.join(' · ');
     verifyText.textContent = result.verification;
-
     resultDiv.style.borderLeftColor =
         result.priority === 'critical' ? '#dc3545' :
-        result.priority === 'high'     ? '#fd7e14' :
-        result.priority === 'medium'   ? '#0d6efd' : '#6c757d';
-
+        result.priority === 'high' ? '#fd7e14' :
+        result.priority === 'medium' ? '#0d6efd' : '#6c757d';
     window._alertAiResult = result;
-
     showToast(
-        `AI: ${result.priority.toUpperCase()} (${(result.confidence * 100).toFixed(0)}%)` +
-        (result.detectedType ? ` — Type: ${result.detectedType}` : ''),
-        result.priority === 'critical' ? 'danger' :
-        result.priority === 'high'     ? 'warning' : 'info',
+        `AI: ${result.priority.toUpperCase()} (${(result.confidence * 100).toFixed(0)}%)` + (result.detectedType ? ` — Type: ${result.detectedType}` : ''),
+        result.priority === 'critical' ? 'danger' : result.priority === 'high' ? 'warning' : 'info',
         4000
     );
 }
 
 async function analyzeWithGeminiFallback(type, title, desc, loc) {
     if (geminiReady) {
-        try {
-            return await analyzeWithGemini(type, title, desc, loc);
-        } catch (e) {
-            console.warn('Gemini failed during submit, using rule-based:', e);
-        }
+        try { return await analyzeWithGemini(type, title, desc, loc); }
+        catch (e) { console.warn('Gemini failed during submit:', e); }
     }
     const detected = detectIncidentType(title, desc);
     const result = enhancedAIAnalysis(detected.type, desc, loc, title);
@@ -2052,7 +1828,8 @@ async function analyzeWithGeminiFallback(type, title, desc, loc) {
 }
 
 // ============================================
-// SEND ALERT (ADMIN ONLY) — same flow as incident report
+// SEND ALERT (ADMIN ONLY)
+// Notifies BOTH residents and responders
 // ============================================
 async function sendAlert() {
     if (!currentProfile || currentProfile.role !== 'admin') {
@@ -2068,16 +1845,9 @@ async function sendAlert() {
     const lat = document.getElementById('alertLat').value;
     const lng = document.getElementById('alertLng').value;
 
-    if (!title || !message || !location || !contact) {
-        showToast('Please fill in all fields', 'warning');
-        return;
-    }
-    if (!lat || !lng) {
-        showToast('Please select a location on the map or search for a place', 'warning');
-        return;
-    }
+    if (!title || !message || !location || !contact) { showToast('Please fill in all fields', 'warning'); return; }
+    if (!lat || !lng) { showToast('Please select a location on the map or search for a place', 'warning'); return; }
 
-    // AI analysis (auto)
     let aiResult = window._alertAiResult;
     if (!aiResult) {
         aiResult = await analyzeWithGeminiFallback(type, title, message, location);
@@ -2085,102 +1855,108 @@ async function sendAlert() {
     }
 
     const btn = document.getElementById('sendAlertBtn');
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Sending...';
-    }
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Sending...'; }
 
     try {
         const locationObj = { address: location, latitude: parseFloat(lat), longitude: parseFloat(lng) };
 
-        // Get resident count for recipients_count
-        let residentCount = 0;
+        // 1. Fetch recipients (residents + responders + admins, excluding sender)
+        let recipients = [];
         try {
-            const residentsResult = await supabaseClient.from('profiles').select('id').eq('role', 'resident');
-            residentCount = residentsResult.data?.length || 0;
-        } catch (e) {}
+            const recipientsResult = await supabaseClient.from('profiles').select('id, full_name, email, role')
+                .in('role', ['resident', 'responder', 'admin']);
+            recipients = recipientsResult.data || [];
+        } catch (e) { console.warn('Fetch recipients failed:', e); }
 
+        const senderId = currentUser ? currentUser.id : null;
+        const targetRecipients = recipients.filter(r => r.id !== senderId);
+        const residentCount = targetRecipients.filter(r => r.role === 'resident').length;
+        const responderCount = targetRecipients.filter(r => r.role === 'responder').length;
+
+        // 2. Insert alert row
         const alertPayload = {
-            title: title,
-            message: message,
-            type: type,
-            priority: aiResult.priority,
-            status: 'sent',
-            location: JSON.stringify(locationObj),
-            contact_number: contact,
-            barangay: currentProfile?.barangay || null,
-            recipients_count: residentCount,
-            sent_by: currentUser.id,
-            sent_at: new Date().toISOString(),
+            title: title, message: message, type: type, priority: aiResult.priority,
+            status: 'sent', location: JSON.stringify(locationObj), contact_number: contact,
+            barangay: currentProfile?.barangay || null, recipients_count: targetRecipients.length,
+            sent_by: currentUser.id, sent_at: new Date().toISOString(),
             ai_analysis: {
-                priority: aiResult.priority,
-                confidence: aiResult.confidence,
-                actions: aiResult.actions,
-                verification: aiResult.verification,
-                source: aiResult.source || 'rule-based',
-                reasoning: aiResult.reasoning || [],
+                priority: aiResult.priority, confidence: aiResult.confidence,
+                actions: aiResult.actions, verification: aiResult.verification,
+                source: aiResult.source || 'rule-based', reasoning: aiResult.reasoning || [],
                 detectedLanguage: aiResult.detectedLanguage || 'unknown',
                 detectedType: aiResult.detectedType || type
             },
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            created_at: new Date().toISOString(), updated_at: new Date().toISOString()
         };
 
-        const insertResult = await supabaseClient
-            .from('alerts')
-            .insert([alertPayload])
-            .select()
-            .single();
-
+        const insertResult = await supabaseClient.from('alerts').insert([alertPayload]).select().single();
         if (insertResult.error) throw insertResult.error;
-
         const alertData = insertResult.data;
+        console.log('✅ Alert inserted:', alertData.id);
 
-        // Upload media if any
+        // 3. Upload media
         let mediaUrls = [];
         if (selectedAlertMediaFiles.length > 0) {
             showToast('📤 Uploading media files...', 'info', 3000);
             mediaUrls = await uploadAlertMediaFiles(alertData.id);
-
             if (mediaUrls.length > 0) {
-                const { error: updateError } = await supabaseClient
-                    .from('alerts')
+                const { error: updateError } = await supabaseClient.from('alerts')
                     .update({ media_urls: JSON.stringify(mediaUrls), updated_at: new Date().toISOString() })
                     .eq('id', alertData.id);
-                if (updateError) {
-                    showToast('Alert saved but media upload failed', 'warning');
-                } else {
-                    showToast(`✅ ${mediaUrls.length} attachment(s) uploaded!`, 'success');
-                }
+                if (updateError) showToast('Alert saved but media upload failed', 'warning');
+                else showToast(`✅ ${mediaUrls.length} attachment(s) uploaded!`, 'success');
             }
         }
 
-        showToast('✅ Alert sent to ' + residentCount + ' residents!', 'success');
+        // 4. Create in-app notifications for BOTH residents and responders
+        if (targetRecipients.length > 0) {
+            const notificationsPayload = targetRecipients.map(function(recipient) {
+                return {
+                    user_id: recipient.id,
+                    title: '🚨 ' + title,
+                    message: message,
+                    type: 'alert',
+                    priority: aiResult.priority,
+                    read: false,
+                    data: {
+                        alert_id: alertData.id, alert_type: type,
+                        location: locationObj, media_urls: mediaUrls,
+                        ai_priority: aiResult.priority, ai_confidence: aiResult.confidence
+                    },
+                    created_at: new Date().toISOString()
+                };
+            });
+            const CHUNK_SIZE = 100;
+            for (let i = 0; i < notificationsPayload.length; i += CHUNK_SIZE) {
+                const chunk = notificationsPayload.slice(i, i + CHUNK_SIZE);
+                const notifResult = await supabaseClient.from('notifications').insert(chunk);
+                if (notifResult.error) console.warn('Notification insert error:', notifResult.error);
+            }
+            console.log('📬 Notifications sent to ' + targetRecipients.length + ' users');
+        }
 
-        // Try email notification
+        // 5. Email notifications
         try {
             if (typeof window.sendEmergencyEmailNotification === 'function') {
                 const result = await window.sendEmergencyEmailNotification(alertData, false);
-                if (result && result.success) {
-                    showToast('📧 Email notifications sent to all users!', 'success', 5000);
-                }
+                if (result && result.success) showToast('📧 Email notifications sent!', 'success', 5000);
             }
-        } catch (emailError) {
-            console.error('Email notification error:', emailError);
-        }
+        } catch (emailError) { console.error('Email notification error:', emailError); }
+
+        showToast(
+            '✅ Alert sent to ' + residentCount + ' residents' +
+            (responderCount > 0 ? ' and ' + responderCount + ' responders' : '') + '!',
+            'success', 6000
+        );
 
         if (alertModal) alertModal.hide();
         resetAlertForm();
         loadAlerts();
-
     } catch (error) {
         console.error('Send alert error:', error);
         showToast('Failed to send alert: ' + error.message, 'danger');
     } finally {
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Alert';
-        }
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Alert'; }
     }
 }
 
@@ -2190,28 +1966,18 @@ async function sendAlert() {
 async function loadAnalytics() {
     var container = document.getElementById('pageContent');
     if (!container) return;
-
     try {
-        var reportsResult = await supabaseClient
-            .from('incident_reports')
-            .select('*')
-            .order('created_at', { ascending: false });
+        var reportsResult = await supabaseClient.from('incident_reports').select('*').order('created_at', { ascending: false });
         var reports = reportsResult.data || [];
         allIncidents = reports;
-
         var now = Date.now();
         var rangeMs = analyticsRange * 24 * 60 * 60 * 1000;
-        var inRange = reports.filter(function(r) {
-            return r.created_at && (now - new Date(r.created_at).getTime()) <= rangeMs;
-        });
-
+        var inRange = reports.filter(function(r) { return r.created_at && (now - new Date(r.created_at).getTime()) <= rangeMs; });
         var total = inRange.length;
         var critical = inRange.filter(function(r) { return r.priority === 'critical'; }).length;
         var resolved = inRange.filter(function(r) { return r.status === 'resolved'; }).length;
         var avgResponse = computeAvgResponseMinutes(inRange);
-
-        var prevStart = now - rangeMs * 2;
-        var prevEnd = now - rangeMs;
+        var prevStart = now - rangeMs * 2, prevEnd = now - rangeMs;
         var prevInRange = reports.filter(function(r) {
             if (!r.created_at) return false;
             var t = new Date(r.created_at).getTime();
@@ -2273,20 +2039,13 @@ async function loadAnalytics() {
                 loadAnalytics();
             });
         });
-
         setTimeout(function() { renderAnalyticsCharts(inRange); }, 50);
-
         if (analyticsRefreshTimer) clearInterval(analyticsRefreshTimer);
         analyticsRefreshTimer = setInterval(function() {
             var activePage = document.querySelector('.dashboard-sidebar .nav-link.active')?.dataset?.page;
-            if (activePage === 'analytics') {
-                refreshAnalyticsDataInPlace();
-            } else {
-                clearInterval(analyticsRefreshTimer);
-                analyticsRefreshTimer = null;
-            }
+            if (activePage === 'analytics') refreshAnalyticsDataInPlace();
+            else { clearInterval(analyticsRefreshTimer); analyticsRefreshTimer = null; }
         }, 15000);
-
     } catch (error) {
         console.error('Analytics error:', error);
         container.innerHTML = '<div class="alert alert-danger"><i class="fas fa-exclamation-triangle me-2"></i>Error loading analytics</div>';
@@ -2316,33 +2075,22 @@ function computeTrend(current, previous) {
 
 async function refreshAnalyticsDataInPlace() {
     try {
-        var reportsResult = await supabaseClient
-            .from('incident_reports')
-            .select('*')
-            .order('created_at', { ascending: false });
+        var reportsResult = await supabaseClient.from('incident_reports').select('*').order('created_at', { ascending: false });
         var reports = reportsResult.data || [];
         allIncidents = reports;
-
         var now = Date.now();
         var rangeMs = analyticsRange * 24 * 60 * 60 * 1000;
-        var inRange = reports.filter(function(r) {
-            return r.created_at && (now - new Date(r.created_at).getTime()) <= rangeMs;
-        });
-
+        var inRange = reports.filter(function(r) { return r.created_at && (now - new Date(r.created_at).getTime()) <= rangeMs; });
         if (analyticsCharts.trend) updateTrendChart(analyticsCharts.trend, inRange, analyticsRange);
         if (analyticsCharts.type) updateTypeChart(analyticsCharts.type, inRange);
         if (analyticsCharts.priority) updatePriorityChart(analyticsCharts.priority, inRange);
         if (analyticsCharts.status) updateStatusChart(analyticsCharts.status, inRange);
         if (analyticsCharts.hourly) updateHourlyChart(analyticsCharts.hourly, inRange);
-    } catch (e) {
-        console.warn('Analytics refresh failed', e);
-    }
+    } catch (e) { console.warn('Analytics refresh failed', e); }
 }
 
 function destroyAllCharts() {
-    Object.keys(analyticsCharts).forEach(function(k) {
-        try { analyticsCharts[k].destroy(); } catch (e) {}
-    });
+    Object.keys(analyticsCharts).forEach(function(k) { try { analyticsCharts[k].destroy(); } catch (e) {} });
     analyticsCharts = {};
     if (analyticsRefreshTimer) { clearInterval(analyticsRefreshTimer); analyticsRefreshTimer = null; }
 }
@@ -2356,16 +2104,9 @@ function getChartThemeColors() {
         grid: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
         primary: styles.getPropertyValue('--primary').trim() || '#2e7d32',
         destructive: styles.getPropertyValue('--destructive').trim() || '#dc3545',
-        priCritical: '#dc3545',
-        priHigh: '#fd7e14',
-        priMedium: '#ffc107',
-        priLow: '#0d6efd',
-        typeFire: '#dc3545',
-        typeMedical: '#0d6efd',
-        typeAccident: '#fd7e14',
-        typeFlood: '#0dcaf0',
-        typeCrime: '#8b5cf6',
-        typeOther: '#6c757d'
+        priCritical: '#dc3545', priHigh: '#fd7e14', priMedium: '#ffc107', priLow: '#0d6efd',
+        typeFire: '#dc3545', typeMedical: '#0d6efd', typeAccident: '#fd7e14',
+        typeFlood: '#0dcaf0', typeCrime: '#8b5cf6', typeOther: '#6c757d'
     };
 }
 
@@ -2390,7 +2131,6 @@ function renderAnalyticsCharts(reports) {
             options: buildLineOptions(C)
         });
     }
-
     var typeCtx = document.getElementById('typeChart');
     if (typeCtx) {
         var typeData = countByType(reports);
@@ -2400,7 +2140,6 @@ function renderAnalyticsCharts(reports) {
             options: buildDoughnutOptions(C)
         });
     }
-
     var priCtx = document.getElementById('priorityChart');
     if (priCtx) {
         var priData = countByPriority(reports);
@@ -2410,7 +2149,6 @@ function renderAnalyticsCharts(reports) {
             options: buildBarOptions(C)
         });
     }
-
     var statusCtx = document.getElementById('statusChart');
     if (statusCtx) {
         var statusData = countByStatus(reports);
@@ -2420,14 +2158,13 @@ function renderAnalyticsCharts(reports) {
             options: buildPolarOptions(C)
         });
     }
-
     var hourCtx = document.getElementById('hourlyChart');
     if (hourCtx) {
         var hourData = countByHour(reports);
         analyticsCharts.hourly = new Chart(hourCtx, {
             type: 'bar',
             data: { labels: hourData.labels, datasets: [{ label: 'Incidents', data: hourData.values, backgroundColor: hexToRgba(C.primary, 0.75), borderRadius: 5, borderSkipped: false }] },
-            options: buildBarOptions(C, true)
+            options: buildBarOptions(C)
         });
     }
 }
@@ -2469,13 +2206,10 @@ function updateHourlyChart(chart, reports) {
 }
 
 function buildTrendData(reports, days) {
-    var labels = [];
-    var all = [];
-    var critical = [];
+    var labels = [], all = [], critical = [];
     var bucketCount = days <= 7 ? days : (days <= 30 ? days : (days <= 90 ? Math.ceil(days / 3) : 12));
     var bucketSize = days <= 30 ? 1 : (days <= 90 ? 3 : Math.ceil(days / 12));
     var now = new Date(); now.setHours(0, 0, 0, 0);
-
     var buckets = [];
     for (var i = bucketCount - 1; i >= 0; i--) {
         var start = new Date(now);
@@ -2489,7 +2223,6 @@ function buildTrendData(reports, days) {
         else label = start.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
         labels.push(label);
     }
-
     buckets.forEach(function(b) {
         var inBucket = reports.filter(function(r) {
             if (!r.created_at) return false;
@@ -2499,7 +2232,6 @@ function buildTrendData(reports, days) {
         all.push(inBucket.length);
         critical.push(inBucket.filter(function(r) { return r.priority === 'critical'; }).length);
     });
-
     return { labels: labels, all: all, critical: critical };
 }
 
@@ -2509,13 +2241,7 @@ function countByType(reports) {
     var colors = [C.typeFire, C.typeMedical, C.typeAccident, C.typeFlood, C.typeCrime, C.typeOther];
     var values = types.map(function(t) { return reports.filter(function(r) { return (r.type || 'other') === t; }).length; });
     var fl = [], fv = [], fc = [];
-    types.forEach(function(t, i) {
-        if (values[i] > 0) {
-            fl.push(t.charAt(0).toUpperCase() + t.slice(1));
-            fv.push(values[i]);
-            fc.push(colors[i]);
-        }
-    });
+    types.forEach(function(t, i) { if (values[i] > 0) { fl.push(t.charAt(0).toUpperCase() + t.slice(1)); fv.push(values[i]); fc.push(colors[i]); } });
     if (fl.length === 0) return { labels: ['No data'], values: [0], colors: [C.muted] };
     return { labels: fl, values: fv, colors: fc };
 }
@@ -2534,29 +2260,18 @@ function countByStatus(reports) {
     var colors = ['#dc3545', '#0d6efd', '#fd7e14', C.primary, '#6c757d'];
     var values = statuses.map(function(s) { return reports.filter(function(r) { return (r.status || 'reported') === s; }).length; });
     var fl = [], fv = [], fc = [];
-    statuses.forEach(function(s, i) {
-        if (values[i] > 0) {
-            fl.push(s.charAt(0).toUpperCase() + s.slice(1));
-            fv.push(values[i]);
-            fc.push(colors[i]);
-        }
-    });
+    statuses.forEach(function(s, i) { if (values[i] > 0) { fl.push(s.charAt(0).toUpperCase() + s.slice(1)); fv.push(values[i]); fc.push(colors[i]); } });
     if (fl.length === 0) return { labels: ['No data'], values: [0], colors: [C.muted] };
     return { labels: fl, values: fv, colors: fc };
 }
 
 function countByHour(reports) {
-    var labels = [];
-    var values = [];
+    var labels = [], values = [];
     for (var h = 0; h < 24; h++) {
         labels.push((h % 12 === 0 ? 12 : h % 12) + (h < 12 ? 'a' : 'p'));
         values.push(0);
     }
-    reports.forEach(function(r) {
-        if (!r.created_at) return;
-        var h = new Date(r.created_at).getHours();
-        values[h]++;
-    });
+    reports.forEach(function(r) { if (!r.created_at) return; var h = new Date(r.created_at).getHours(); values[h]++; });
     return { labels: labels, values: values };
 }
 
@@ -2609,10 +2324,7 @@ function hexToRgba(color, alpha) {
     if (color.startsWith('#')) {
         var hex = color.replace('#', '');
         if (hex.length === 3) hex = hex.split('').map(function(c) { return c + c; }).join('');
-        var r = parseInt(hex.substring(0, 2), 16);
-        var g = parseInt(hex.substring(2, 4), 16);
-        var b = parseInt(hex.substring(4, 6), 16);
-        return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+        return 'rgba(' + parseInt(hex.substring(0, 2), 16) + ',' + parseInt(hex.substring(2, 4), 16) + ',' + parseInt(hex.substring(4, 6), 16) + ',' + alpha + ')';
     }
     if (color.startsWith('rgb')) {
         return color.replace(/rgba?\(([^)]+)\)/, function(m, inner) {
@@ -2629,15 +2341,10 @@ function hexToRgba(color, alpha) {
 async function loadIncidents() {
     var container = document.getElementById('pageContent');
     if (!container) return;
-
     try {
-        var reportsResult = await supabaseClient
-            .from('incident_reports')
-            .select('*')
-            .order('created_at', { ascending: false });
+        var reportsResult = await supabaseClient.from('incident_reports').select('*').order('created_at', { ascending: false });
         var reports = reportsResult.data || [];
         allIncidents = reports;
-
         var total = reports.length;
         var active = reports.filter(function(r) { return !['resolved', 'closed'].includes(r.status); }).length;
         var critical = reports.filter(function(r) { return r.priority === 'critical' && !['resolved', 'closed'].includes(r.status); }).length;
@@ -2735,24 +2442,18 @@ async function loadIncidents() {
 function renderIncidentCard(incident) {
     var mediaUrls = getMediaUrls(incident);
     var mediaUrlsJson = JSON.stringify(mediaUrls).replace(/"/g, '&quot;');
-
-    var rawDescription = (incident.description === null || incident.description === undefined)
-        ? '' : String(incident.description).trim();
+    var rawDescription = (incident.description === null || incident.description === undefined) ? '' : String(incident.description).trim();
     var hasDescription = rawDescription.length > 0;
     var escapedDescription = escapeHtml(rawDescription);
-
     var typeIcon = getTypeIcon(incident.type);
     var typeClass = getTypeClass(incident.type);
     var priority = incident.priority || 'medium';
     var status = incident.status || 'reported';
     var createdDate = formatDateTime(incident.created_at);
-
     var pulse = getPriorityPulseClasses(priority);
-
     var isLongDescription = rawDescription.length > 180;
     var safeSearch = (incident.title + ' ' + incident.type + ' ' + (incident.location || '') + ' ' + rawDescription)
         .toLowerCase().replace(/"/g, '').replace(/'/g, '');
-
     var descHtml = hasDescription
         ? `<div class="incident-description-box ${isLongDescription ? 'clamped' : ''}" id="desc-${incident.id}"><span class="desc-label"><i class="fas fa-align-left me-1"></i>Description</span><span class="desc-text">${escapedDescription}</span></div>`
         : `<div class="incident-no-desc"><i class="fas fa-info-circle"></i>No description provided by reporter</div>`;
@@ -2838,7 +2539,6 @@ async function viewIncidentDetails(incidentId) {
     var typeIcon = getTypeIcon(incident.type);
     var priority = incident.priority || 'medium';
     var status = incident.status || 'reported';
-
     var reporterName = 'Unknown Reporter';
     if (incident.reporter_id) {
         try {
@@ -2846,7 +2546,6 @@ async function viewIncidentDetails(incidentId) {
             if (profResult.data) reporterName = profResult.data.full_name || 'Unknown';
         } catch (e) {}
     }
-
     var createdDate = incident.created_at ? new Date(incident.created_at).toLocaleString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Unknown';
 
     var modalTitle = document.getElementById('incidentDetailModalTitle');
@@ -2912,14 +2611,11 @@ function filterIncidents() {
     var container = document.getElementById('incidentsListContainer');
     var noResults = document.getElementById('noFilterResults');
     if (!container) return;
-
     var search = (searchInput?.value || '').toLowerCase().trim();
     var status = statusFilter?.value || '';
     var priority = priorityFilter?.value || '';
-
     var cards = container.querySelectorAll('.incident-card');
     var visibleCount = 0;
-
     cards.forEach(function(card) {
         var cardSearch = card.getAttribute('data-search') || '';
         var cardStatus = card.getAttribute('data-status') || '';
@@ -2927,14 +2623,9 @@ function filterIncidents() {
         var matchSearch = !search || cardSearch.indexOf(search) !== -1;
         var matchStatus = !status || cardStatus === status;
         var matchPriority = !priority || cardPriority === priority;
-        if (matchSearch && matchStatus && matchPriority) {
-            card.style.display = '';
-            visibleCount++;
-        } else {
-            card.style.display = 'none';
-        }
+        if (matchSearch && matchStatus && matchPriority) { card.style.display = ''; visibleCount++; }
+        else card.style.display = 'none';
     });
-
     if (noResults) noResults.style.display = visibleCount === 0 ? 'block' : 'none';
 }
 
@@ -2951,13 +2642,11 @@ function resetIncidentFilters() {
 async function loadResponders() {
     var container = document.getElementById('pageContent');
     if (!container) return;
-
     if (!currentProfile || currentProfile.role !== 'admin') {
         showToast('Access denied. Admins only.', 'warning', 4000);
         loadDashboard();
         return;
     }
-
     try {
         var respondersResult = await supabaseClient.from('profiles').select('*').in('role', ['responder', 'admin']).order('created_at', { ascending: false });
         var responders = respondersResult.data || [];
@@ -2965,21 +2654,15 @@ async function loadResponders() {
         container.innerHTML = `
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h4 class="fw-bold"><i class="fas fa-users me-2"></i>Responders</h4>
-                <button class="btn btn-danger" onclick="addResponderModal.show()"><i class="fas fa-user-plus me-2"></i>Add Responder</button>
+                <button class="btn btn-danger d-inline-flex align-items-center gap-2" onclick="addResponderModal.show()">
+                    <i class="fas fa-user-plus"></i>
+                    <span>Add Responder</span>
+                </button>
             </div>
             ${responders && responders.length > 0 ? `
                 <div class="table-responsive">
                     <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Email</th>
-                                <th>Barangay</th>
-                                <th>Contact</th>
-                                <th>Role</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
+                        <thead><tr><th>Name</th><th>Email</th><th>Barangay</th><th>Contact</th><th>Role</th><th>Status</th></tr></thead>
                         <tbody>
                             ${responders.map(function(r) {
                                 return `<tr>
@@ -2996,9 +2679,7 @@ async function loadResponders() {
                 </div>
             ` : `<div class="text-center py-5 text-muted"><i class="fas fa-users fa-3x mb-3 d-block"></i><h5>No responders found</h5></div>`}
         `;
-    } catch (error) {
-        container.innerHTML = '<div class="alert alert-danger">Error loading responders</div>';
-    }
+    } catch (error) { container.innerHTML = '<div class="alert alert-danger">Error loading responders</div>'; }
 }
 
 async function addResponder() {
@@ -3006,13 +2687,11 @@ async function addResponder() {
         showToast('Access denied. Admins only.', 'warning', 4000);
         return;
     }
-
     var fullName = document.getElementById('respFullName').value.trim();
     var email = document.getElementById('respEmail').value.trim();
     var password = document.getElementById('respPassword').value;
     var barangay = document.getElementById('respBarangay').value.trim();
     var contact = document.getElementById('respContact').value.trim();
-
     if (!fullName || !email || !password || !barangay || !contact) { showToast('Please fill in all fields', 'warning'); return; }
     if (password.length < 6) { showToast('Password must be at least 6 characters', 'warning'); return; }
 
@@ -3030,58 +2709,340 @@ async function addResponder() {
             throw signUpResult.error;
         }
         if (!signUpResult.data.user) throw new Error('Failed to create user account');
-
         await new Promise(function(resolve) { setTimeout(resolve, 1000); });
-
         var updateResult = await supabaseClient.from('profiles').update({
             full_name: fullName, email: email, barangay: barangay, contact_number: contact, role: 'responder', updated_at: new Date()
         }).eq('id', signUpResult.data.user.id);
-
         if (updateResult.error) {
             var insertResult = await supabaseClient.from('profiles').insert([{
                 id: signUpResult.data.user.id, full_name: fullName, email: email, barangay: barangay, contact_number: contact, role: 'responder'
             }]);
             if (insertResult.error) throw new Error('Failed to create profile: ' + insertResult.error.message);
         }
-
         showToast('Responder added successfully!', 'success');
         addResponderModal.hide();
         document.getElementById('addResponderForm').reset();
         loadResponders();
-    } catch (error) {
-        showToast('Failed to add responder: ' + error.message, 'danger');
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-user-plus me-2"></i>Add Responder';
-    }
+    } catch (error) { showToast('Failed to add responder: ' + error.message, 'danger'); }
+    finally { btn.disabled = false; btn.innerHTML = '<i class="fas fa-user-plus me-2"></i>Add Responder'; }
 }
 
 // ============================================
-// ALERTS (ADMIN ONLY)
+// ALERTS PAGE — visible to BOTH admin + responder
+// Admin sees "New Alert" button. Responders can only VIEW.
+// Responders + admins can view FULL alert details.
 // ============================================
+
+/* ===== ALERT DETAILS ===== */
+function getAlertMediaUrls(alert) {
+    if (!alert) return [];
+    var raw = alert.media_urls;
+    if (!raw) return [];
+    try {
+        var urls = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        if (Array.isArray(urls)) return urls;
+    } catch (e) {}
+    return [];
+}
+
+function getAlertAIAnalysis(alert) {
+    if (!alert || !alert.ai_analysis) return null;
+    var raw = alert.ai_analysis;
+    try {
+        return typeof raw === 'string' ? JSON.parse(raw) : raw;
+    } catch (e) { return null; }
+}
+
+function getAlertLocationText(alert) {
+    if (!alert || !alert.location) return '—';
+    var loc = alert.location;
+    if (typeof loc === 'string' && loc.trim().startsWith('{')) {
+        try {
+            var obj = JSON.parse(loc);
+            if (obj && obj.address) return obj.address;
+        } catch (e) {}
+    }
+    if (typeof loc === 'object' && loc.address) return loc.address;
+    return String(loc);
+}
+
+function getAlertCoords(alert) {
+    if (!alert || !alert.location) return null;
+    var loc = alert.location;
+    if (typeof loc === 'string' && loc.trim().startsWith('{')) {
+        try {
+            var obj = JSON.parse(loc);
+            if (obj && obj.latitude != null && obj.longitude != null) {
+                return { lat: parseFloat(obj.latitude), lng: parseFloat(obj.longitude) };
+            }
+        } catch (e) {}
+    }
+    if (typeof loc === 'object' && loc.latitude != null && loc.longitude != null) {
+        return { lat: parseFloat(loc.latitude), lng: parseFloat(loc.longitude) };
+    }
+    return null;
+}
+
+async function viewAlertDetails(alertId) {
+    var alert = null;
+    try {
+        var res = await supabaseClient.from('alerts').select('*').eq('id', alertId).maybeSingle();
+        if (res.data) alert = res.data;
+    } catch (e) { console.warn('Fetch alert failed:', e); }
+    if (!alert) { showToast('Alert not found', 'warning'); return; }
+
+    // Ensure modal container exists
+    var modalEl = document.getElementById('alertDetailModal');
+    if (!modalEl) {
+        modalEl = document.createElement('div');
+        modalEl.className = 'modal fade alert-detail-modal';
+        modalEl.id = 'alertDetailModal';
+        modalEl.tabIndex = -1;
+        modalEl.innerHTML = `
+            <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+                <div class="modal-content" style="border-radius:16px;border:none;">
+                    <div class="modal-header" style="border-bottom:1px solid var(--border);padding:20px 24px;">
+                        <h5 class="modal-title fw-bold" id="alertDetailModalTitle">
+                            <i class="fas fa-bell me-2 text-danger"></i>Alert Details
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body" id="alertDetailModalBody" style="padding:24px;"></div>
+                    <div class="modal-footer" id="alertDetailModalFooter" style="border-top:1px solid var(--border);padding:16px 24px;"></div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modalEl);
+    }
+
+    var typeIcon = getTypeIcon(alert.type);
+    var typeClass = getTypeClass(alert.type);
+    var priority = alert.priority || 'medium';
+    var status = alert.status || 'draft';
+    var ai = getAlertAIAnalysis(alert);
+    var mediaUrls = getAlertMediaUrls(alert);
+    var coords = getAlertCoords(alert);
+
+    var createdDate = alert.created_at
+        ? new Date(alert.created_at).toLocaleString('en-US', {
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+        })
+        : '—';
+
+    var senderName = '—';
+    if (alert.sent_by) {
+        try {
+            var pRes = await supabaseClient.from('profiles').select('full_name, role').eq('id', alert.sent_by).maybeSingle();
+            if (pRes.data) senderName = (pRes.data.full_name || 'Admin') + (pRes.data.role ? ' (' + pRes.data.role + ')' : '');
+        } catch (e) {}
+    }
+
+    var modalTitle = document.getElementById('alertDetailModalTitle');
+    var modalBody = document.getElementById('alertDetailModalBody');
+    var modalFooter = document.getElementById('alertDetailModalFooter');
+
+    modalTitle.innerHTML = '<i class="fas ' + typeIcon + ' me-2 text-danger"></i>' + escapeHtml(alert.title || 'Alert Details');
+
+    var mapId = 'alertDetailMap_' + String(alert.id).replace(/[^a-zA-Z0-9]/g, '').slice(0, 12);
+
+    modalBody.innerHTML = `
+        <div class="d-flex gap-2 mb-4 flex-wrap align-items-center">
+            <span class="badge priority-${priority}" style="font-size:0.75rem;padding:7px 18px;border-radius:50px;font-weight:700;text-transform:uppercase;">
+                <i class="fas fa-exclamation-triangle me-1"></i>${priority} Priority
+            </span>
+            <span class="badge bg-${status === 'sent' ? 'success' : 'secondary'}" style="font-size:0.75rem;padding:7px 18px;border-radius:50px;font-weight:700;text-transform:uppercase;">
+                <i class="fas fa-circle me-1" style="font-size:0.5rem;"></i>${escapeHtml(status)}
+            </span>
+            <span class="badge" style="font-size:0.75rem;padding:7px 18px;border-radius:50px;font-weight:700;text-transform:uppercase;background:color-mix(in oklab, var(--primary) 18%, transparent);color:var(--primary);">
+                <i class="fas ${typeIcon} me-1"></i>${escapeHtml(alert.type || 'other')}
+            </span>
+        </div>
+
+        <div class="mb-4">
+            <label class="fw-bold small text-uppercase text-muted" style="letter-spacing:0.5px;">
+                <i class="fas fa-envelope-open-text me-1"></i>Message
+            </label>
+            <div class="alert-detail-message">${escapeHtml(alert.message || '—')}</div>
+        </div>
+
+        <div class="incident-modal-meta-grid mb-4">
+            <div class="incident-modal-meta-item">
+                <div class="lbl"><i class="fas fa-user-shield me-1"></i>Sent By</div>
+                <div class="val">${escapeHtml(senderName)}</div>
+            </div>
+            <div class="incident-modal-meta-item">
+                <div class="lbl"><i class="fas fa-clock me-1"></i>Sent At</div>
+                <div class="val" style="font-size:0.82rem;">${createdDate}</div>
+            </div>
+            <div class="incident-modal-meta-item">
+                <div class="lbl"><i class="fas fa-phone me-1"></i>Contact</div>
+                <div class="val">${escapeHtml(alert.contact_number || '—')}</div>
+            </div>
+            <div class="incident-modal-meta-item">
+                <div class="lbl"><i class="fas fa-users me-1"></i>Recipients</div>
+                <div class="val">${alert.recipients_count || 0}</div>
+            </div>
+            ${alert.barangay ? `
+            <div class="incident-modal-meta-item">
+                <div class="lbl"><i class="fas fa-building me-1"></i>Barangay</div>
+                <div class="val">${escapeHtml(alert.barangay)}</div>
+            </div>` : ''}
+            <div class="incident-modal-meta-item" style="grid-column: 1 / -1;">
+                <div class="lbl"><i class="fas fa-map-marker-alt me-1"></i>Location</div>
+                <div class="val">${escapeHtml(getAlertLocationText(alert))}</div>
+            </div>
+        </div>
+
+        ${coords ? `
+            <div class="mb-4">
+                <label class="fw-bold small text-uppercase text-muted" style="letter-spacing:0.5px;">
+                    <i class="fas fa-map me-1"></i>Map
+                </label>
+                <div id="${mapId}" style="height:220px;border-radius:calc(var(--radius) + 2px);border:1px solid var(--border);overflow:hidden;"></div>
+            </div>
+        ` : ''}
+
+        ${ai ? `
+            <div class="mb-4">
+                <label class="fw-bold small text-uppercase text-muted" style="letter-spacing:0.5px;">
+                    <i class="fas fa-robot me-1"></i>AI Analysis
+                </label>
+                <div class="ai-detail-card">
+                    <div class="d-flex gap-2 flex-wrap mb-2">
+                        <span class="ai-badge bg-${ai.priority === 'critical' ? 'danger' : ai.priority === 'high' ? 'warning' : ai.priority === 'medium' ? 'primary' : 'secondary'} text-white">
+                            Priority: ${escapeHtml((ai.priority || 'medium').toUpperCase())}
+                        </span>
+                        <span class="ai-badge" style="background:var(--card);color:var(--card-foreground);border:1px solid var(--border);">
+                            Confidence: ${ai.confidence != null ? (Number(ai.confidence) * 100).toFixed(0) + '%' : '—'}
+                        </span>
+                        ${ai.source ? `<span class="ai-badge" style="background:var(--muted);color:var(--muted-foreground);">${escapeHtml(ai.source)}</span>` : ''}
+                    </div>
+                    ${Array.isArray(ai.actions) && ai.actions.length ? `
+                        <div class="small mb-1"><i class="fas fa-tasks me-1"></i>${escapeHtml(ai.actions.join(' · '))}</div>
+                    ` : ''}
+                    ${ai.verification ? `<div class="small"><i class="fas fa-shield-alt me-1"></i>${escapeHtml(ai.verification)}</div>` : ''}
+                    ${Array.isArray(ai.reasoning) && ai.reasoning.length ? `
+                        <div class="small text-muted mt-1"><i class="fas fa-lightbulb me-1"></i>${escapeHtml(ai.reasoning.join(' · '))}</div>
+                    ` : ''}
+                </div>
+            </div>
+        ` : ''}
+
+        ${mediaUrls.length > 0 ? `
+            <div class="mb-2">
+                <label class="fw-bold small text-uppercase text-muted" style="letter-spacing:0.5px;">
+                    <i class="fas fa-paperclip me-1"></i>Attachments (${mediaUrls.length})
+                </label>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                ${mediaUrls.map(function(m) {
+                    var isVideo = m.type === 'video';
+                    var url = m.url;
+                    return `<div class="popup-media-item" style="width:90px;height:90px;" onclick="openLightbox('${url}', '${isVideo ? 'video' : 'image'}')">
+                        ${isVideo
+                            ? '<video src="' + url + '" muted></video><div class="play-overlay"><i class="fas fa-play"></i></div>'
+                            : '<img src="' + url + '" alt="Attachment" onerror="this.style.display=\'none\'">'}
+                    </div>`;
+                }).join('')}
+            </div>
+        ` : ''}
+    `;
+
+    modalFooter.innerHTML = `
+        <button class="btn btn-secondary" data-bs-dismiss="modal"><i class="fas fa-times me-1"></i>Close</button>
+    `;
+
+    var existing = bootstrap.Modal.getInstance(modalEl);
+    if (existing) existing.dispose();
+    var modal = new bootstrap.Modal(modalEl);
+    modal.show();
+
+    // Init mini map after modal is shown
+    if (coords) {
+        modalEl.addEventListener('shown.bs.modal', function initMapOnce() {
+            modalEl.removeEventListener('shown.bs.modal', initMapOnce);
+            var mapContainer = document.getElementById(mapId);
+            if (!mapContainer) return;
+            var miniMap = L.map(mapId, { zoomControl: true, attributionControl: false })
+                .setView([coords.lat, coords.lng], 16);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(miniMap);
+            L.polygon(BARANGAY_SCOPE.polygon, {
+                color: '#2e7d32', weight: 2, opacity: 0.8,
+                fillColor: '#2e7d32', fillOpacity: 0.06, dashArray: '8 4'
+            }).addTo(miniMap);
+            var typeIcon = getTypeIcon(alert.type);
+            L.marker([coords.lat, coords.lng], {
+                icon: L.divIcon({
+                    html: '<div class="marker-pin ' + getTypeClass(alert.type) + '" style="position:relative;"><i class="fas ' + typeIcon + '"></i></div>',
+                    className: 'custom-incident-marker',
+                    iconSize: [30, 30], iconAnchor: [15, 30]
+                })
+            }).addTo(miniMap).bindPopup('<b>' + escapeHtml(alert.title || 'Alert') + '</b><br>' + escapeHtml(getAlertLocationText(alert)));
+            setTimeout(function() { miniMap.invalidateSize(); }, 200);
+        });
+        // If already shown (unlikely on first open), init immediately
+        if (modalEl.classList.contains('show')) {
+            setTimeout(function() {
+                var mapContainer = document.getElementById(mapId);
+                if (!mapContainer || mapContainer._leaflet_id) return;
+                var miniMap = L.map(mapId, { zoomControl: true, attributionControl: false })
+                    .setView([coords.lat, coords.lng], 16);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(miniMap);
+                var typeIcon = getTypeIcon(alert.type);
+                L.marker([coords.lat, coords.lng], {
+                    icon: L.divIcon({
+                        html: '<div class="marker-pin ' + getTypeClass(alert.type) + '" style="position:relative;"><i class="fas ' + typeIcon + '"></i></div>',
+                        className: 'custom-incident-marker',
+                        iconSize: [30, 30], iconAnchor: [15, 30]
+                    })
+                }).addTo(miniMap);
+                setTimeout(function() { miniMap.invalidateSize(); }, 200);
+            }, 200);
+        }
+    }
+}
+
 async function loadAlerts() {
     var container = document.getElementById('pageContent');
     if (!container) return;
 
-    if (!currentProfile || currentProfile.role !== 'admin') {
-        showToast('Access denied. Admins only.', 'warning', 4000);
-        loadDashboard();
-        return;
-    }
+    var isAdmin = currentProfile && currentProfile.role === 'admin';
 
     try {
         var alertsResult = await supabaseClient.from('alerts').select('*').order('created_at', { ascending: false });
         var alerts = alertsResult.data || [];
 
+        // Mark all notifications as read when opening the alerts page
+        if (currentUser) markAllNotificationsRead();
+
         container.innerHTML = `
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h4 class="fw-bold"><i class="fas fa-broadcast me-2"></i>Alerts</h4>
-                <button class="btn btn-danger" onclick="openAlertModal()"><i class="fas fa-plus me-2"></i>New Alert</button>
+                <h4 class="fw-bold"><i class="fas fa-bell me-2"></i>Alerts</h4>
+                ${isAdmin ? `
+                    <button class="btn btn-danger d-inline-flex align-items-center gap-2" onclick="openAlertModal()">
+                        <i class="fas fa-plus"></i>
+                        <span>New Alert</span>
+                    </button>
+                ` : `
+                    <span class="badge bg-secondary d-inline-flex align-items-center gap-2" style="font-size:0.75rem;padding:0.5rem 1rem;">
+                        <i class="fas fa-eye"></i> View-only
+                    </span>
+                `}
             </div>
             ${alerts && alerts.length > 0 ? `
                 <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead><tr><th>Date</th><th>Title</th><th>Type</th><th>Priority</th><th>Status</th><th>Recipients</th></tr></thead>
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Title</th>
+                                <th>Type</th>
+                                <th>Priority</th>
+                                <th>Status</th>
+                                <th>Recipients</th>
+                                <th class="text-end">Action</th>
+                            </tr>
+                        </thead>
                         <tbody>
                             ${alerts.map(function(alert) {
                                 var typeIcon = getTypeIcon(alert.type);
@@ -3101,16 +3062,19 @@ async function loadAlerts() {
                                     <td><span class="badge priority-${alert.priority || 'medium'}">${alert.priority || 'Medium'}</span></td>
                                     <td><span class="badge bg-${alert.status === 'sent' ? 'success' : 'secondary'}">${alert.status || 'Draft'}</span></td>
                                     <td>${alert.recipients_count || 0}</td>
+                                    <td class="text-end">
+                                        <button class="btn btn-sm btn-outline-primary" onclick="viewAlertDetails('${alert.id}')" title="View full details">
+                                            <i class="fas fa-eye me-1"></i>View
+                                        </button>
+                                    </td>
                                 </tr>`;
                             }).join('')}
                         </tbody>
                     </table>
                 </div>
-            ` : `<div class="text-center py-5 text-muted"><i class="fas fa-broadcast fa-3x mb-3 d-block"></i><h5>No alerts sent</h5></div>`}
+            ` : `<div class="text-center py-5 text-muted"><i class="fas fa-bell-slash fa-3x mb-3 d-block"></i><h5>No alerts sent</h5></div>`}
         `;
-    } catch (error) {
-        container.innerHTML = '<div class="alert alert-danger">Error loading alerts</div>';
-    }
+    } catch (error) { container.innerHTML = '<div class="alert alert-danger">Error loading alerts</div>'; }
 }
 
 function loadProfile() {
@@ -3142,19 +3106,15 @@ async function performAction() {
     var incidentId = document.getElementById('actionIncidentId').value;
     var action = document.getElementById('actionType').value;
     var statusMap = { 'acknowledge': 'acknowledged', 'responding': 'responding', 'resolved': 'resolved', 'closed': 'closed' };
-
     try {
         var updateResult = await supabaseClient.from('incident_reports').update({
             status: statusMap[action], updated_at: new Date()
         }).eq('id', incidentId);
         if (updateResult.error) throw updateResult.error;
-
         showToast('Incident updated successfully', 'success');
         actionModal.hide();
         loadPage(document.querySelector('.dashboard-sidebar .nav-link.active')?.dataset?.page || 'dashboard');
-    } catch (error) {
-        showToast('Failed to update: ' + error.message, 'danger');
-    }
+    } catch (error) { showToast('Failed to update: ' + error.message, 'danger'); }
 }
 
 // ============================================
@@ -3168,6 +3128,7 @@ async function logout() {
         destroyResponderMap();
         if (pollingInterval) { clearInterval(pollingInterval); pollingInterval = null; }
         if (realtimeChannel) { try { await supabaseClient.removeChannel(realtimeChannel); } catch (e) {} }
+        if (notificationsRealtimeChannel) { try { await supabaseClient.removeChannel(notificationsRealtimeChannel); } catch (e) {} }
         await supabaseClient.auth.signOut();
         window.location.href = '../login.html';
     } catch (error) { window.location.href = '../login.html'; }
@@ -3209,6 +3170,9 @@ window.analyzeWithGemini = analyzeWithGemini;
 window.analyzeWithGeminiFallback = analyzeWithGeminiFallback;
 window.enhancedAIAnalysis = enhancedAIAnalysis;
 window.detectIncidentType = detectIncidentType;
+window.showAlertNotificationPopup = showAlertNotificationPopup;
+window.refreshUnreadAlertsCount = refreshUnreadAlertsCount;
+window.viewAlertDetails = viewAlertDetails;
 
 // ============================================
 // INITIALIZE
@@ -3218,7 +3182,6 @@ document.addEventListener('DOMContentLoaded', function() {
     document.addEventListener('click', initAudioOnce, { once: true });
     document.addEventListener('touchstart', initAudioOnce, { once: true });
     document.addEventListener('keydown', initAudioOnce, { once: true });
-
     setTimeout(initAudio, 200);
     setTimeout(initResponderDashboard, 100);
 });
